@@ -47,11 +47,11 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 bg-gradient-to-br from-violet-500 to-violet-700 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-[0_0_40px_-8px_rgba(139,92,246,0.5),0_1px_0_rgba(255,255,255,0.15)_inset]">
             <span className="text-2xl">✦</span>
           </div>
-          <h1 className="text-2xl font-bold text-white">GPT Creativos</h1>
-          <p className="text-gray-400 mt-1 text-sm">
+          <h1 className="text-2xl font-bold text-zinc-100 tracking-tight">GPT Creativos</h1>
+          <p className="text-zinc-400 mt-1.5 text-sm">
             Acceso exclusivo para miembros de la comunidad
           </p>
         </div>
@@ -95,7 +95,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={status === "loading" || !email}
-              className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl px-4 py-3 transition"
+              className="w-full bg-gradient-to-br from-violet-600 to-violet-700 hover:from-violet-500 hover:to-violet-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl px-4 py-3 transition active:scale-[0.99] shadow-[0_1px_0_rgba(255,255,255,0.15)_inset]"
             >
               {status === "loading" ? "Verificando..." : "Continuar con email"}
             </button>

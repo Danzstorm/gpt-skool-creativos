@@ -30,24 +30,24 @@ export default function GptCatalog({ gpts, categories }: Props) {
         <div className="relative flex-1">
           <Search
             size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500"
           />
           <input
             type="text"
             placeholder="Buscar GPTs..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-gray-900 border border-gray-700 rounded-xl pl-9 pr-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+            className="w-full bg-zinc-900/70 border border-zinc-800 rounded-xl pl-10 pr-4 py-2.5 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500/50 focus:bg-zinc-900 transition text-sm"
           />
         </div>
 
         <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => setActiveCategory(null)}
-            className={`px-3 py-2 rounded-xl text-sm font-medium transition ${
+            className={`px-3.5 py-2 rounded-xl text-sm font-medium transition ${
               !activeCategory
-                ? "bg-purple-600 text-white"
-                : "bg-gray-900 text-gray-400 border border-gray-700 hover:border-gray-600"
+                ? "bg-violet-600 text-white shadow-[0_1px_0_rgba(255,255,255,0.15)_inset]"
+                : "bg-zinc-900/70 text-zinc-400 border border-zinc-800 hover:border-zinc-700 hover:text-zinc-200"
             }`}
           >
             Todos
@@ -58,10 +58,10 @@ export default function GptCatalog({ gpts, categories }: Props) {
               onClick={() =>
                 setActiveCategory(cat === activeCategory ? null : cat)
               }
-              className={`px-3 py-2 rounded-xl text-sm font-medium transition ${
+              className={`px-3.5 py-2 rounded-xl text-sm font-medium transition ${
                 activeCategory === cat
-                  ? "bg-purple-600 text-white"
-                  : "bg-gray-900 text-gray-400 border border-gray-700 hover:border-gray-600"
+                  ? "bg-violet-600 text-white shadow-[0_1px_0_rgba(255,255,255,0.15)_inset]"
+                  : "bg-zinc-900/70 text-zinc-400 border border-zinc-800 hover:border-zinc-700 hover:text-zinc-200"
               }`}
             >
               {cat}

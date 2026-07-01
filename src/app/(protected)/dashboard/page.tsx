@@ -16,10 +16,10 @@ export default async function DashboardPage() {
   ) as string[];
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
+    <div className="max-w-6xl mx-auto px-4 py-10">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">GPTs Creativos</h1>
-        <p className="text-gray-400 mt-1 text-sm">
+        <h1 className="text-3xl font-bold text-zinc-100 tracking-tight">GPTs Creativos</h1>
+        <p className="text-zinc-400 mt-1.5">
           Herramientas de IA exclusivas para la comunidad
         </p>
       </div>

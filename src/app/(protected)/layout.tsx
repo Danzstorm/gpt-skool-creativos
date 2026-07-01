@@ -23,19 +23,19 @@ export default async function ProtectedLayout({
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="border-b border-gray-800 bg-gray-950 px-4 py-3">
+      <header className="sticky top-0 z-40 border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-xl px-4 py-3">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center text-sm">
+          <Link href="/dashboard" className="flex items-center gap-2.5 group">
+            <div className="w-8 h-8 bg-gradient-to-br from-violet-500 to-violet-700 rounded-lg flex items-center justify-center text-sm shadow-[0_1px_0_rgba(255,255,255,0.15)_inset] group-hover:shadow-[0_0_18px_-4px_rgba(139,92,246,0.6)] transition-shadow">
               ✦
             </div>
-            <span className="font-semibold text-white">GPT Creativos</span>
+            <span className="font-semibold text-zinc-100 tracking-tight">GPT Creativos</span>
           </Link>
 
-          <nav className="flex items-center gap-4">
+          <nav className="flex items-center gap-1">
             <Link
               href="/dashboard"
-              className="text-gray-400 hover:text-white transition text-sm flex items-center gap-1.5"
+              className="text-zinc-400 hover:text-white hover:bg-zinc-800/60 rounded-lg px-3 py-1.5 transition text-sm flex items-center gap-1.5"
             >
               <LayoutGrid size={16} />
               GPTs
@@ -43,7 +43,7 @@ export default async function ProtectedLayout({
             {profile?.is_admin && (
               <Link
                 href="/admin"
-                className="text-gray-400 hover:text-white transition text-sm"
+                className="text-zinc-400 hover:text-white hover:bg-zinc-800/60 rounded-lg px-3 py-1.5 transition text-sm"
               >
                 Admin
               </Link>
@@ -51,7 +51,7 @@ export default async function ProtectedLayout({
             <form action="/api/auth/signout" method="POST">
               <button
                 type="submit"
-                className="text-gray-400 hover:text-white transition text-sm flex items-center gap-1.5"
+                className="text-zinc-400 hover:text-white hover:bg-zinc-800/60 rounded-lg px-3 py-1.5 transition text-sm flex items-center gap-1.5"
               >
                 <LogOut size={16} />
                 Salir

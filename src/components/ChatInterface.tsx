@@ -411,7 +411,7 @@ export default function ChatInterface({ gpt, threads, activeThreadId, initialMes
         <div className="p-3 border-b border-gray-800">
           <button
             onClick={handleNewChat}
-            className="w-full flex items-center gap-2 bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white text-sm font-medium rounded-xl px-3 py-2.5 transition"
+            className="w-full flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/70 hover:border-zinc-600 text-zinc-100 text-sm font-medium rounded-xl px-3 py-2.5 transition"
           >
             <Plus size={16} />
             Nuevo chat
@@ -424,8 +424,8 @@ export default function ChatInterface({ gpt, threads, activeThreadId, initialMes
               className={cn(
                 "group flex items-center gap-1 rounded-xl px-3 py-2 cursor-pointer text-sm transition",
                 t.id === threadId
-                  ? "bg-purple-600/20 text-white"
-                  : "text-gray-400 hover:bg-gray-900 hover:text-gray-200"
+                  ? "bg-violet-600/15 text-white border border-violet-500/20"
+                  : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200 border border-transparent"
               )}
               onClick={() => selectThread(t.id)}
             >
@@ -537,7 +537,7 @@ export default function ChatInterface({ gpt, threads, activeThreadId, initialMes
                     <button
                       key={i}
                       onClick={() => sendMessage(starter)}
-                      className="text-left border border-gray-800 hover:border-gray-600 bg-gray-900/50 hover:bg-gray-900 rounded-2xl px-4 py-3 text-sm text-gray-300 transition"
+                      className="text-left border border-zinc-800 hover:border-violet-500/40 bg-zinc-900/50 hover:bg-zinc-900 rounded-2xl px-4 py-3 text-sm text-zinc-300 hover:text-zinc-100 transition-all hover:-translate-y-0.5"
                     >
                       {starter}
                     </button>
@@ -556,7 +556,7 @@ export default function ChatInterface({ gpt, threads, activeThreadId, initialMes
               )}
             >
               {msg.role === "assistant" && (
-                <div className="w-7 h-7 bg-purple-600/20 border border-purple-500/30 rounded-lg flex items-center justify-center text-xs mr-2 flex-shrink-0 mt-0.5">
+                <div className="w-7 h-7 bg-gradient-to-br from-violet-500/25 to-violet-500/5 border border-violet-500/20 rounded-lg flex items-center justify-center text-xs mr-2 flex-shrink-0 mt-0.5">
                   ✦
                 </div>
               )}
@@ -564,8 +564,8 @@ export default function ChatInterface({ gpt, threads, activeThreadId, initialMes
                 className={cn(
                   "max-w-[80%] rounded-2xl px-4 py-3",
                   msg.role === "user"
-                    ? "bg-purple-600 text-white rounded-br-sm"
-                    : "bg-gray-800 text-gray-100 rounded-bl-sm"
+                    ? "bg-gradient-to-br from-violet-600 to-violet-700 text-white rounded-br-sm shadow-[0_1px_0_rgba(255,255,255,0.12)_inset]"
+                    : "bg-zinc-800/80 text-zinc-100 rounded-bl-sm border border-zinc-700/50"
                 )}
               >
                 {msg.files && msg.files.length > 0 && (
@@ -626,7 +626,7 @@ export default function ChatInterface({ gpt, threads, activeThreadId, initialMes
             </div>
           )}
 
-          <div className="flex items-end gap-2 bg-gray-900 border border-gray-700 rounded-2xl px-3 py-2">
+          <div className="flex items-end gap-2 bg-zinc-900/80 border border-zinc-700/70 focus-within:border-violet-500/50 rounded-2xl px-3 py-2 transition-colors shadow-[0_1px_0_rgba(255,255,255,0.03)_inset]">
             {/* Botón adjuntar (todos los GPTs aceptan imágenes y documentos) */}
             <input
               ref={fileInputRef}
@@ -692,7 +692,7 @@ export default function ChatInterface({ gpt, threads, activeThreadId, initialMes
               <button
                 onClick={() => sendMessage()}
                 disabled={!input.trim() && attachedFiles.length === 0}
-                className="bg-purple-600 hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl p-1.5 flex-shrink-0 transition"
+                className="bg-gradient-to-br from-violet-600 to-violet-700 hover:from-violet-500 hover:to-violet-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl p-1.5 flex-shrink-0 transition active:scale-95 shadow-[0_1px_0_rgba(255,255,255,0.15)_inset]"
               >
                 <Send size={16} />
               </button>
