@@ -302,7 +302,11 @@ export default function ChatInterface({ gpt, threads, activeThreadId, initialMes
           gptId: gpt.id,
           threadId,
           message: messageText,
-          fileIds: userMessage.files?.map((f) => f.openai_file_id) ?? [],
+          files:
+            userMessage.files?.map((f) => ({
+              openai_file_id: f.openai_file_id,
+              type: f.type,
+            })) ?? [],
         }),
       });
 
@@ -610,29 +614,21 @@ export default function ChatInterface({ gpt, threads, activeThreadId, initialMes
           )}
 
           <div className="flex items-end gap-2 bg-gray-900 border border-gray-700 rounded-2xl px-3 py-2">
-            {/* Botón adjuntar */}
-            {(gpt.tools_enabled?.file_search || gpt.vision_enabled) && (
-              <>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  accept={
-                    gpt.vision_enabled
-                      ? "image/*,application/pdf,.txt,.md,.py,.js,.ts,.csv,.xlsx,.docx"
-                      : "application/pdf,.txt,.md,.py,.js,.ts,.csv,.xlsx,.docx"
-                  }
-                  className="hidden"
-                  onChange={(e) => handleFileUpload(e.target.files)}
-                />
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="text-gray-500 hover:text-gray-300 transition flex-shrink-0 mb-0.5"
-                >
-                  <Paperclip size={18} />
-                </button>
-              </>
-            )}
+            {/* Botón adjuntar (todos los GPTs aceptan imágenes y documentos) */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="image/*,application/pdf,.txt,.md,.py,.js,.ts,.csv,.xlsx,.docx"
+              className="hidden"
+              onChange={(e) => handleFileUpload(e.target.files)}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="text-gray-500 hover:text-gray-300 transition flex-shrink-0 mb-0.5"
+            >
+              <Paperclip size={18} />
+            </button>
 
             <textarea
               ref={textareaRef}

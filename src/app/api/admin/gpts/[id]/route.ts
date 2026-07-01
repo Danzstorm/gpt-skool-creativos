@@ -42,15 +42,17 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   const { id } = await params;
   const body = await request.json();
-  const { name, description, category, system_prompt, model, tools_enabled, vision_enabled, conversation_starters, sort_order, is_active } = body;
+  const { name, description, category, system_prompt, model, conversation_starters, sort_order, is_active } = body;
 
   const serviceClient = createServiceClient();
   const { data: gpt } = await serviceClient.from("gpts").select("openai_assistant_id").eq("id", id).single();
   if (!gpt) return NextResponse.json({ error: "GPT no encontrado" }, { status: 404 });
 
-  const tools: OpenAI.Beta.Assistants.AssistantTool[] = [];
-  if (tools_enabled?.file_search) tools.push({ type: "file_search" });
-  if (tools_enabled?.code_interpreter) tools.push({ type: "code_interpreter" });
+  // Todos los GPTs mantienen todas las capacidades. Solo se re-afirman en cada update.
+  const tools: OpenAI.Beta.Assistants.AssistantTool[] = [
+    { type: "file_search" },
+    { type: "code_interpreter" },
+  ];
 
   await openai.beta.assistants.update(gpt.openai_assistant_id, {
     ...(name && { name }),
@@ -66,8 +68,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       ...(name && { name }),
       ...(description !== undefined && { description }),
       ...(category && { category }),
-      ...(tools_enabled && { tools_enabled }),
-      ...(vision_enabled !== undefined && { vision_enabled }),
+      tools_enabled: { file_search: true, code_interpreter: true },
+      vision_enabled: true,
       ...(conversation_starters !== undefined && { conversation_starters }),
       ...(sort_order !== undefined && { sort_order }),
       ...(is_active !== undefined && { is_active }),

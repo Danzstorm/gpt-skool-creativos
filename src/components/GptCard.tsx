@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Gpt } from "@/lib/types";
-import { MessageSquare, FileText, Mic, Code } from "lucide-react";
+import { MessageSquare, FileText, ImageIcon, Code } from "lucide-react";
 
 interface Props {
   gpt: Gpt;
@@ -41,27 +41,18 @@ export default function GptCard({ gpt }: Props) {
               <MessageSquare size={11} />
               Chat
             </span>
-            {gpt.tools_enabled?.file_search && (
-              <span className="flex items-center gap-1 text-xs text-gray-500">
-                <FileText size={11} />
-                Archivos
-              </span>
-            )}
-            {gpt.vision_enabled && (
-              <span className="flex items-center gap-1 text-xs text-gray-500">
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-                Visión
-              </span>
-            )}
-            {gpt.tools_enabled?.code_interpreter && (
-              <span className="flex items-center gap-1 text-xs text-gray-500">
-                <Code size={11} />
-                Código
-              </span>
-            )}
+            <span className="flex items-center gap-1 text-xs text-gray-500">
+              <FileText size={11} />
+              Archivos
+            </span>
+            <span className="flex items-center gap-1 text-xs text-gray-500">
+              <ImageIcon size={11} />
+              Imágenes
+            </span>
+            <span className="flex items-center gap-1 text-xs text-gray-500">
+              <Code size={11} />
+              Código
+            </span>
           </div>
         </div>
       </div>

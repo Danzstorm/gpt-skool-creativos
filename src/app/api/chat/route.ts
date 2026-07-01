@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
   const rl = checkRateLimit(`chat:${user.id}`, 30, 60_000);
   if (!rl.ok) return rateLimitResponse(rl);
 
-  const { gptId, threadId, message, fileIds } = await request.json();
+  const { gptId, threadId, message, files } = await request.json();
 
   if (!gptId || !message || !threadId) {
     return NextResponse.json({ error: "Faltan parámetros" }, { status: 400 });
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
   // Fetch assistant_id con service role (nunca expuesto al cliente)
   const { data: gpt, error: gptError } = await serviceClient
     .from("gpts")
-    .select("openai_assistant_id, tools_enabled, vision_enabled")
+    .select("openai_assistant_id")
     .eq("id", gptId)
     .eq("is_active", true)
     .single();
@@ -52,31 +52,34 @@ export async function POST(request: NextRequest) {
 
   const openaiThreadId = thread.openai_thread_id;
 
-  // Construir contenido del mensaje (texto + archivos opcionales)
+  // Separar archivos por tipo: imágenes van como contenido de visión;
+  // documentos van como attachments para file_search + code_interpreter.
+  type IncomingFile = { openai_file_id: string; type: "image" | "document" };
+  const incoming: IncomingFile[] = Array.isArray(files) ? files : [];
+
   type MessageContentPart =
     | { type: "text"; text: string }
     | { type: "image_file"; image_file: { file_id: string } };
 
   const contentParts: MessageContentPart[] = [{ type: "text", text: message }];
-
-  if (fileIds && fileIds.length > 0) {
-    for (const fid of fileIds) {
-      contentParts.push({ type: "image_file", image_file: { file_id: fid } });
+  for (const f of incoming) {
+    if (f.type === "image") {
+      contentParts.push({ type: "image_file", image_file: { file_id: f.openai_file_id } });
     }
   }
+
+  const docAttachments = incoming
+    .filter((f) => f.type === "document")
+    .map((f) => ({
+      file_id: f.openai_file_id,
+      tools: [{ type: "file_search" as const }, { type: "code_interpreter" as const }],
+    }));
 
   // Agregar mensaje al thread
   await openai.beta.threads.messages.create(openaiThreadId, {
     role: "user",
     content: contentParts,
-    ...(fileIds?.length > 0 && gpt.tools_enabled?.file_search
-      ? {
-          attachments: fileIds.map((fid: string) => ({
-            file_id: fid,
-            tools: [{ type: "file_search" }],
-          })),
-        }
-      : {}),
+    ...(docAttachments.length > 0 ? { attachments: docAttachments } : {}),
   });
 
   // Stream de respuesta

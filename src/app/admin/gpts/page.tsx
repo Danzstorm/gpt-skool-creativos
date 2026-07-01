@@ -225,35 +225,10 @@ export default function AdminGptsPage() {
                   />
                 </div>
 
-                <div className="flex gap-6">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={form.tools_enabled.file_search}
-                      onChange={(e) => setForm({ ...form, tools_enabled: { ...form.tools_enabled, file_search: e.target.checked } })}
-                      className="rounded"
-                    />
-                    <span className="text-sm text-gray-300">File search (PDFs, docs)</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={form.tools_enabled.code_interpreter}
-                      onChange={(e) => setForm({ ...form, tools_enabled: { ...form.tools_enabled, code_interpreter: e.target.checked } })}
-                      className="rounded"
-                    />
-                    <span className="text-sm text-gray-300">Code interpreter</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={form.vision_enabled}
-                      onChange={(e) => setForm({ ...form, vision_enabled: e.target.checked })}
-                      className="rounded"
-                    />
-                    <span className="text-sm text-gray-300">Visión (imágenes)</span>
-                  </label>
-                </div>
+                <p className="text-xs text-gray-500 bg-gray-800/50 border border-gray-700 rounded-xl px-4 py-2.5">
+                  Todos los GPTs incluyen las mismas capacidades: lectura de archivos, intérprete de
+                  código y visión (imágenes). No es necesario configurarlo.
+                </p>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1.5">
