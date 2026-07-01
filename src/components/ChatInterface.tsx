@@ -125,6 +125,19 @@ export default function ChatInterface({ gpt, threads, activeThreadId, initialMes
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
+  // Carga inicial del historial en cliente (la página ya no bloquea el render por esto).
+  // Solo si la conversación activa ya tuvo actividad (created_at !== updated_at).
+  useEffect(() => {
+    const active = threads.find((t) => t.id === activeThreadId);
+    if (!active || active.created_at === active.updated_at) return;
+    setIsLoadingHistory(true);
+    fetch(`/api/threads/${activeThreadId}/messages`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => setMessages(data))
+      .finally(() => setIsLoadingHistory(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function autoResize() {
     const el = textareaRef.current;
     if (!el) return;
