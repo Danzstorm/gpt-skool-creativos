@@ -872,6 +872,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
               <button
                 onClick={() => fileInputRef.current?.click()}
                 className="text-zinc-500 hover:text-zinc-300 transition flex-shrink-0 mb-0.5"
+                title="Adjuntar imágenes o documentos (también puedes pegar o arrastrar)"
               >
                 <Paperclip size={18} />
               </button>
