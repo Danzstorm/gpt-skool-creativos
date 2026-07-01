@@ -6,6 +6,7 @@ export interface Gpt {
   icon_url: string | null;
   tools_enabled: { file_search: boolean; code_interpreter: boolean };
   vision_enabled: boolean;
+  conversation_starters: string[];
   is_active: boolean;
   sort_order: number;
   created_at: string;

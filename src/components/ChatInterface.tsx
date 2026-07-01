@@ -260,10 +260,11 @@ export default function ChatInterface({ gpt, threads, activeThreadId, initialMes
     setIsRecording(false);
   }
 
-  async function sendMessage() {
-    if ((!input.trim() && attachedFiles.length === 0) || isLoading) return;
+  async function sendMessage(overrideText?: string) {
+    const baseText = overrideText ?? input;
+    if ((!baseText.trim() && attachedFiles.length === 0) || isLoading) return;
 
-    const messageText = input.trim();
+    const messageText = baseText.trim();
     const userMessage: Message = {
       role: "user",
       content: messageText,
@@ -479,12 +480,7 @@ export default function ChatInterface({ gpt, threads, activeThreadId, initialMes
               "✦"
             )}
           </div>
-          <div>
-            <h2 className="text-white font-semibold text-sm">{gpt.name}</h2>
-            {gpt.category && (
-              <span className="text-xs text-purple-400">{gpt.category}</span>
-            )}
-          </div>
+          <h2 className="text-white font-semibold text-sm truncate">{gpt.name}</h2>
         </div>
 
         {/* Messages */}
@@ -505,21 +501,32 @@ export default function ChatInterface({ gpt, threads, activeThreadId, initialMes
           )}
 
           {messages.length === 0 && !isLoadingHistory && (
-            <div className="flex flex-col items-center justify-center h-full text-center py-12">
-              <div className="w-16 h-16 bg-purple-600/20 border border-purple-500/30 rounded-2xl flex items-center justify-center text-2xl mb-4">
+            <div className="flex flex-col items-center justify-center h-full text-center py-12 max-w-2xl mx-auto">
+              <div className="w-20 h-20 bg-purple-600/20 border border-purple-500/30 rounded-3xl flex items-center justify-center text-3xl mb-5">
                 {gpt.icon_url ? (
-                  <img src={gpt.icon_url} alt="" className="w-10 h-10 rounded-xl" />
+                  <img src={gpt.icon_url} alt="" className="w-14 h-14 rounded-2xl" />
                 ) : (
                   "✦"
                 )}
               </div>
-              <h3 className="text-white font-semibold text-lg mb-2">{gpt.name}</h3>
+              <h3 className="text-white font-semibold text-xl mb-2">{gpt.name}</h3>
               {gpt.description && (
-                <p className="text-gray-400 text-sm max-w-sm">{gpt.description}</p>
+                <p className="text-gray-400 text-sm max-w-md">{gpt.description}</p>
               )}
-              <p className="text-gray-600 text-xs mt-4">
-                Escribe un mensaje para comenzar
-              </p>
+
+              {gpt.conversation_starters && gpt.conversation_starters.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-8 w-full">
+                  {gpt.conversation_starters.slice(0, 4).map((starter, i) => (
+                    <button
+                      key={i}
+                      onClick={() => sendMessage(starter)}
+                      className="text-left border border-gray-800 hover:border-gray-600 bg-gray-900/50 hover:bg-gray-900 rounded-2xl px-4 py-3 text-sm text-gray-300 transition"
+                    >
+                      {starter}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -674,7 +681,7 @@ export default function ChatInterface({ gpt, threads, activeThreadId, initialMes
               </button>
             ) : (
               <button
-                onClick={sendMessage}
+                onClick={() => sendMessage()}
                 disabled={!input.trim() && attachedFiles.length === 0}
                 className="bg-purple-600 hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl p-1.5 flex-shrink-0 transition"
               >

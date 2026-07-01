@@ -2,18 +2,20 @@
 
 import { useState, useEffect } from "react";
 import type { GptWithAssistantId } from "@/lib/types";
-import { Plus, Pencil, Trash2, Eye, EyeOff } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, EyeOff, X } from "lucide-react";
 
-const CATEGORIES = ["General", "Marketing", "Copywriting", "Diseño", "Ventas", "Productividad", "Educación"];
+const CATEGORIES = ["General", "Imágenes", "Marketing", "Copywriting", "Diseño", "Ventas", "Productividad", "Educación"];
+const MODELS = ["gpt-4.1", "gpt-4.1-mini", "gpt-4o", "gpt-4o-mini"];
 
 const DEFAULT_FORM = {
   name: "",
   description: "",
   category: "General",
   system_prompt: "",
-  model: "gpt-4o",
+  model: "gpt-4.1",
   tools_enabled: { file_search: true, code_interpreter: false },
   vision_enabled: true,
+  conversation_starters: [] as string[],
   sort_order: 0,
 };
 
@@ -43,19 +45,51 @@ export default function AdminGptsPage() {
     setShowForm(true);
   }
 
-  function openEdit(gpt: GptWithAssistantId) {
+  async function openEdit(gpt: GptWithAssistantId) {
+    // Prellenar con lo que ya tenemos; el system prompt y model se traen de OpenAI
     setForm({
       name: gpt.name,
       description: gpt.description || "",
       category: gpt.category,
       system_prompt: "",
-      model: "gpt-4o",
+      model: "gpt-4.1",
       tools_enabled: gpt.tools_enabled,
       vision_enabled: gpt.vision_enabled,
+      conversation_starters: gpt.conversation_starters ?? [],
       sort_order: gpt.sort_order,
     });
     setEditingId(gpt.id);
     setShowForm(true);
+
+    const res = await fetch(`/api/admin/gpts/${gpt.id}`);
+    if (res.ok) {
+      const full = await res.json();
+      setForm((prev) => ({
+        ...prev,
+        system_prompt: full.system_prompt ?? "",
+        model: full.model ?? "gpt-4.1",
+        conversation_starters: full.conversation_starters ?? [],
+      }));
+    }
+  }
+
+  function updateStarter(i: number, value: string) {
+    setForm((prev) => {
+      const next = [...prev.conversation_starters];
+      next[i] = value;
+      return { ...prev, conversation_starters: next };
+    });
+  }
+
+  function addStarter() {
+    setForm((prev) => ({ ...prev, conversation_starters: [...prev.conversation_starters, ""] }));
+  }
+
+  function removeStarter(i: number) {
+    setForm((prev) => ({
+      ...prev,
+      conversation_starters: prev.conversation_starters.filter((_, idx) => idx !== i),
+    }));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -65,10 +99,15 @@ export default function AdminGptsPage() {
     const url = editingId ? `/api/admin/gpts/${editingId}` : "/api/admin/gpts";
     const method = editingId ? "PATCH" : "POST";
 
+    const payload = {
+      ...form,
+      conversation_starters: form.conversation_starters.map((s) => s.trim()).filter(Boolean),
+    };
+
     await fetch(url, {
       method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify(payload),
     });
 
     setSaving(false);
@@ -132,16 +171,31 @@ export default function AdminGptsPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-1.5">Categoría</label>
-                    <select
+                    <input
+                      list="categorias"
                       value={form.category}
                       onChange={(e) => setForm({ ...form, category: e.target.value })}
+                      placeholder="General"
+                      className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                    />
+                    <datalist id="categorias">
+                      {CATEGORIES.map((c) => (
+                        <option key={c} value={c} />
+                      ))}
+                    </datalist>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1.5">Modelo</label>
+                    <select
+                      value={form.model}
+                      onChange={(e) => setForm({ ...form, model: e.target.value })}
                       className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
                     >
-                      {CATEGORIES.map((c) => (
-                        <option key={c} value={c}>{c}</option>
+                      {MODELS.map((m) => (
+                        <option key={m} value={m}>{m}</option>
                       ))}
                     </select>
                   </div>
@@ -199,6 +253,41 @@ export default function AdminGptsPage() {
                     />
                     <span className="text-sm text-gray-300">Visión (imágenes)</span>
                   </label>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                    Sugerencias de inicio{" "}
+                    <span className="text-gray-500">(botones clicables en la pantalla del GPT)</span>
+                  </label>
+                  <div className="space-y-2">
+                    {form.conversation_starters.map((s, i) => (
+                      <div key={i} className="flex gap-2">
+                        <input
+                          value={s}
+                          onChange={(e) => updateStarter(i, e.target.value)}
+                          placeholder="Ej: Crea el character sheet de una mujer de 30 años..."
+                          className="flex-1 bg-gray-800 border border-gray-600 rounded-xl px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeStarter(i)}
+                          className="p-2 rounded-xl text-gray-400 hover:text-red-400 hover:bg-gray-800 transition flex-shrink-0"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ))}
+                    {form.conversation_starters.length < 6 && (
+                      <button
+                        type="button"
+                        onClick={addStarter}
+                        className="flex items-center gap-1.5 text-sm text-purple-400 hover:text-purple-300 transition"
+                      >
+                        <Plus size={14} /> Agregar sugerencia
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex gap-3 pt-2">

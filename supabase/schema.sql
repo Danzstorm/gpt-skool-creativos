@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS gpts (
   openai_assistant_id text NOT NULL,
   tools_enabled jsonb DEFAULT '{"file_search": true, "code_interpreter": false}'::jsonb,
   vision_enabled boolean DEFAULT true,
+  conversation_starters jsonb DEFAULT '[]'::jsonb,
   is_active boolean DEFAULT true,
   sort_order int DEFAULT 0,
   created_at timestamptz DEFAULT now()
@@ -29,7 +30,7 @@ CREATE TABLE IF NOT EXISTS gpts (
 
 -- Vista pública: excluye openai_assistant_id
 CREATE OR REPLACE VIEW gpts_public AS
-  SELECT id, name, description, category, icon_url, tools_enabled, vision_enabled, is_active, sort_order, created_at
+  SELECT id, name, description, category, icon_url, tools_enabled, vision_enabled, conversation_starters, is_active, sort_order, created_at
   FROM gpts
   WHERE is_active = true
   ORDER BY sort_order ASC, created_at DESC;
