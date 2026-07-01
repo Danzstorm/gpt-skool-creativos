@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import OpenAI from "openai";
@@ -54,6 +54,26 @@ export async function POST(request: NextRequest) {
     file,
     purpose: "assistants",
   });
+
+  // Persistir copia en Storage + mapeo, para reconstruir miniaturas al recargar
+  // el historial. Best-effort: si falla, el chat sigue funcionando igual.
+  try {
+    const bytes = Buffer.from(await file.arrayBuffer());
+    const path = `${user.id}/${uploaded.id}`;
+    const service = createServiceClient();
+    await service.storage
+      .from("chat-uploads")
+      .upload(path, bytes, { contentType: file.type || "application/octet-stream", upsert: true });
+    await service.from("uploaded_files").insert({
+      openai_file_id: uploaded.id,
+      user_id: user.id,
+      storage_path: path,
+      mime: file.type,
+      name: file.name,
+    });
+  } catch {
+    // ignorar fallos de persistencia
+  }
 
   return NextResponse.json({ file_id: uploaded.id, name: file.name });
 }

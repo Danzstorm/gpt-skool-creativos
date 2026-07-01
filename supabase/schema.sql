@@ -107,6 +107,23 @@ CREATE POLICY "users manage own profile"
   USING (id = auth.uid())
   WITH CHECK (id = auth.uid());
 
+-- Mapeo de adjuntos del chat: openai_file_id -> copia en Storage.
+-- Permite reconstruir miniaturas de imágenes al recargar una conversación.
+-- El texto de los mensajes vive en OpenAI; aquí solo persiste la referencia del archivo.
+CREATE TABLE IF NOT EXISTS uploaded_files (
+  openai_file_id text PRIMARY KEY,
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
+  storage_path text NOT NULL,
+  mime text,
+  name text,
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE uploaded_files ENABLE ROW LEVEL SECURITY;
+-- Sin policies: solo el service role (server) accede.
+
+-- Bucket privado para las copias (crear en Storage; acceso solo server-side):
+--   INSERT INTO storage.buckets (id, name, public) VALUES ('chat-uploads','chat-uploads',false);
+
 -- ============================================================
 -- Índices
 -- ============================================================
@@ -114,3 +131,4 @@ CREATE INDEX IF NOT EXISTS idx_allowed_members_email ON allowed_members(email);
 CREATE INDEX IF NOT EXISTS idx_gpts_category ON gpts(category);
 CREATE INDEX IF NOT EXISTS idx_gpts_sort_order ON gpts(sort_order);
 CREATE INDEX IF NOT EXISTS idx_threads_user_gpt ON threads(user_id, gpt_id);
+CREATE INDEX IF NOT EXISTS idx_uploaded_files_user ON uploaded_files(user_id);

@@ -198,6 +198,14 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
     uploadFiles(Array.from(files));
   }
 
+  function removeAttached(index: number) {
+    setAttachedFiles((prev) => {
+      const f = prev[index];
+      if (f?.previewUrl) URL.revokeObjectURL(f.previewUrl);
+      return prev.filter((_, idx) => idx !== index);
+    });
+  }
+
   function handlePaste(e: React.ClipboardEvent) {
     const imgs = Array.from(e.clipboardData.files).filter((f) => f.type.startsWith("image/"));
     if (imgs.length > 0) {
@@ -762,7 +770,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
                         img {imageIndex}
                       </span>
                       <button
-                        onClick={() => setAttachedFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                        onClick={() => removeAttached(i)}
                         className="absolute -top-1.5 -right-1.5 bg-zinc-800 border border-zinc-600 rounded-full p-0.5 text-zinc-300 hover:text-white opacity-0 group-hover/thumb:opacity-100 transition"
                       >
                         <X size={12} />
@@ -776,7 +784,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
                       <span>📎</span>
                       <span className="max-w-[120px] truncate">{f.name}</span>
                       <button
-                        onClick={() => setAttachedFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                        onClick={() => removeAttached(i)}
                         className="text-zinc-500 hover:text-white ml-1"
                       >
                         <X size={12} />
