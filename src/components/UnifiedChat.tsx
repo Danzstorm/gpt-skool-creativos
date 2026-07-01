@@ -61,6 +61,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -153,9 +154,9 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
     if (id === activeThreadId) newChat();
   }
 
-  async function handleFileUpload(files: FileList | null) {
-    if (!files || files.length === 0) return;
-    for (const file of Array.from(files)) {
+  async function uploadFiles(files: File[]) {
+    for (const file of files) {
+      const isImage = file.type.startsWith("image/");
       const formData = new FormData();
       formData.append("file", file);
       const res = await fetch("/api/upload", { method: "POST", body: formData });
@@ -166,10 +167,31 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
         {
           name: file.name,
           openai_file_id: data.file_id,
-          type: file.type.startsWith("image/") ? "image" : "document",
+          type: isImage ? "image" : "document",
+          previewUrl: isImage ? URL.createObjectURL(file) : undefined,
         },
       ]);
     }
+  }
+
+  function handleFileUpload(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    uploadFiles(Array.from(files));
+  }
+
+  function handlePaste(e: React.ClipboardEvent) {
+    const imgs = Array.from(e.clipboardData.files).filter((f) => f.type.startsWith("image/"));
+    if (imgs.length > 0) {
+      e.preventDefault();
+      uploadFiles(imgs);
+    }
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragging(false);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) uploadFiles(files);
   }
 
   async function startRecording() {
@@ -459,7 +481,23 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
       </aside>
 
       {/* Área principal */}
-      <div className="flex flex-col flex-1 min-w-0">
+      <div
+        className="flex flex-col flex-1 min-w-0 relative"
+        onDragOver={(e) => {
+          if (!showComposer) return;
+          e.preventDefault();
+          setIsDragging(true);
+        }}
+        onDragLeave={(e) => {
+          if (e.currentTarget === e.target) setIsDragging(false);
+        }}
+        onDrop={handleDrop}
+      >
+        {isDragging && showComposer && (
+          <div className="absolute inset-0 z-10 bg-violet-600/10 border-2 border-dashed border-violet-500/50 rounded-2xl m-2 flex items-center justify-center pointer-events-none">
+            <p className="text-violet-200 text-sm font-medium">Suelta imágenes o archivos aquí</p>
+          </div>
+        )}
         {/* Header */}
         <div className="border-b border-zinc-800/80 px-4 py-3 bg-zinc-950/80 backdrop-blur-xl flex items-center gap-3">
           <button
@@ -549,11 +587,20 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
               >
                 {msg.files && msg.files.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mb-2">
-                    {msg.files.map((f, fi) => (
-                      <span key={fi} className="text-xs bg-white/10 rounded-lg px-2 py-1">
-                        📎 {f.name}
-                      </span>
-                    ))}
+                    {msg.files.map((f, fi) =>
+                      f.type === "image" && f.previewUrl ? (
+                        <img
+                          key={fi}
+                          src={f.previewUrl}
+                          alt={f.name}
+                          className="w-24 h-24 object-cover rounded-lg border border-white/20"
+                        />
+                      ) : (
+                        <span key={fi} className="text-xs bg-white/10 rounded-lg px-2 py-1">
+                          📎 {f.name}
+                        </span>
+                      )
+                    )}
                   </div>
                 )}
                 {msg.content ? (
@@ -581,22 +628,42 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
         {showComposer && (
           <div className="border-t border-zinc-800/80 bg-zinc-950 px-4 py-4">
             {attachedFiles.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-3">
-                {attachedFiles.map((f, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center gap-1.5 bg-zinc-800 rounded-xl px-3 py-1.5 text-xs text-zinc-300"
-                  >
-                    <span>{f.type === "image" ? "🖼️" : "📎"}</span>
-                    <span className="max-w-[120px] truncate">{f.name}</span>
-                    <button
-                      onClick={() => setAttachedFiles((prev) => prev.filter((_, idx) => idx !== i))}
-                      className="text-zinc-500 hover:text-white ml-1"
+              <div className="flex flex-wrap gap-2 mb-3 max-w-3xl mx-auto">
+                {attachedFiles.map((f, i) => {
+                  const imageIndex = attachedFiles.filter((x, xi) => x.type === "image" && xi <= i).length;
+                  return f.type === "image" ? (
+                    <div key={i} className="relative group/thumb">
+                      <img
+                        src={f.previewUrl}
+                        alt={f.name}
+                        className="w-16 h-16 object-cover rounded-xl border border-zinc-700"
+                      />
+                      <span className="absolute bottom-0.5 left-0.5 text-[10px] bg-black/70 text-white rounded px-1">
+                        img {imageIndex}
+                      </span>
+                      <button
+                        onClick={() => setAttachedFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                        className="absolute -top-1.5 -right-1.5 bg-zinc-800 border border-zinc-600 rounded-full p-0.5 text-zinc-300 hover:text-white opacity-0 group-hover/thumb:opacity-100 transition"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      key={i}
+                      className="flex items-center gap-1.5 bg-zinc-800 rounded-xl px-3 py-1.5 text-xs text-zinc-300 h-16"
                     >
-                      <X size={12} />
-                    </button>
-                  </div>
-                ))}
+                      <span>📎</span>
+                      <span className="max-w-[120px] truncate">{f.name}</span>
+                      <button
+                        onClick={() => setAttachedFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                        className="text-zinc-500 hover:text-white ml-1"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
@@ -624,6 +691,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
                   autoResize();
                 }}
                 onKeyDown={handleKeyDown}
+                onPaste={handlePaste}
                 placeholder={
                   isTranscribing ? "Transcribiendo audio..." : "Escribe un mensaje... (Enter para enviar)"
                 }

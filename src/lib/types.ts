@@ -55,6 +55,7 @@ export interface UploadedFile {
   name: string;
   openai_file_id: string;
   type: "image" | "document";
+  previewUrl?: string; // URL local (object URL) para vista previa de imágenes en la sesión
 }
 
 export interface Message {
