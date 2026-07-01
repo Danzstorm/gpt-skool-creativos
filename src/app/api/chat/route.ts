@@ -1,6 +1,7 @@
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
+import { runStreamResponse } from "@/lib/chat-stream";
 import OpenAI from "openai";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -19,7 +20,7 @@ export async function POST(request: NextRequest) {
   const rl = checkRateLimit(`chat:${user.id}`, 30, 60_000);
   if (!rl.ok) return rateLimitResponse(rl);
 
-  const { gptId, threadId, message, files } = await request.json();
+  const { gptId, threadId, message, files, replaceLast } = await request.json();
 
   if (!gptId || !message || !threadId) {
     return NextResponse.json({ error: "Faltan parámetros" }, { status: 400 });
@@ -75,6 +76,22 @@ export async function POST(request: NextRequest) {
       tools: [{ type: "file_search" as const }, { type: "code_interpreter" as const }],
     }));
 
+  // Editar y reenviar: borrar el último turno (respuesta del asistente + mensaje del usuario) antes de reponer
+  if (replaceLast) {
+    const { data: recent } = await openai.beta.threads.messages.list(openaiThreadId, {
+      order: "desc",
+      limit: 2,
+    });
+    if (recent[0]?.role === "assistant") {
+      await openai.beta.threads.messages.delete(recent[0].id, { thread_id: openaiThreadId });
+      if (recent[1]?.role === "user") {
+        await openai.beta.threads.messages.delete(recent[1].id, { thread_id: openaiThreadId });
+      }
+    } else if (recent[0]?.role === "user") {
+      await openai.beta.threads.messages.delete(recent[0].id, { thread_id: openaiThreadId });
+    }
+  }
+
   // Agregar mensaje al thread
   await openai.beta.threads.messages.create(openaiThreadId, {
     role: "user",
@@ -82,71 +99,14 @@ export async function POST(request: NextRequest) {
     ...(docAttachments.length > 0 ? { attachments: docAttachments } : {}),
   });
 
-  // Stream de respuesta
-  const encoder = new TextEncoder();
-
-  const stream = new ReadableStream({
-    async start(controller) {
-      try {
-        const run = openai.beta.threads.runs.stream(
-          openaiThreadId,
-          { assistant_id: gpt.openai_assistant_id }
-        );
-
-        for await (const event of run) {
-          if (
-            event.event === "thread.message.delta" &&
-            event.data.delta.content
-          ) {
-            for (const block of event.data.delta.content) {
-              if (block.type === "text" && block.text?.value) {
-                controller.enqueue(
-                  encoder.encode(
-                    `data: ${JSON.stringify({ text: block.text.value })}\n\n`
-                  )
-                );
-              }
-            }
-          }
-
-          if (event.event === "thread.run.completed") {
-            const isDefaultTitle = thread.title === "Nueva conversación";
-            await supabase
-              .from("threads")
-              .update({
-                updated_at: new Date().toISOString(),
-                ...(isDefaultTitle && { title: message.slice(0, 40) }),
-              })
-              .eq("id", threadId);
-
-            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-          }
-
-          if (event.event === "thread.run.failed") {
-            controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({ error: "Error en el asistente" })}\n\n`
-              )
-            );
-          }
-        }
-      } catch (err) {
-        controller.enqueue(
-          encoder.encode(
-            `data: ${JSON.stringify({ error: "Error interno" })}\n\n`
-          )
-        );
-      } finally {
-        controller.close();
-      }
-    },
-  });
-
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-    },
+  return runStreamResponse(openaiThreadId, gpt.openai_assistant_id, async () => {
+    const isDefaultTitle = thread.title === "Nueva conversación";
+    await supabase
+      .from("threads")
+      .update({
+        updated_at: new Date().toISOString(),
+        ...(isDefaultTitle && { title: message.slice(0, 40) }),
+      })
+      .eq("id", threadId);
   });
 }

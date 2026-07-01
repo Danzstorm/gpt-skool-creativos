@@ -8,12 +8,15 @@ import {
   Mic,
   MicOff,
   X,
-  Plus,
   Pencil,
   Trash2,
   Menu,
   Square,
   MessageSquarePlus,
+  Copy,
+  Check,
+  RotateCcw,
+  ArrowDown,
 } from "lucide-react";
 import MessageContent from "./MessageContent";
 import { cn } from "@/lib/utils";
@@ -62,8 +65,12 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -74,8 +81,20 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
   const gptById = (id: string) => gpts.find((g) => g.id === id);
 
   useEffect(() => {
+    if (!showScrollBtn) bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isLoading, showScrollBtn]);
+
+  function handleScroll() {
+    const el = scrollRef.current;
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    setShowScrollBtn(!nearBottom);
+  }
+
+  function scrollToBottom() {
+    setShowScrollBtn(false);
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isLoading]);
+  }
 
   // Carga inicial del historial si arrancamos sobre una conversación existente
   useEffect(() => {
@@ -227,11 +246,80 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
     abortRef.current?.abort();
   }
 
+  // Consume el SSE y va agregando texto al último mensaje (asistente) del estado
+  async function consumeStream(res: Response) {
+    if (res.status === 429) {
+      throw new Error("Demasiados mensajes seguidos. Espera unos segundos e intenta de nuevo.");
+    }
+    if (!res.ok) throw new Error("Error al enviar mensaje");
+
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value);
+      const lines = chunk.split("\n").filter((l) => l.startsWith("data: "));
+      for (const line of lines) {
+        const data = line.replace("data: ", "");
+        if (data === "[DONE]") continue;
+        const parsed = JSON.parse(data);
+        if (parsed.text) {
+          setMessages((prev) => {
+            const updated = [...prev];
+            updated[updated.length - 1] = {
+              ...updated[updated.length - 1],
+              content: updated[updated.length - 1].content + parsed.text,
+            };
+            return updated;
+          });
+        }
+      }
+    }
+  }
+
+  // Agrega un placeholder de asistente y streamea la respuesta desde `url`
+  async function runAssistant(url: string, body: object) {
+    setIsLoading(true);
+    setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+    const controller = new AbortController();
+    abortRef.current = controller;
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify(body),
+      });
+      await consumeStream(res);
+    } catch (err) {
+      const aborted = err instanceof DOMException && err.name === "AbortError";
+      const errMsg =
+        err instanceof Error && err.message.includes("Demasiados")
+          ? err.message
+          : "Error al obtener respuesta. Intenta de nuevo.";
+      setMessages((prev) => {
+        const updated = [...prev];
+        const last = updated[updated.length - 1];
+        updated[updated.length - 1] = aborted
+          ? { ...last, content: last.content || "_(respuesta detenida)_" }
+          : { ...last, content: errMsg };
+        return updated;
+      });
+    } finally {
+      abortRef.current = null;
+      setIsLoading(false);
+    }
+  }
+
   async function sendMessage(overrideText?: string) {
     const baseText = overrideText ?? input;
     if ((!baseText.trim() && attachedFiles.length === 0) || isLoading || !activeGptId) return;
 
     const messageText = baseText.trim();
+    const replaceLast = isEditing;
+    setIsEditing(false);
+
     const userMessage: Message = {
       role: "user",
       content: messageText,
@@ -241,12 +329,13 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setAttachedFiles([]);
-    setIsLoading(true);
+    setShowScrollBtn(false);
     if (textareaRef.current) textareaRef.current.style.height = "auto";
 
     // Creación diferida: si no hay conversación aún, crearla al primer mensaje
     let threadId = activeThreadId;
     if (!threadId) {
+      setIsLoading(true);
       const res = await fetch("/api/threads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -285,73 +374,42 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
       return active ? [active, ...updated.filter((t) => t.id !== threadId)] : updated;
     });
 
-    const assistantMsg: Message = { role: "assistant", content: "" };
-    setMessages((prev) => [...prev, assistantMsg]);
-
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: controller.signal,
-        body: JSON.stringify({
-          gptId: activeGptId,
-          threadId,
-          message: messageText,
-          files:
-            userMessage.files?.map((f) => ({ openai_file_id: f.openai_file_id, type: f.type })) ?? [],
-        }),
-      });
-
-      if (res.status === 429) {
-        throw new Error("Demasiados mensajes seguidos. Espera unos segundos e intenta de nuevo.");
-      }
-      if (!res.ok) throw new Error("Error al enviar mensaje");
-
-      const reader = res.body!.getReader();
-      const decoder = new TextDecoder();
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value);
-        const lines = chunk.split("\n").filter((l) => l.startsWith("data: "));
-        for (const line of lines) {
-          const data = line.replace("data: ", "");
-          if (data === "[DONE]") continue;
-          const parsed = JSON.parse(data);
-          if (parsed.text) {
-            setMessages((prev) => {
-              const updated = [...prev];
-              updated[updated.length - 1] = {
-                ...updated[updated.length - 1],
-                content: updated[updated.length - 1].content + parsed.text,
-              };
-              return updated;
-            });
-          }
-        }
-      }
-    } catch (err) {
-      const aborted = err instanceof DOMException && err.name === "AbortError";
-      const errMsg =
-        err instanceof Error && err.message.includes("Demasiados")
-          ? err.message
-          : "Error al obtener respuesta. Intenta de nuevo.";
-      setMessages((prev) => {
-        const updated = [...prev];
-        const last = updated[updated.length - 1];
-        updated[updated.length - 1] = aborted
-          ? { ...last, content: last.content || "_(respuesta detenida)_" }
-          : { ...last, content: errMsg };
-        return updated;
-      });
-    } finally {
-      abortRef.current = null;
-      setIsLoading(false);
-    }
+    await runAssistant("/api/chat", {
+      gptId: activeGptId,
+      threadId,
+      message: messageText,
+      files: userMessage.files?.map((f) => ({ openai_file_id: f.openai_file_id, type: f.type })) ?? [],
+      replaceLast,
+    });
   }
+
+  async function regenerate() {
+    if (isLoading || !activeGptId || !activeThreadId) return;
+    setMessages((prev) => (prev[prev.length - 1]?.role === "assistant" ? prev.slice(0, -1) : prev));
+    await runAssistant("/api/chat/regenerate", { gptId: activeGptId, threadId: activeThreadId });
+  }
+
+  function startEdit(index: number) {
+    const m = messages[index];
+    if (!m || m.role !== "user" || isLoading) return;
+    setInput(m.content);
+    setAttachedFiles([]);
+    setMessages((prev) => prev.slice(0, index));
+    setIsEditing(true);
+    setTimeout(() => {
+      textareaRef.current?.focus();
+      autoResize();
+    }, 0);
+  }
+
+  function copyMessage(content: string, index: number) {
+    navigator.clipboard.writeText(content);
+    setCopiedIndex(index);
+    setTimeout(() => setCopiedIndex((c) => (c === index ? null : c)), 1500);
+  }
+
+  // índice del último mensaje de usuario (para ofrecer "editar")
+  const lastUserIndex = messages.map((m) => m.role).lastIndexOf("user");
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -518,7 +576,11 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
         </div>
 
         {/* Mensajes / estados */}
-        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto px-4 py-6 space-y-6"
+        >
           {isLoadingHistory && (
             <div className="space-y-4 animate-pulse max-w-2xl mx-auto w-full">
               <div className="flex justify-end">
@@ -567,62 +629,120 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
             </div>
           )}
 
-          {messages.map((msg, i) => (
-            <div
-              key={i}
-              className={cn("flex", msg.role === "user" ? "justify-end" : "justify-start")}
-            >
-              {msg.role === "assistant" && (
-                <div className="mr-2 mt-0.5">
-                  <GptGlyph gpt={activeGpt} />
-                </div>
-              )}
+          {messages.map((msg, i) => {
+            const isLast = i === messages.length - 1;
+            const streaming = isLoading && isLast && msg.role === "assistant";
+            return (
               <div
-                className={cn(
-                  "max-w-[80%] rounded-2xl px-4 py-3",
-                  msg.role === "user"
-                    ? "bg-gradient-to-br from-violet-600 to-violet-700 text-white rounded-br-sm shadow-[0_1px_0_rgba(255,255,255,0.12)_inset]"
-                    : "bg-zinc-800/80 text-zinc-100 rounded-bl-sm border border-zinc-700/50"
-                )}
+                key={i}
+                className={cn("group flex", msg.role === "user" ? "justify-end" : "justify-start")}
               >
-                {msg.files && msg.files.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mb-2">
-                    {msg.files.map((f, fi) =>
-                      f.type === "image" && f.previewUrl ? (
-                        <img
-                          key={fi}
-                          src={f.previewUrl}
-                          alt={f.name}
-                          className="w-24 h-24 object-cover rounded-lg border border-white/20"
-                        />
+                {msg.role === "assistant" && (
+                  <div className="mr-2 mt-0.5">
+                    <GptGlyph gpt={activeGpt} />
+                  </div>
+                )}
+                <div className="flex flex-col gap-1 max-w-[80%]">
+                  <div
+                    className={cn(
+                      "rounded-2xl px-4 py-3",
+                      msg.role === "user"
+                        ? "bg-gradient-to-br from-violet-600 to-violet-700 text-white rounded-br-sm shadow-[0_1px_0_rgba(255,255,255,0.12)_inset]"
+                        : "bg-zinc-800/80 text-zinc-100 rounded-bl-sm border border-zinc-700/50"
+                    )}
+                  >
+                    {msg.files && msg.files.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        {msg.files.map((f, fi) =>
+                          f.type === "image" && f.previewUrl ? (
+                            <img
+                              key={fi}
+                              src={f.previewUrl}
+                              alt={f.name}
+                              className="w-24 h-24 object-cover rounded-lg border border-white/20"
+                            />
+                          ) : (
+                            <span key={fi} className="text-xs bg-white/10 rounded-lg px-2 py-1">
+                              📎 {f.name}
+                            </span>
+                          )
+                        )}
+                      </div>
+                    )}
+                    {msg.content ? (
+                      msg.role === "assistant" ? (
+                        <div className="flex items-end">
+                          <MessageContent content={msg.content} />
+                          {streaming && (
+                            <span className="inline-block w-1.5 h-4 bg-zinc-400 ml-0.5 mb-1 rounded-sm animate-pulse" />
+                          )}
+                        </div>
                       ) : (
-                        <span key={fi} className="text-xs bg-white/10 rounded-lg px-2 py-1">
-                          📎 {f.name}
+                        <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                      )
+                    ) : (
+                      msg.role === "assistant" && (
+                        <span className="inline-flex gap-1">
+                          <span className="animate-bounce delay-0">·</span>
+                          <span className="animate-bounce delay-100">·</span>
+                          <span className="animate-bounce delay-200">·</span>
                         </span>
                       )
                     )}
                   </div>
-                )}
-                {msg.content ? (
-                  msg.role === "assistant" ? (
-                    <MessageContent content={msg.content} />
-                  ) : (
-                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
-                  )
-                ) : (
-                  msg.role === "assistant" && (
-                    <span className="inline-flex gap-1">
-                      <span className="animate-bounce delay-0">·</span>
-                      <span className="animate-bounce delay-100">·</span>
-                      <span className="animate-bounce delay-200">·</span>
-                    </span>
-                  )
-                )}
+
+                  {/* Acciones al pasar el mouse */}
+                  {msg.content && !streaming && (
+                    <div
+                      className={cn(
+                        "flex gap-0.5 opacity-0 group-hover:opacity-100 transition",
+                        msg.role === "user" ? "justify-end" : "justify-start"
+                      )}
+                    >
+                      <button
+                        onClick={() => copyMessage(msg.content, i)}
+                        className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition"
+                        title="Copiar"
+                      >
+                        {copiedIndex === i ? <Check size={14} /> : <Copy size={14} />}
+                      </button>
+                      {msg.role === "assistant" && isLast && !isLoading && (
+                        <button
+                          onClick={regenerate}
+                          className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition"
+                          title="Regenerar"
+                        >
+                          <RotateCcw size={14} />
+                        </button>
+                      )}
+                      {msg.role === "user" && i === lastUserIndex && !isLoading && (
+                        <button
+                          onClick={() => startEdit(i)}
+                          className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition"
+                          title="Editar"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           <div ref={bottomRef} />
         </div>
+
+        {/* Botón bajar al final */}
+        {showScrollBtn && (
+          <button
+            onClick={scrollToBottom}
+            className="absolute bottom-28 left-1/2 -translate-x-1/2 z-10 bg-zinc-800 border border-zinc-700 text-zinc-200 rounded-full p-2 shadow-lg hover:bg-zinc-700 transition"
+            aria-label="Bajar al final"
+          >
+            <ArrowDown size={16} />
+          </button>
+        )}
 
         {/* Composer */}
         {showComposer && (
@@ -664,6 +784,21 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {isEditing && (
+              <div className="flex items-center justify-between max-w-3xl mx-auto mb-2 text-xs text-violet-300 bg-violet-600/10 border border-violet-500/20 rounded-lg px-3 py-1.5">
+                <span>Editando mensaje — al enviar se reemplaza la respuesta anterior.</span>
+                <button
+                  onClick={() => {
+                    setIsEditing(false);
+                    setInput("");
+                  }}
+                  className="text-zinc-400 hover:text-white"
+                >
+                  Cancelar
+                </button>
               </div>
             )}
 
