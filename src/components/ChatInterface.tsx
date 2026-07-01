@@ -14,6 +14,8 @@ import {
   Trash2,
   Check,
   Copy,
+  Menu,
+  Square,
 } from "lucide-react";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
@@ -110,12 +112,14 @@ export default function ChatInterface({ gpt, threads, activeThreadId, initialMes
   const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>([]);
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -134,6 +138,7 @@ export default function ChatInterface({ gpt, threads, activeThreadId, initialMes
 
   async function selectThread(id: string) {
     if (id === threadId || isLoadingHistory) return;
+    setSidebarOpen(false);
     setThreadId(id);
     setUrlThread(id);
     setIsLoadingHistory(true);
@@ -147,6 +152,7 @@ export default function ChatInterface({ gpt, threads, activeThreadId, initialMes
   }
 
   async function handleNewChat() {
+    setSidebarOpen(false);
     const res = await fetch("/api/threads", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -158,6 +164,10 @@ export default function ChatInterface({ gpt, threads, activeThreadId, initialMes
     setThreadId(newThread.id);
     setUrlThread(newThread.id);
     setMessages([]);
+  }
+
+  function stopStreaming() {
+    abortRef.current?.abort();
   }
 
   async function renameThread(id: string) {
@@ -279,10 +289,14 @@ export default function ChatInterface({ gpt, threads, activeThreadId, initialMes
       )
     );
 
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           gptId: gpt.id,
           threadId,
@@ -291,6 +305,9 @@ export default function ChatInterface({ gpt, threads, activeThreadId, initialMes
         }),
       });
 
+      if (res.status === 429) {
+        throw new Error("Demasiados mensajes seguidos. Espera unos segundos e intenta de nuevo.");
+      }
       if (!res.ok) throw new Error("Error al enviar mensaje");
 
       const reader = res.body!.getReader();
@@ -321,16 +338,28 @@ export default function ChatInterface({ gpt, threads, activeThreadId, initialMes
           }
         }
       }
-    } catch {
+    } catch (err) {
+      const aborted = err instanceof DOMException && err.name === "AbortError";
+      const errMsg =
+        err instanceof Error && err.message.includes("Demasiados")
+          ? err.message
+          : "Error al obtener respuesta. Intenta de nuevo.";
       setMessages((prev) => {
         const updated = [...prev];
-        updated[updated.length - 1] = {
-          ...updated[updated.length - 1],
-          content: "Error al obtener respuesta. Intenta de nuevo.",
-        };
+        const last = updated[updated.length - 1];
+        // Si se detuvo con contenido parcial, conservarlo; si venía vacío, marcar detenido
+        if (aborted) {
+          updated[updated.length - 1] = {
+            ...last,
+            content: last.content || "_(respuesta detenida)_",
+          };
+        } else {
+          updated[updated.length - 1] = { ...last, content: errMsg };
+        }
         return updated;
       });
     } finally {
+      abortRef.current = null;
       setIsLoading(false);
     }
   }
@@ -343,9 +372,24 @@ export default function ChatInterface({ gpt, threads, activeThreadId, initialMes
   }
 
   return (
-    <div className="flex h-[calc(100vh-57px)]">
+    <div className="flex h-[calc(100vh-57px)] relative">
+      {/* Backdrop móvil */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 top-[57px] bg-black/50 z-20 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar de conversaciones */}
-      <aside className="hidden md:flex w-64 flex-col border-r border-gray-800 bg-gray-950">
+      <aside
+        className={cn(
+          "w-64 flex-col border-r border-gray-800 bg-gray-950 z-30",
+          "md:flex md:relative md:translate-x-0",
+          "fixed top-[57px] bottom-0 left-0 flex transition-transform duration-200",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        )}
+      >
         <div className="p-3 border-b border-gray-800">
           <button
             onClick={handleNewChat}
@@ -415,6 +459,13 @@ export default function ChatInterface({ gpt, threads, activeThreadId, initialMes
       <div className="flex flex-col flex-1 min-w-0">
         {/* Header */}
         <div className="border-b border-gray-800 px-4 py-3 bg-gray-950 flex items-center gap-3">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="text-gray-400 hover:text-white transition md:hidden"
+            aria-label="Abrir conversaciones"
+          >
+            <Menu size={20} />
+          </button>
           <Link
             href="/dashboard"
             className="text-gray-400 hover:text-white transition"
@@ -438,6 +489,21 @@ export default function ChatInterface({ gpt, threads, activeThreadId, initialMes
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
+          {isLoadingHistory && (
+            <div className="space-y-4 animate-pulse">
+              <div className="flex justify-end">
+                <div className="h-10 w-2/5 bg-gray-800 rounded-2xl rounded-br-sm" />
+              </div>
+              <div className="flex justify-start gap-2">
+                <div className="w-7 h-7 bg-gray-800 rounded-lg flex-shrink-0" />
+                <div className="h-20 w-3/5 bg-gray-800 rounded-2xl rounded-bl-sm" />
+              </div>
+              <div className="flex justify-end">
+                <div className="h-10 w-1/3 bg-gray-800 rounded-2xl rounded-br-sm" />
+              </div>
+            </div>
+          )}
+
           {messages.length === 0 && !isLoadingHistory && (
             <div className="flex flex-col items-center justify-center h-full text-center py-12">
               <div className="w-16 h-16 bg-purple-600/20 border border-purple-500/30 rounded-2xl flex items-center justify-center text-2xl mb-4">
@@ -597,14 +663,24 @@ export default function ChatInterface({ gpt, threads, activeThreadId, initialMes
               {isRecording ? <MicOff size={18} /> : <Mic size={18} />}
             </button>
 
-            {/* Botón enviar */}
-            <button
-              onClick={sendMessage}
-              disabled={isLoading || (!input.trim() && attachedFiles.length === 0)}
-              className="bg-purple-600 hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl p-1.5 flex-shrink-0 transition"
-            >
-              <Send size={16} />
-            </button>
+            {/* Botón enviar / detener */}
+            {isLoading ? (
+              <button
+                onClick={stopStreaming}
+                className="bg-gray-700 hover:bg-gray-600 text-white rounded-xl p-1.5 flex-shrink-0 transition"
+                title="Detener respuesta"
+              >
+                <Square size={16} className="fill-current" />
+              </button>
+            ) : (
+              <button
+                onClick={sendMessage}
+                disabled={!input.trim() && attachedFiles.length === 0}
+                className="bg-purple-600 hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl p-1.5 flex-shrink-0 transition"
+              >
+                <Send size={16} />
+              </button>
+            )}
           </div>
           <p className="text-center text-xs text-gray-600 mt-2">
             Los GPTs pueden cometer errores. Verifica información importante.

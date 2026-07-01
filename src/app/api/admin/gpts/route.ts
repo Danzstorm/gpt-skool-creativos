@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     name,
     description,
     instructions: system_prompt,
-    model: model || "gpt-4o",
+    model: model || "gpt-4.1",
     tools,
   });
 

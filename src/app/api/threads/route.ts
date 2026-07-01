@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import OpenAI from "openai";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -38,6 +39,10 @@ export async function POST(request: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
+
+  // Límite: 15 conversaciones nuevas por minuto por usuario (evita spam de threads)
+  const rl = checkRateLimit(`thread-create:${user.id}`, 15, 60_000);
+  if (!rl.ok) return rateLimitResponse(rl);
 
   const { gptId } = await request.json();
   if (!gptId) {

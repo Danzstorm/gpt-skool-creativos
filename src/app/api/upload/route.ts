@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import OpenAI from "openai";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -23,6 +24,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
 
+  // Límite: 20 archivos por minuto por usuario (protege saldo/almacenamiento OpenAI)
+  const rl = checkRateLimit(`upload:${user.id}`, 20, 60_000);
+  if (!rl.ok) return rateLimitResponse(rl);
+
   const formData = await request.formData();
   const file = formData.get("file") as File | null;
 
@@ -33,6 +38,14 @@ export async function POST(request: NextRequest) {
   if (file.size > MAX_SIZE_MB * 1024 * 1024) {
     return NextResponse.json(
       { error: `El archivo supera el límite de ${MAX_SIZE_MB}MB` },
+      { status: 400 }
+    );
+  }
+
+  // Validar tipo: solo formatos soportados por Assistants (evita subir binarios arbitrarios)
+  if (file.type && !ALLOWED_TYPES.includes(file.type)) {
+    return NextResponse.json(
+      { error: `Tipo de archivo no permitido: ${file.type}` },
       { status: 400 }
     );
   }
