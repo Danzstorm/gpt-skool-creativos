@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { LogOut, LayoutGrid } from "lucide-react";
+import { LogOut, LayoutGrid, MessagesSquare } from "lucide-react";
 
 export default async function ProtectedLayout({
   children,
@@ -25,7 +25,7 @@ export default async function ProtectedLayout({
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-40 border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-xl px-4 py-3">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-2.5 group">
+          <Link href="/chat" className="flex items-center gap-2.5 group">
             <div className="w-8 h-8 bg-gradient-to-br from-violet-500 to-violet-700 rounded-lg flex items-center justify-center text-sm shadow-[0_1px_0_rgba(255,255,255,0.15)_inset] group-hover:shadow-[0_0_18px_-4px_rgba(139,92,246,0.6)] transition-shadow">
               ✦
             </div>
@@ -34,16 +34,23 @@ export default async function ProtectedLayout({
 
           <nav className="flex items-center gap-1">
             <Link
+              href="/chat"
+              className="text-zinc-400 hover:text-white hover:bg-zinc-800/60 rounded-lg px-3 py-1.5 transition text-sm flex items-center gap-1.5"
+            >
+              <MessagesSquare size={16} />
+              Chat
+            </Link>
+            <Link
               href="/dashboard"
               className="text-zinc-400 hover:text-white hover:bg-zinc-800/60 rounded-lg px-3 py-1.5 transition text-sm flex items-center gap-1.5"
             >
               <LayoutGrid size={16} />
-              GPTs
+              Catálogo
             </Link>
             {profile?.is_admin && (
               <Link
                 href="/admin"
-                className="text-zinc-400 hover:text-white hover:bg-zinc-800/60 rounded-lg px-3 py-1.5 transition text-sm"
+                className="text-amber-400/90 hover:text-amber-300 hover:bg-amber-500/10 rounded-lg px-3 py-1.5 transition text-sm border border-amber-500/20"
               >
                 Admin
               </Link>
