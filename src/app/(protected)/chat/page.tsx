@@ -21,6 +21,7 @@ export default async function ChatPage({ searchParams }: Props) {
 
   return (
     <UnifiedChat
+      key={threadId ?? gptId ?? "new"}
       gpts={(gpts as Gpt[]) ?? []}
       threads={(threads as ThreadSummary[]) ?? []}
       initialThreadId={threadId ?? null}

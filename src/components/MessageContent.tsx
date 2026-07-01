@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { cn } from "@/lib/utils";
 
 function CodeBlock({ children }: { children: string }) {
   const [copied, setCopied] = useState(false);
@@ -15,15 +16,23 @@ function CodeBlock({ children }: { children: string }) {
   }
 
   return (
-    <div className="relative group/code my-2">
-      <button
-        onClick={copy}
-        className="absolute top-2 right-2 flex items-center gap-1 text-xs text-zinc-400 hover:text-white bg-zinc-800/80 rounded-lg px-2 py-1 opacity-0 group-hover/code:opacity-100 transition"
-      >
-        {copied ? <Check size={12} /> : <Copy size={12} />}
-        {copied ? "Copiado" : "Copiar"}
-      </button>
-      <pre className="bg-zinc-950 border border-zinc-800 rounded-xl p-3 overflow-x-auto text-xs font-mono">
+    <div className="relative my-2 rounded-xl border border-zinc-800 overflow-hidden">
+      <div className="flex items-center justify-between bg-zinc-900 border-b border-zinc-800 px-3 py-1.5">
+        <span className="text-[11px] uppercase tracking-wider text-zinc-500">Prompt</span>
+        <button
+          onClick={copy}
+          className={cn(
+            "flex items-center gap-1 text-xs rounded-lg px-2 py-1 transition",
+            copied
+              ? "text-emerald-400 bg-emerald-500/10"
+              : "text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700"
+          )}
+        >
+          {copied ? <Check size={13} /> : <Copy size={13} />}
+          {copied ? "Copiado" : "Copiar"}
+        </button>
+      </div>
+      <pre className="bg-zinc-950 p-3 overflow-x-auto text-xs font-mono whitespace-pre-wrap">
         {children}
       </pre>
     </div>
