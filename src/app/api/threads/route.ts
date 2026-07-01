@@ -16,15 +16,16 @@ export async function GET(request: NextRequest) {
   }
 
   const gptId = request.nextUrl.searchParams.get("gptId");
-  if (!gptId) {
-    return NextResponse.json({ error: "Falta gptId" }, { status: 400 });
-  }
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("threads")
-    .select("id, title, created_at, updated_at")
-    .eq("gpt_id", gptId)
+    .select("id, title, gpt_id, created_at, updated_at")
     .order("updated_at", { ascending: false });
+
+  // gptId opcional: sin él devuelve todas las conversaciones del usuario (cross-GPT)
+  if (gptId) query = query.eq("gpt_id", gptId);
+
+  const { data, error } = await query;
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data);

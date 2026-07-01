@@ -9,7 +9,7 @@ interface Props {
 export default function GptCard({ gpt }: Props) {
   return (
     <Link
-      href={`/chat/${gpt.id}`}
+      href={`/chat?gpt=${gpt.id}`}
       className="group relative block bg-zinc-900/70 border border-zinc-800 hover:border-zinc-700 rounded-2xl p-5 transition-all duration-200 hover:-translate-y-0.5 hover:bg-zinc-900 shadow-[0_1px_0_rgba(255,255,255,0.03)_inset] hover:shadow-[0_8px_30px_-12px_rgba(139,92,246,0.25)]"
     >
       <div className="flex items-start gap-4">

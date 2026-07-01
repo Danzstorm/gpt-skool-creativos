@@ -41,3 +41,24 @@ export interface Thread {
   created_at: string;
   updated_at: string;
 }
+
+// Resumen de conversación para el sidebar (cross-GPT)
+export interface ThreadSummary {
+  id: string;
+  title: string;
+  gpt_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UploadedFile {
+  name: string;
+  openai_file_id: string;
+  type: "image" | "document";
+}
+
+export interface Message {
+  role: "user" | "assistant";
+  content: string;
+  files?: UploadedFile[];
+}

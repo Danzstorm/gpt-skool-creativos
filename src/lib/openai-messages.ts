@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import type { Message } from "@/components/ChatInterface";
+import type { Message } from "@/lib/types";
 
 export async function getThreadMessages(openaiThreadId: string): Promise<Message[]> {
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
