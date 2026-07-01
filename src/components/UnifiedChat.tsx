@@ -68,6 +68,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
   const [isEditing, setIsEditing] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [chatSearch, setChatSearch] = useState("");
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -327,6 +328,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
     const messageText = baseText.trim();
     const replaceLast = isEditing;
     setIsEditing(false);
+    setIsLoading(true); // cerrar carrera de doble-envío antes de cualquier await
 
     const userMessage: Message = {
       role: "user",
@@ -485,8 +487,18 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
               <p className="text-[11px] uppercase tracking-wider text-zinc-600 font-medium px-3 pt-2 pb-1.5">
                 Chats
               </p>
+              {threadList.length > 6 && (
+                <input
+                  value={chatSearch}
+                  onChange={(e) => setChatSearch(e.target.value)}
+                  placeholder="Buscar conversación..."
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-violet-500/40 mb-1.5"
+                />
+              )}
               <div className="space-y-0.5">
-                {threadList.map((t) => (
+                {threadList
+                  .filter((t) => !chatSearch || t.title.toLowerCase().includes(chatSearch.toLowerCase()))
+                  .map((t) => (
                   <div
                     key={t.id}
                     className={cn(
@@ -516,7 +528,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
                     )}
 
                     {renamingId !== t.id && (
-                      <div className="hidden group-hover:flex items-center gap-0.5 flex-shrink-0">
+                      <div className="flex md:hidden md:group-hover:flex items-center gap-0.5 flex-shrink-0">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -703,7 +715,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
                   {msg.content && !streaming && (
                     <div
                       className={cn(
-                        "flex gap-0.5 opacity-0 group-hover:opacity-100 transition",
+                        "flex gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition",
                         msg.role === "user" ? "justify-end" : "justify-start"
                       )}
                     >

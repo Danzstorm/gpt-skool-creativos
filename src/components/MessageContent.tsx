@@ -44,6 +44,19 @@ export default function MessageContent({ content }: { content: string }) {
               {children}
             </a>
           ),
+          table: ({ children }) => (
+            <div className="overflow-x-auto my-2">
+              <table className="w-full text-xs border-collapse">{children}</table>
+            </div>
+          ),
+          th: ({ children }) => (
+            <th className="border border-zinc-700 bg-zinc-800/60 px-2 py-1 text-left font-medium">
+              {children}
+            </th>
+          ),
+          td: ({ children }) => (
+            <td className="border border-zinc-700 px-2 py-1">{children}</td>
+          ),
           code: ({ className, children }) => {
             const isBlock = /language-/.test(className || "") || String(children).includes("\n");
             if (isBlock) return <CodeBlock>{String(children).replace(/\n$/, "")}</CodeBlock>;
