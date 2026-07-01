@@ -69,6 +69,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [chatSearch, setChatSearch] = useState("");
+  const [micError, setMicError] = useState("");
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -222,33 +223,57 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
     if (files.length > 0) uploadFiles(files);
   }
 
-  async function startRecording() {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  async function toggleRecording() {
+    if (isRecording) {
+      mediaRecorderRef.current?.stop();
+      setIsRecording(false);
+      return;
+    }
+
+    setMicError("");
+
+    // getUserMedia solo existe en contexto seguro (localhost o HTTPS)
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setMicError(
+        "El micrófono requiere HTTPS o localhost. En red local (IP) el navegador lo bloquea."
+      );
+      return;
+    }
+
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      setMicError("No se pudo acceder al micrófono. Revisa los permisos del navegador.");
+      return;
+    }
+
     const recorder = new MediaRecorder(stream);
     audioChunksRef.current = [];
     recorder.ondataavailable = (e) => audioChunksRef.current.push(e.data);
     recorder.onstop = async () => {
       stream.getTracks().forEach((t) => t.stop());
       const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+      if (blob.size === 0) return;
       setIsTranscribing(true);
       const formData = new FormData();
       formData.append("audio", blob, "recording.webm");
-      const res = await fetch("/api/transcribe", { method: "POST", body: formData });
-      setIsTranscribing(false);
-      if (res.ok) {
-        const { text } = await res.json();
-        setInput((prev) => (prev ? `${prev} ${text}` : text));
-        setTimeout(autoResize, 0);
+      try {
+        const res = await fetch("/api/transcribe", { method: "POST", body: formData });
+        if (res.ok) {
+          const { text } = await res.json();
+          setInput((prev) => (prev ? `${prev} ${text}` : text));
+          setTimeout(autoResize, 0);
+        } else {
+          setMicError("No se pudo transcribir el audio. Intenta de nuevo.");
+        }
+      } finally {
+        setIsTranscribing(false);
       }
     };
     mediaRecorderRef.current = recorder;
     recorder.start();
     setIsRecording(true);
-  }
-
-  function stopRecording() {
-    mediaRecorderRef.current?.stop();
-    setIsRecording(false);
   }
 
   function stopStreaming() {
@@ -822,6 +847,19 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
               </div>
             )}
 
+            {(micError || isRecording) && (
+              <div
+                className={cn(
+                  "max-w-3xl mx-auto mb-2 text-xs rounded-lg px-3 py-1.5 border",
+                  micError
+                    ? "text-amber-300 bg-amber-500/10 border-amber-500/20"
+                    : "text-red-300 bg-red-500/10 border-red-500/20"
+                )}
+              >
+                {micError || "🎙️ Grabando... toca el micrófono para detener y transcribir."}
+              </div>
+            )}
+
             <div className="flex items-end gap-2 bg-zinc-900/80 border border-zinc-700/70 focus-within:border-violet-500/50 rounded-2xl px-3 py-2 transition-colors shadow-[0_1px_0_rgba(255,255,255,0.03)_inset] max-w-3xl mx-auto">
               <input
                 ref={fileInputRef}
@@ -856,16 +894,13 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
               />
 
               <button
-                onMouseDown={startRecording}
-                onMouseUp={stopRecording}
-                onTouchStart={startRecording}
-                onTouchEnd={stopRecording}
+                onClick={toggleRecording}
                 disabled={isLoading || isTranscribing}
                 className={cn(
                   "flex-shrink-0 mb-0.5 transition",
                   isRecording ? "text-red-400 animate-pulse" : "text-zinc-500 hover:text-zinc-300"
                 )}
-                title="Mantén presionado para grabar"
+                title={isRecording ? "Toca para detener y transcribir" : "Toca para grabar"}
               >
                 {isRecording ? <MicOff size={18} /> : <Mic size={18} />}
               </button>
