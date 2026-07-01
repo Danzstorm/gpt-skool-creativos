@@ -16,8 +16,23 @@ const DEFAULT_FORM = {
   tools_enabled: { file_search: true, code_interpreter: false },
   vision_enabled: true,
   conversation_starters: [] as string[],
+  icon_url: "" as string,
   sort_order: 0,
 };
+
+// Redimensiona una imagen a un cuadrado de 256px en el cliente (sin dependencias)
+async function resizeSquare(file: File, size = 256): Promise<Blob> {
+  const bitmap = await createImageBitmap(file);
+  const side = Math.min(bitmap.width, bitmap.height);
+  const sx = (bitmap.width - side) / 2;
+  const sy = (bitmap.height - side) / 2;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(bitmap, sx, sy, side, side, 0, 0, size, size);
+  return new Promise((resolve) => canvas.toBlob((b) => resolve(b!), "image/png", 0.9));
+}
 
 export default function AdminGptsPage() {
   const [gpts, setGpts] = useState<GptWithAssistantId[]>([]);
@@ -26,6 +41,7 @@ export default function AdminGptsPage() {
   const [form, setForm] = useState(DEFAULT_FORM);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadingIcon, setUploadingIcon] = useState(false);
 
   useEffect(() => {
     loadGpts();
@@ -56,6 +72,7 @@ export default function AdminGptsPage() {
       tools_enabled: gpt.tools_enabled,
       vision_enabled: gpt.vision_enabled,
       conversation_starters: gpt.conversation_starters ?? [],
+      icon_url: gpt.icon_url ?? "",
       sort_order: gpt.sort_order,
     });
     setEditingId(gpt.id);
@@ -90,6 +107,23 @@ export default function AdminGptsPage() {
       ...prev,
       conversation_starters: prev.conversation_starters.filter((_, idx) => idx !== i),
     }));
+  }
+
+  async function handleIconUpload(file: File | undefined) {
+    if (!file) return;
+    setUploadingIcon(true);
+    try {
+      const blob = await resizeSquare(file);
+      const fd = new FormData();
+      fd.append("file", blob, "icon.png");
+      const res = await fetch("/api/admin/gpts/icon", { method: "POST", body: fd });
+      if (res.ok) {
+        const { url } = await res.json();
+        setForm((prev) => ({ ...prev, icon_url: url }));
+      }
+    } finally {
+      setUploadingIcon(false);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -151,6 +185,37 @@ export default function AdminGptsPage() {
               </h2>
 
               <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-xl bg-gray-800 border border-gray-600 flex items-center justify-center text-xl overflow-hidden flex-shrink-0">
+                    {form.icon_url ? (
+                      <img src={form.icon_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      "✦"
+                    )}
+                  </div>
+                  <div>
+                    <label className="inline-block bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white text-sm rounded-xl px-4 py-2 cursor-pointer transition">
+                      {uploadingIcon ? "Subiendo..." : "Subir icono"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => handleIconUpload(e.target.files?.[0])}
+                      />
+                    </label>
+                    {form.icon_url && (
+                      <button
+                        type="button"
+                        onClick={() => setForm({ ...form, icon_url: "" })}
+                        className="ml-2 text-gray-400 hover:text-red-400 text-sm"
+                      >
+                        Quitar
+                      </button>
+                    )}
+                    <p className="text-xs text-gray-500 mt-1">Se recorta a cuadrado 256px.</p>
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1.5">Nombre *</label>
                   <input

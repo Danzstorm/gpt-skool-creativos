@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
   const user = await requireAdmin();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
-  const { name, description, category, system_prompt, model, conversation_starters, sort_order } = await request.json();
+  const { name, description, category, system_prompt, model, conversation_starters, sort_order, icon_url } = await request.json();
 
   if (!name || !system_prompt) {
     return NextResponse.json({ error: "Nombre y system prompt requeridos" }, { status: 400 });
@@ -63,6 +63,7 @@ export async function POST(request: NextRequest) {
       name,
       description,
       category: category || "General",
+      icon_url: icon_url || null,
       openai_assistant_id: assistant.id,
       tools_enabled: { file_search: true, code_interpreter: true },
       vision_enabled: true,

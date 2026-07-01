@@ -42,7 +42,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   const { id } = await params;
   const body = await request.json();
-  const { name, description, category, system_prompt, model, conversation_starters, sort_order, is_active } = body;
+  const { name, description, category, system_prompt, model, conversation_starters, sort_order, is_active, icon_url } = body;
 
   const serviceClient = createServiceClient();
   const { data: gpt } = await serviceClient.from("gpts").select("openai_assistant_id").eq("id", id).single();
@@ -68,6 +68,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       ...(name && { name }),
       ...(description !== undefined && { description }),
       ...(category && { category }),
+      ...(icon_url !== undefined && { icon_url }),
       tools_enabled: { file_search: true, code_interpreter: true },
       vision_enabled: true,
       ...(conversation_starters !== undefined && { conversation_starters }),
