@@ -36,5 +36,7 @@ export interface Thread {
   user_id: string;
   gpt_id: string;
   openai_thread_id: string;
+  title: string;
   created_at: string;
+  updated_at: string;
 }

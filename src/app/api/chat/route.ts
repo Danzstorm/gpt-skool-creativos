@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
 
   const { gptId, threadId, message, fileIds } = await request.json();
 
-  if (!gptId || !message) {
+  if (!gptId || !message || !threadId) {
     return NextResponse.json({ error: "Faltan parámetros" }, { status: 400 });
   }
 
@@ -34,30 +34,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "GPT no encontrado" }, { status: 404 });
   }
 
-  // Obtener o crear thread
-  let openaiThreadId = threadId;
+  // La fila de threads pertenece al usuario (RLS: user_id = auth.uid())
+  const { data: thread, error: threadError } = await supabase
+    .from("threads")
+    .select("openai_thread_id, title")
+    .eq("id", threadId)
+    .single();
 
-  if (!openaiThreadId) {
-    const { data: existingThread } = await supabase
-      .from("threads")
-      .select("openai_thread_id")
-      .eq("user_id", user.id)
-      .eq("gpt_id", gptId)
-      .single();
-
-    if (existingThread) {
-      openaiThreadId = existingThread.openai_thread_id;
-    } else {
-      const newThread = await openai.beta.threads.create();
-      openaiThreadId = newThread.id;
-
-      await supabase.from("threads").insert({
-        user_id: user.id,
-        gpt_id: gptId,
-        openai_thread_id: openaiThreadId,
-      });
-    }
+  if (threadError || !thread) {
+    return NextResponse.json({ error: "Conversación no encontrada" }, { status: 404 });
   }
+
+  const openaiThreadId = thread.openai_thread_id;
 
   // Construir contenido del mensaje (texto + archivos opcionales)
   type MessageContentPart =
@@ -97,13 +85,6 @@ export async function POST(request: NextRequest) {
           { assistant_id: gpt.openai_assistant_id }
         );
 
-        // Enviar threadId al cliente en primer chunk
-        controller.enqueue(
-          encoder.encode(
-            `data: ${JSON.stringify({ threadId: openaiThreadId })}\n\n`
-          )
-        );
-
         for await (const event of run) {
           if (
             event.event === "thread.message.delta" &&
@@ -121,6 +102,15 @@ export async function POST(request: NextRequest) {
           }
 
           if (event.event === "thread.run.completed") {
+            const isDefaultTitle = thread.title === "Nueva conversación";
+            await supabase
+              .from("threads")
+              .update({
+                updated_at: new Date().toISOString(),
+                ...(isDefaultTitle && { title: message.slice(0, 40) }),
+              })
+              .eq("id", threadId);
+
             controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           }
 

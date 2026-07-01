@@ -34,14 +34,15 @@ CREATE OR REPLACE VIEW gpts_public AS
   WHERE is_active = true
   ORDER BY sort_order ASC, created_at DESC;
 
--- Threads de conversación (1 thread por usuario+GPT)
+-- Threads de conversación (múltiples por usuario+GPT, como ChatGPT)
 CREATE TABLE IF NOT EXISTS threads (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
   gpt_id uuid REFERENCES gpts(id) ON DELETE CASCADE,
   openai_thread_id text NOT NULL,
+  title text DEFAULT 'Nueva conversación',
   created_at timestamptz DEFAULT now(),
-  UNIQUE(user_id, gpt_id)
+  updated_at timestamptz DEFAULT now()
 );
 
 -- Perfiles de usuario
