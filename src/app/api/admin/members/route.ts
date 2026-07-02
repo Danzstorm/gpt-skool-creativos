@@ -32,14 +32,31 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Lista de miembros requerida" }, { status: 400 });
   }
 
+  type IncomingMember = {
+    email: string;
+    full_name?: string;
+    tier?: string | null;
+    ltv?: number | null;
+    price?: number | null;
+    recurring_interval?: string | null;
+    joined_date?: string | null;
+    invited_by?: string | null;
+  };
+
   const serviceClient = createServiceClient();
   const { data, error } = await serviceClient
     .from("allowed_members")
     .upsert(
-      members.map((m: { email: string; full_name?: string }) => ({
+      (members as IncomingMember[]).map((m) => ({
         email: m.email.toLowerCase().trim(),
         full_name: m.full_name || null,
         is_active: true,
+        ...(m.tier !== undefined && { tier: m.tier }),
+        ...(m.ltv !== undefined && { ltv: m.ltv }),
+        ...(m.price !== undefined && { price: m.price }),
+        ...(m.recurring_interval !== undefined && { recurring_interval: m.recurring_interval }),
+        ...(m.joined_date !== undefined && { joined_date: m.joined_date }),
+        ...(m.invited_by !== undefined && { invited_by: m.invited_by }),
       })),
       { onConflict: "email" }
     )

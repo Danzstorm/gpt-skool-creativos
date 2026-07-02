@@ -21,6 +21,12 @@ export interface AllowedMember {
   email: string;
   full_name: string | null;
   is_active: boolean;
+  tier: string | null;
+  ltv: number | null;
+  price: number | null;
+  recurring_interval: string | null;
+  joined_date: string | null;
+  invited_by: string | null;
   added_at: string;
 }
 

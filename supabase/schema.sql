@@ -9,6 +9,13 @@ CREATE TABLE IF NOT EXISTS allowed_members (
   email text UNIQUE NOT NULL,
   full_name text,
   is_active boolean DEFAULT true,
+  -- Métricas importadas del export de Skool
+  tier text,
+  ltv numeric,
+  price numeric,
+  recurring_interval text,
+  joined_date date,
+  invited_by text,
   added_at timestamptz DEFAULT now()
 );
 

@@ -8,7 +8,17 @@ import Papa from "papaparse";
 export default function AdminMembersPage() {
   const [members, setMembers] = useState<AllowedMember[]>([]);
   const [loading, setLoading] = useState(false);
-  const [preview, setPreview] = useState<{ email: string; full_name: string }[] | null>(null);
+  type ParsedMember = {
+    email: string;
+    full_name: string;
+    tier?: string | null;
+    ltv?: number | null;
+    price?: number | null;
+    recurring_interval?: string | null;
+    joined_date?: string | null;
+    invited_by?: string | null;
+  };
+  const [preview, setPreview] = useState<ParsedMember[] | null>(null);
   const [importing, setImporting] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newEmail, setNewEmail] = useState("");
@@ -47,7 +57,25 @@ export default function AdminMembersPage() {
               skoolName ||
               row["Name"] || row["Full Name"] || row["name"] || row["Nombre"] || "";
 
-            return { email: email.trim().toLowerCase(), full_name: full_name.trim() };
+            const num = (v: string | undefined) => {
+              const n = parseFloat((v || "").replace(/[^0-9.-]/g, ""));
+              return Number.isFinite(n) ? n : null;
+            };
+            const dateVal = (v: string | undefined) => {
+              const d = v?.trim();
+              return d ? d.slice(0, 10) : null; // ISO-ish; Postgres date parsea el prefijo YYYY-MM-DD
+            };
+
+            return {
+              email: email.trim().toLowerCase(),
+              full_name: full_name.trim(),
+              tier: row["Tier"]?.trim() || null,
+              ltv: num(row["LTV"]),
+              price: num(row["Price"]),
+              recurring_interval: row["Recurring Interval"]?.trim() || null,
+              joined_date: dateVal(row["JoinedDate"] || row["Joined Date"]),
+              invited_by: row["Invited By"]?.trim() || null,
+            };
           })
           .filter((m) => m.email.includes("@"));
         setPreview(parsed);
@@ -103,13 +131,23 @@ export default function AdminMembersPage() {
       m.full_name?.toLowerCase().includes(search.toLowerCase())
   );
 
+  const activeCount = members.filter((m) => m.is_active).length;
+  const totalLtv = members.reduce((sum, m) => sum + (m.ltv ?? 0), 0);
+  const tierCounts = members.reduce<Record<string, number>>((acc, m) => {
+    const t = m.tier || "sin tier";
+    acc[t] = (acc[t] ?? 0) + 1;
+    return acc;
+  }, {});
+  const fmtMoney = (n: number) =>
+    n.toLocaleString("es", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white">Miembros</h1>
           <p className="text-gray-400 text-sm mt-0.5">
-            {members.filter((m) => m.is_active).length} activos de {members.length} total
+            {activeCount} activos de {members.length} total
           </p>
         </div>
         <div className="flex gap-2">
@@ -134,6 +172,35 @@ export default function AdminMembersPage() {
           />
         </div>
       </div>
+
+      {/* Resumen de métricas */}
+      {members.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4">
+            <div className="text-xs text-gray-500">Miembros</div>
+            <div className="text-xl font-bold text-white mt-0.5">{members.length}</div>
+          </div>
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4">
+            <div className="text-xs text-gray-500">Activos</div>
+            <div className="text-xl font-bold text-green-400 mt-0.5">{activeCount}</div>
+          </div>
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4">
+            <div className="text-xs text-gray-500">LTV total</div>
+            <div className="text-xl font-bold text-white mt-0.5">{fmtMoney(totalLtv)}</div>
+          </div>
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4">
+            <div className="text-xs text-gray-500">Por tier</div>
+            <div className="text-xs text-gray-300 mt-1 space-y-0.5">
+              {Object.entries(tierCounts).map(([t, n]) => (
+                <div key={t} className="flex justify-between">
+                  <span className="capitalize">{t}</span>
+                  <span className="text-gray-500">{n}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Agregar miembro individual */}
       {showAddForm && (
@@ -236,6 +303,16 @@ export default function AdminMembersPage() {
                   <div className="text-gray-400 text-xs mt-0.5">{member.full_name}</div>
                 )}
               </div>
+              {member.tier && (
+                <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-violet-500/10 text-violet-300 capitalize hidden sm:inline">
+                  {member.tier}
+                </span>
+              )}
+              {member.ltv != null && (
+                <span className="text-xs text-gray-400 tabular-nums hidden sm:inline" title="Lifetime value">
+                  {fmtMoney(member.ltv)}
+                </span>
+              )}
               <span
                 className={`text-xs px-2.5 py-1 rounded-full font-medium ${
                   member.is_active
