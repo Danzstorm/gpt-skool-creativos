@@ -6,6 +6,10 @@ import OpenAI from "openai";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+// Vercel corta funciones serverless por tiempo. Las respuestas de Assistants
+// pueden tardar; sin esto el stream se corta a mitad. (El plan debe permitir >60s.)
+export const maxDuration = 60;
+
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
   const {
