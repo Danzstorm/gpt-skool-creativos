@@ -8,6 +8,7 @@ import Papa from "papaparse";
 export default function AdminMembersPage() {
   const [members, setMembers] = useState<AllowedMember[]>([]);
   const [loading, setLoading] = useState(false);
+  const [importMsg, setImportMsg] = useState("");
   type ParsedMember = {
     email: string;
     full_name: string;
@@ -86,13 +87,21 @@ export default function AdminMembersPage() {
   async function confirmImport() {
     if (!preview) return;
     setImporting(true);
-    await fetch("/api/admin/members", {
+    const res = await fetch("/api/admin/members", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ members: preview, sync: true }),
     });
+    const data = await res.json().catch(() => ({}));
     setImporting(false);
     setPreview(null);
+    if (data?.warning) {
+      setImportMsg(data.warning);
+    } else {
+      setImportMsg(
+        `Importados: ${data?.imported ?? 0}${data?.revoked ? ` · revocados: ${data.revoked}` : ""}.`
+      );
+    }
     loadMembers();
   }
 
@@ -172,6 +181,15 @@ export default function AdminMembersPage() {
           />
         </div>
       </div>
+
+      {importMsg && (
+        <div className="mb-4 flex items-start justify-between gap-3 bg-amber-500/10 border border-amber-500/30 text-amber-200 text-sm rounded-xl px-4 py-3">
+          <span>{importMsg}</span>
+          <button onClick={() => setImportMsg("")} className="text-amber-300/70 hover:text-white flex-shrink-0">
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Resumen de métricas */}
       {members.length > 0 && (

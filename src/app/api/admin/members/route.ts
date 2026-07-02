@@ -71,6 +71,7 @@ export async function POST(request: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   let revoked = 0;
+  let warning: string | undefined;
   if (sync) {
     // Revocar los 'skool_csv' activos que NO están en este import (diff en JS para evitar problemas de comillas)
     const { data: existing } = await serviceClient
@@ -79,15 +80,23 @@ export async function POST(request: NextRequest) {
       .eq("source", "skool_csv")
       .eq("is_active", true);
 
-    const importedSet = new Set(emails);
-    const toRevoke = (existing ?? []).map((r) => r.email).filter((e) => !importedSet.has(e));
+    const existingCount = existing?.length ?? 0;
 
-    for (let i = 0; i < toRevoke.length; i += 200) {
-      const chunk = toRevoke.slice(i, i + 200);
-      await serviceClient.from("allowed_members").update({ is_active: false }).in("email", chunk);
+    // Guardarriel: si el CSV trae muchas menos filas de lo normal (export parcial/corrupto),
+    // NO revocar masivamente. Solo se agregó/actualizó; el revoke se frena y se avisa.
+    if (existingCount > 20 && emails.length < existingCount * 0.6) {
+      warning = `Import parcial detectado (${emails.length} filas vs ${existingCount} activos). No se revocó a nadie por seguridad. Sube el export completo de Skool.`;
+    } else {
+      const importedSet = new Set(emails);
+      const toRevoke = (existing ?? []).map((r) => r.email).filter((e) => !importedSet.has(e));
+
+      for (let i = 0; i < toRevoke.length; i += 200) {
+        const chunk = toRevoke.slice(i, i + 200);
+        await serviceClient.from("allowed_members").update({ is_active: false }).in("email", chunk);
+      }
+      revoked = toRevoke.length;
     }
-    revoked = toRevoke.length;
   }
 
-  return NextResponse.json({ imported: data?.length ?? 0, revoked });
+  return NextResponse.json({ imported: data?.length ?? 0, revoked, ...(warning && { warning }) });
 }

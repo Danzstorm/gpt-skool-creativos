@@ -52,13 +52,41 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, email, action: "revoked" });
   }
 
-  const fullName = body.full_name || body.name || body.fullName;
+  // Métricas opcionales (si Zapier las manda desde el pago de Skool). Se limpian igual que el CSV.
+  const num = (v: unknown) => {
+    if (v == null) return undefined;
+    const n = parseFloat(String(v).replace(/[^0-9.-]/g, ""));
+    return Number.isFinite(n) ? n : undefined;
+  };
+  const str = (v: unknown) => {
+    const s = v == null ? "" : String(v).trim();
+    return s || undefined;
+  };
+  const dateVal = (v: unknown) => {
+    const s = v == null ? "" : String(v).trim();
+    return s ? s.slice(0, 10) : undefined;
+  };
+
+  const fullName = str(body.full_name || body.name || body.fullName);
+  const tier = str(body.tier);
+  const ltv = num(body.ltv ?? body.LTV);
+  const price = num(body.price ?? body.Price);
+  const recurring = str(body.recurring_interval ?? body["Recurring Interval"]);
+  const joinedDate = dateVal(body.joined_date ?? body.JoinedDate);
+  const invitedBy = str(body.invited_by ?? body["Invited By"]);
+
   const { error } = await service.from("allowed_members").upsert(
     {
       email,
       is_active: true,
       source: "skool_webhook",
-      ...(fullName ? { full_name: String(fullName) } : {}),
+      ...(fullName ? { full_name: fullName } : {}),
+      ...(tier ? { tier } : {}),
+      ...(ltv !== undefined ? { ltv } : {}),
+      ...(price !== undefined ? { price } : {}),
+      ...(recurring ? { recurring_interval: recurring } : {}),
+      ...(joinedDate ? { joined_date: joinedDate } : {}),
+      ...(invitedBy ? { invited_by: invitedBy } : {}),
     },
     { onConflict: "email" }
   );
