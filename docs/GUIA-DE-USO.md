@@ -79,6 +79,21 @@ Métricas de uso: GPTs activos, miembros con acceso, mensajes totales, usuarios 
 
 Ciclo de una persona: se une (paga) en Skool → aparece en tu export → subes el CSV → queda habilitada. Si deja Skool → desaparece del CSV → al siguiente import queda revocada → al entrar ve la pantalla de acceso denegado con botón para **renovar en Skool**.
 
+### Automatizar altas/bajas (sin exports) — webhook
+Para no depender del CSV manual hay un endpoint genérico que agrega o revoca un miembro:
+
+```
+POST /api/webhooks/skool
+Header:  x-webhook-secret: <SKOOL_WEBHOOK_SECRET>
+Body:    { "email": "persona@correo.com", "action": "add" | "remove", "full_name": "..." }
+```
+
+- `action: "add"` (o cualquier valor no reconocido) → activa/crea el miembro (source `skool_webhook`).
+- `action: "remove"` (o cancel/revoke/churn...) → lo revoca.
+- Sin el secreto correcto → 401.
+
+Se conecta con lo que tengas: **webhook nativo de Skool** (si tu plan lo permite, apunta directo a esta URL), **Make** o **Zapier** (trigger "nuevo miembro"/"miembro cancelado" → módulo HTTP POST a esta URL). Así el onboarding es automático e instantáneo, sin CSV. El secreto se configura en `SKOOL_WEBHOOK_SECRET`.
+
 Para designar un admin (una sola vez, manual en la base de datos):
 ```sql
 UPDATE profiles SET is_admin = true WHERE email = 'tu@email.com';
