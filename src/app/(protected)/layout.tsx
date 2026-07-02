@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { isAllowedMember } from "@/lib/membership";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { LogOut, LayoutGrid, MessagesSquare } from "lucide-react";
@@ -14,6 +15,12 @@ export default async function ProtectedLayout({
   } = await supabase.auth.getUser();
 
   if (!user) redirect("/login");
+
+  // Defensa: si el usuario fue removido de la lista, cerrar sesión.
+  if (!(await isAllowedMember(user.email))) {
+    await supabase.auth.signOut();
+    redirect("/unauthorized");
+  }
 
   const { data: profile } = await supabase
     .from("profiles")

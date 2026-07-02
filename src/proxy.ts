@@ -32,7 +32,7 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const publicPaths = ["/login", "/unauthorized", "/auth/callback"];
-  const isPublic = publicPaths.some((p) => pathname.startsWith(p));
+  const isPublic = pathname === "/" || publicPaths.some((p) => pathname.startsWith(p));
   const isApi = pathname.startsWith("/api/");
 
   if (!user && !isPublic && !isApi) {

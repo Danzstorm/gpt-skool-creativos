@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { isAllowedMember } from "@/lib/membership";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
@@ -7,9 +8,16 @@ export async function GET(request: Request) {
 
   if (code) {
     const supabase = await createClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}/chat`);
+      // Gate real (cubre magic link Y Google OAuth): solo miembros en la lista.
+      const email = data.user?.email;
+      if (await isAllowedMember(email)) {
+        return NextResponse.redirect(`${origin}/chat`);
+      }
+      // Autenticado pero no está en la comunidad: cerrar sesión y bloquear.
+      await supabase.auth.signOut();
+      return NextResponse.redirect(`${origin}/unauthorized`);
     }
   }
 
