@@ -1,6 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import Link from "next/link";
-import { Bot, Users, MessageSquare, Activity } from "lucide-react";
+import { Bot, Users, MessageSquare, Activity, DollarSign } from "lucide-react";
 
 export default async function AdminDashboard() {
   const supabase = createServiceClient();
@@ -16,7 +16,7 @@ export default async function AdminDashboard() {
     supabase.from("gpts").select("*", { count: "exact", head: true }),
     supabase.from("allowed_members").select("*", { count: "exact", head: true }).eq("is_active", true),
     supabase.from("threads").select("*", { count: "exact", head: true }),
-    supabase.from("usage_events").select("user_id, gpt_id, thread_id").limit(10000),
+    supabase.from("usage_events").select("user_id, gpt_id, thread_id, cost, tokens_in, tokens_out").limit(20000),
     supabase.from("gpts").select("id, name"),
     supabase.from("profiles").select("id, email, full_name"),
   ]);
@@ -25,16 +25,28 @@ export default async function AdminDashboard() {
   const gptName = new Map((gpts ?? []).map((g) => [g.id, g.name]));
   const profById = new Map((profiles ?? []).map((p) => [p.id, p]));
 
-  // Uso por GPT
-  const perGpt = new Map<string, number>();
+  // Uso por GPT (mensajes + costo)
+  const perGpt = new Map<string, { n: number; cost: number }>();
   // Uso por usuario
-  const perUser = new Map<string, { messages: number; gpts: Set<string>; threads: Set<string> }>();
+  const perUser = new Map<
+    string,
+    { messages: number; gpts: Set<string>; threads: Set<string>; cost: number }
+  >();
+  let totalCost = 0;
 
   for (const e of rows) {
-    if (e.gpt_id) perGpt.set(e.gpt_id, (perGpt.get(e.gpt_id) ?? 0) + 1);
+    const cost = Number(e.cost ?? 0);
+    totalCost += cost;
+    if (e.gpt_id) {
+      const g = perGpt.get(e.gpt_id) ?? { n: 0, cost: 0 };
+      g.n += 1;
+      g.cost += cost;
+      perGpt.set(e.gpt_id, g);
+    }
     if (e.user_id) {
-      const u = perUser.get(e.user_id) ?? { messages: 0, gpts: new Set(), threads: new Set() };
+      const u = perUser.get(e.user_id) ?? { messages: 0, gpts: new Set(), threads: new Set(), cost: 0 };
       u.messages += 1;
+      u.cost += cost;
       if (e.gpt_id) u.gpts.add(e.gpt_id);
       if (e.thread_id) u.threads.add(e.thread_id);
       perUser.set(e.user_id, u);
@@ -42,7 +54,7 @@ export default async function AdminDashboard() {
   }
 
   const topGpts = [...perGpt.entries()]
-    .map(([id, n]) => ({ name: gptName.get(id) ?? "GPT eliminado", n }))
+    .map(([id, g]) => ({ name: gptName.get(id) ?? "GPT eliminado", n: g.n, cost: g.cost }))
     .sort((a, b) => b.n - a.n);
 
   const topUsers = [...perUser.entries()]
@@ -51,22 +63,27 @@ export default async function AdminDashboard() {
       messages: u.messages,
       gpts: u.gpts.size,
       threads: u.threads.size,
+      cost: u.cost,
     }))
     .sort((a, b) => b.messages - a.messages)
     .slice(0, 15);
+
+  const money = (n: number) =>
+    n < 0.01 && n > 0 ? `$${n.toFixed(4)}` : `$${n.toFixed(2)}`;
 
   const stats = [
     { icon: Bot, label: "GPTs activos", value: gptCount ?? 0, href: "/admin/gpts" },
     { icon: Users, label: "Miembros con acceso", value: memberCount ?? 0, href: "/admin/members" },
     { icon: MessageSquare, label: "Mensajes totales", value: rows.length },
     { icon: Activity, label: "Usuarios activos", value: perUser.size },
+    { icon: DollarSign, label: "Costo estimado (OpenAI)", value: money(totalCost) },
   ];
 
   return (
     <div>
       <h1 className="text-2xl font-bold text-white mb-6">Dashboard Admin</h1>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         {stats.map(({ icon: Icon, label, value, href }) => {
           const card = (
             <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 h-full">
@@ -99,7 +116,9 @@ export default async function AdminDashboard() {
                   <div key={g.name}>
                     <div className="flex justify-between text-sm mb-1">
                       <span className="text-gray-300">{g.name}</span>
-                      <span className="text-gray-500">{g.n}</span>
+                      <span className="text-gray-500">
+                        {g.n} · <span className="text-gray-400">{money(g.cost)}</span>
+                      </span>
                     </div>
                     <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
                       <div className="h-full bg-purple-600 rounded-full" style={{ width: `${pct}%` }} />
@@ -125,15 +144,17 @@ export default async function AdminDashboard() {
                     <th className="pb-2 font-medium text-right">Msgs</th>
                     <th className="pb-2 font-medium text-right">GPTs</th>
                     <th className="pb-2 font-medium text-right">Chats</th>
+                    <th className="pb-2 font-medium text-right">Costo</th>
                   </tr>
                 </thead>
                 <tbody>
                   {topUsers.map((u) => (
                     <tr key={u.email} className="border-t border-gray-800">
-                      <td className="py-2 text-gray-300 truncate max-w-[180px]">{u.email}</td>
+                      <td className="py-2 text-gray-300 truncate max-w-[160px]">{u.email}</td>
                       <td className="py-2 text-right text-gray-300 tabular-nums">{u.messages}</td>
                       <td className="py-2 text-right text-gray-400 tabular-nums">{u.gpts}</td>
                       <td className="py-2 text-right text-gray-400 tabular-nums">{u.threads}</td>
+                      <td className="py-2 text-right text-gray-400 tabular-nums">{money(u.cost)}</td>
                     </tr>
                   ))}
                 </tbody>

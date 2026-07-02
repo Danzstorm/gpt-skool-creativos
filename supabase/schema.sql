@@ -121,6 +121,10 @@ CREATE TABLE IF NOT EXISTS usage_events (
   user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
   gpt_id uuid REFERENCES gpts(id) ON DELETE SET NULL,
   thread_id uuid REFERENCES threads(id) ON DELETE SET NULL,
+  model text,
+  tokens_in integer,
+  tokens_out integer,
+  cost numeric,
   created_at timestamptz DEFAULT now()
 );
 ALTER TABLE usage_events ENABLE ROW LEVEL SECURITY;

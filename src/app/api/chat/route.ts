@@ -2,6 +2,7 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { runStreamResponse } from "@/lib/chat-stream";
+import { estimateCost } from "@/lib/pricing";
 import OpenAI from "openai";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -103,7 +104,7 @@ export async function POST(request: NextRequest) {
     ...(docAttachments.length > 0 ? { attachments: docAttachments } : {}),
   });
 
-  return runStreamResponse(openaiThreadId, gpt.openai_assistant_id, async () => {
+  return runStreamResponse(openaiThreadId, gpt.openai_assistant_id, async (meta) => {
     const isDefaultTitle = thread.title === "Nueva conversación";
     await supabase
       .from("threads")
@@ -113,10 +114,18 @@ export async function POST(request: NextRequest) {
       })
       .eq("id", threadId);
 
-    // Registrar evento de uso (best-effort, no bloquea)
+    // Registrar evento de uso con tokens y costo estimado (best-effort)
     serviceClient
       .from("usage_events")
-      .insert({ user_id: user.id, gpt_id: gptId, thread_id: threadId })
+      .insert({
+        user_id: user.id,
+        gpt_id: gptId,
+        thread_id: threadId,
+        model: meta.model,
+        tokens_in: meta.tokensIn,
+        tokens_out: meta.tokensOut,
+        cost: estimateCost(meta.model, meta.tokensIn, meta.tokensOut),
+      })
       .then(() => {}, () => {});
   });
 }

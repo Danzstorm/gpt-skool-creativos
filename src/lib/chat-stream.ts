@@ -6,10 +6,16 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
  * Streamea un run del asistente sobre un thread como SSE.
  * onComplete se ejecuta cuando el run termina OK (p.ej. actualizar updated_at/title).
  */
+export interface RunMeta {
+  model: string | null;
+  tokensIn: number;
+  tokensOut: number;
+}
+
 export function runStreamResponse(
   openaiThreadId: string,
   assistantId: string,
-  onComplete?: () => Promise<void>
+  onComplete?: (meta: RunMeta) => Promise<void>
 ): Response {
   const encoder = new TextEncoder();
 
@@ -32,7 +38,13 @@ export function runStreamResponse(
           }
 
           if (event.event === "thread.run.completed") {
-            if (onComplete) await onComplete();
+            const usage = event.data.usage;
+            const meta: RunMeta = {
+              model: event.data.model ?? null,
+              tokensIn: usage?.prompt_tokens ?? 0,
+              tokensOut: usage?.completion_tokens ?? 0,
+            };
+            if (onComplete) await onComplete(meta);
             controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           }
 

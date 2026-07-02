@@ -2,6 +2,7 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { runStreamResponse } from "@/lib/chat-stream";
+import { estimateCost } from "@/lib/pricing";
 import OpenAI from "openai";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -60,7 +61,19 @@ export async function POST(request: NextRequest) {
     await openai.beta.threads.messages.delete(last[0].id, { thread_id: openaiThreadId });
   }
 
-  return runStreamResponse(openaiThreadId, gpt.openai_assistant_id, async () => {
+  return runStreamResponse(openaiThreadId, gpt.openai_assistant_id, async (meta) => {
     await supabase.from("threads").update({ updated_at: new Date().toISOString() }).eq("id", threadId);
+    serviceClient
+      .from("usage_events")
+      .insert({
+        user_id: user.id,
+        gpt_id: gptId,
+        thread_id: threadId,
+        model: meta.model,
+        tokens_in: meta.tokensIn,
+        tokens_out: meta.tokensOut,
+        cost: estimateCost(meta.model, meta.tokensIn, meta.tokensOut),
+      })
+      .then(() => {}, () => {});
   });
 }
