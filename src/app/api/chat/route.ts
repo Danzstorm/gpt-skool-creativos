@@ -108,5 +108,11 @@ export async function POST(request: NextRequest) {
         ...(isDefaultTitle && { title: message.slice(0, 40) }),
       })
       .eq("id", threadId);
+
+    // Registrar evento de uso (best-effort, no bloquea)
+    serviceClient
+      .from("usage_events")
+      .insert({ user_id: user.id, gpt_id: gptId, thread_id: threadId })
+      .then(() => {}, () => {});
   });
 }

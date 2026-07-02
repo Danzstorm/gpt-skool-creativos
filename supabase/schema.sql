@@ -114,6 +114,17 @@ CREATE POLICY "users manage own profile"
   USING (id = auth.uid())
   WITH CHECK (id = auth.uid());
 
+-- Eventos de uso (un registro por mensaje enviado) para métricas de admin.
+CREATE TABLE IF NOT EXISTS usage_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
+  gpt_id uuid REFERENCES gpts(id) ON DELETE SET NULL,
+  thread_id uuid REFERENCES threads(id) ON DELETE SET NULL,
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE usage_events ENABLE ROW LEVEL SECURITY;
+-- Sin policies: se escribe/lee solo con service role (server-side).
+
 -- Mapeo de adjuntos del chat: openai_file_id -> copia en Storage.
 -- Permite reconstruir miniaturas de imágenes al recargar una conversación.
 -- El texto de los mensajes vive en OpenAI; aquí solo persiste la referencia del archivo.
