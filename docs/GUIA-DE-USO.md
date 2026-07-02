@@ -72,9 +72,12 @@ Métricas de uso: GPTs activos, miembros con acceso, mensajes totales, usuarios 
 > Un "GPT" aquí = un Assistant de OpenAI. El system prompt vive en OpenAI, no en la base de datos. El `openai_assistant_id` nunca sale del servidor.
 
 ### Miembros (`/admin/members`)
-- **Importar CSV** de Skool: mapea email, nombre y métricas (**tier, LTV, precio, fecha de ingreso, invitado por**). Reimportar actualiza los existentes.
+- **Importar CSV** de Skool: mapea email, nombre y métricas (**tier, LTV, precio, fecha de ingreso, invitado por**).
+- **Sincronización (importante):** el CSV es la fuente de verdad. Al importar, los emails nuevos se agregan, los existentes se actualizan, y **los que fueron importados antes por CSV pero ya no están en el archivo se revocan** (se asume que dejaron Skool). Las **altas manuales** (incluido el admin) **nunca** se revocan por sync. → Sube el **export completo** de Skool, no listas parciales.
 - **Barra resumen**: total, activos, LTV total, conteo por tier.
 - Agregar un miembro manual, **revocar/restaurar** acceso, o eliminar.
+
+Ciclo de una persona: se une (paga) en Skool → aparece en tu export → subes el CSV → queda habilitada. Si deja Skool → desaparece del CSV → al siguiente import queda revocada → al entrar ve la pantalla de acceso denegado con botón para **renovar en Skool**.
 
 Para designar un admin (una sola vez, manual en la base de datos):
 ```sql
@@ -104,6 +107,7 @@ NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...
 OPENAI_API_KEY=...
+NEXT_PUBLIC_SKOOL_URL=...   # link público del Skool (botón renovar en acceso denegado)
 ```
 
 El esquema de base de datos está en `supabase/schema.sql`.

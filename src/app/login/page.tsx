@@ -105,6 +105,16 @@ export default function LoginPage() {
             {status === "error" && (
               <div className="bg-red-900/30 border border-red-700/50 rounded-xl px-4 py-3 text-red-400 text-sm">
                 {errorMsg}
+                {errorMsg.toLowerCase().includes("acceso") && (
+                  <a
+                    href={process.env.NEXT_PUBLIC_SKOOL_URL || "https://www.skool.com/"}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block mt-2 text-violet-300 underline"
+                  >
+                    Unirme al Skool de Creativos →
+                  </a>
+                )}
               </div>
             )}
 

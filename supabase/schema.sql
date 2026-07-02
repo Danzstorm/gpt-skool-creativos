@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS allowed_members (
   recurring_interval text,
   joined_date date,
   invited_by text,
+  source text DEFAULT 'manual', -- 'skool_csv' | 'manual'. La sincronización solo revoca 'skool_csv'.
   added_at timestamptz DEFAULT now()
 );
 

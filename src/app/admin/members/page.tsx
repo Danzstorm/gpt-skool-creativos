@@ -89,7 +89,7 @@ export default function AdminMembersPage() {
     await fetch("/api/admin/members", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ members: preview }),
+      body: JSON.stringify({ members: preview, sync: true }),
     });
     setImporting(false);
     setPreview(null);
@@ -238,8 +238,12 @@ export default function AdminMembersPage() {
           <h3 className="text-white font-semibold mb-2">
             Vista previa — {preview.length} miembros detectados
           </h3>
-          <p className="text-gray-400 text-sm mb-4">
+          <p className="text-gray-400 text-sm mb-2">
             Los emails ya existentes serán actualizados, los nuevos serán creados.
+          </p>
+          <p className="text-amber-400/90 text-xs mb-4">
+            ⚠️ Sincronización: los miembros importados antes por CSV que NO estén en este archivo
+            serán <strong>revocados</strong> (se asume que dejaron Skool). Las altas manuales no se tocan.
           </p>
           <div className="max-h-48 overflow-y-auto space-y-1 mb-4">
             {preview.slice(0, 20).map((m, i) => (

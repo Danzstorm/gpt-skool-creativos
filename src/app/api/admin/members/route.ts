@@ -27,7 +27,10 @@ export async function POST(request: NextRequest) {
   const user = await requireAdmin();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
-  const { members } = await request.json();
+  // sync=true (import CSV): el CSV es fuente de verdad. Se marcan como 'skool_csv'
+  // y se revocan las filas 'skool_csv' que ya no aparecen (dejaron Skool).
+  // Los miembros 'manual' (admin, altas a mano) NUNCA se tocan por sync.
+  const { members, sync } = await request.json();
   if (!Array.isArray(members) || members.length === 0) {
     return NextResponse.json({ error: "Lista de miembros requerida" }, { status: 400 });
   }
@@ -44,6 +47,8 @@ export async function POST(request: NextRequest) {
   };
 
   const serviceClient = createServiceClient();
+  const emails = (members as IncomingMember[]).map((m) => m.email.toLowerCase().trim());
+
   const { data, error } = await serviceClient
     .from("allowed_members")
     .upsert(
@@ -51,6 +56,7 @@ export async function POST(request: NextRequest) {
         email: m.email.toLowerCase().trim(),
         full_name: m.full_name || null,
         is_active: true,
+        ...(sync && { source: "skool_csv" }),
         ...(m.tier !== undefined && { tier: m.tier }),
         ...(m.ltv !== undefined && { ltv: m.ltv }),
         ...(m.price !== undefined && { price: m.price }),
@@ -63,5 +69,25 @@ export async function POST(request: NextRequest) {
     .select();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ imported: data?.length ?? 0 });
+
+  let revoked = 0;
+  if (sync) {
+    // Revocar los 'skool_csv' activos que NO están en este import (diff en JS para evitar problemas de comillas)
+    const { data: existing } = await serviceClient
+      .from("allowed_members")
+      .select("email")
+      .eq("source", "skool_csv")
+      .eq("is_active", true);
+
+    const importedSet = new Set(emails);
+    const toRevoke = (existing ?? []).map((r) => r.email).filter((e) => !importedSet.has(e));
+
+    for (let i = 0; i < toRevoke.length; i += 200) {
+      const chunk = toRevoke.slice(i, i + 200);
+      await serviceClient.from("allowed_members").update({ is_active: false }).in("email", chunk);
+    }
+    revoked = toRevoke.length;
+  }
+
+  return NextResponse.json({ imported: data?.length ?? 0, revoked });
 }
