@@ -5,14 +5,15 @@ import type { GptWithAssistantId } from "@/lib/types";
 import { Plus, Pencil, Trash2, Eye, EyeOff, X } from "lucide-react";
 
 const CATEGORIES = ["General", "Imágenes", "Marketing", "Copywriting", "Diseño", "Ventas", "Productividad", "Educación"];
-const MODELS = ["gpt-4.1", "gpt-4.1-mini", "gpt-4o", "gpt-4o-mini"];
+// Ordenados de más económico a más caro. mini/nano = mucho más baratos, buenos para prompts.
+const MODELS = ["gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o-mini", "gpt-4.1", "gpt-4o"];
 
 const DEFAULT_FORM = {
   name: "",
   description: "",
   category: "General",
   system_prompt: "",
-  model: "gpt-4.1",
+  model: "gpt-4.1-mini",
   tools_enabled: { file_search: true, code_interpreter: false },
   vision_enabled: true,
   conversation_starters: [] as string[],

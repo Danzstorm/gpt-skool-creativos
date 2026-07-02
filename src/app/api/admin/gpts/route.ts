@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     name,
     description,
     instructions: system_prompt,
-    model: model || "gpt-4.1",
+    model: model || "gpt-4.1-mini",
     tools,
   });
 
