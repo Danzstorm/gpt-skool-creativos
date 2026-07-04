@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import type { GptWithAssistantId } from "@/lib/types";
-import { Plus, Pencil, Trash2, Eye, EyeOff, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, EyeOff, X, GripVertical } from "lucide-react";
+import { getGptVisual } from "@/lib/gpt-visual";
 
 const CATEGORIES = ["General", "Imágenes", "Marketing", "Copywriting", "Diseño", "Ventas", "Productividad", "Educación"];
 // Ordenados de más económico a más caro. mini/nano = mucho más baratos, buenos para prompts.
@@ -43,6 +45,7 @@ export default function AdminGptsPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadingIcon, setUploadingIcon] = useState(false);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
 
   useEffect(() => {
     loadGpts();
@@ -165,13 +168,35 @@ export default function AdminGptsPage() {
     loadGpts();
   }
 
+  // Reordenar por drag & drop: mueve el arrastrado a la posición soltada y
+  // persiste el nuevo sort_order de todos (best-effort, en paralelo).
+  function handleDrop(targetIndex: number) {
+    if (dragIndex === null || dragIndex === targetIndex) {
+      setDragIndex(null);
+      return;
+    }
+    const next = [...gpts];
+    const [moved] = next.splice(dragIndex, 1);
+    next.splice(targetIndex, 0, moved);
+    const reordered = next.map((g, i) => ({ ...g, sort_order: i }));
+    setGpts(reordered);
+    setDragIndex(null);
+    reordered.forEach((g, i) => {
+      fetch(`/api/admin/gpts/${g.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sort_order: i }),
+      });
+    });
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-white">GPTs</h1>
         <button
           onClick={openCreate}
-          className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl px-4 py-2.5 text-sm transition"
+          className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white font-semibold rounded-xl px-4 py-2.5 text-sm transition"
         >
           <Plus size={16} /> Nuevo GPT
         </button>
@@ -179,7 +204,7 @@ export default function AdminGptsPage() {
 
       {showForm && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <h2 className="text-xl font-bold text-white mb-5">
                 {editingId ? "Editar GPT" : "Nuevo GPT"}
@@ -187,15 +212,18 @@ export default function AdminGptsPage() {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-xl bg-gray-800 border border-gray-600 flex items-center justify-center text-xl overflow-hidden flex-shrink-0">
+                  <div className="relative w-16 h-16 rounded-xl bg-zinc-800 border border-zinc-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     {form.icon_url ? (
-                      <img src={form.icon_url} alt="" className="w-full h-full object-cover" />
+                      <Image src={form.icon_url} alt="" fill sizes="64px" className="object-cover" />
                     ) : (
-                      "✦"
+                      (() => {
+                        const { Icon } = getGptVisual(form.category);
+                        return <Icon size={26} className="text-zinc-500" />;
+                      })()
                     )}
                   </div>
                   <div>
-                    <label className="inline-block bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white text-sm rounded-xl px-4 py-2 cursor-pointer transition">
+                    <label className="inline-block bg-zinc-800 hover:bg-zinc-700 border border-zinc-600 text-white text-sm rounded-xl px-4 py-2 cursor-pointer transition">
                       {uploadingIcon ? "Subiendo..." : "Subir icono"}
                       <input
                         type="file"
@@ -208,44 +236,44 @@ export default function AdminGptsPage() {
                       <button
                         type="button"
                         onClick={() => setForm({ ...form, icon_url: "" })}
-                        className="ml-2 text-gray-400 hover:text-red-400 text-sm"
+                        className="ml-2 text-zinc-400 hover:text-red-400 text-sm"
                       >
                         Quitar
                       </button>
                     )}
-                    <p className="text-xs text-gray-500 mt-1">Se recorta a cuadrado 256px.</p>
+                    <p className="text-xs text-zinc-500 mt-1">Se recorta a cuadrado 256px.</p>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Nombre *</label>
+                  <label className="block text-sm font-medium text-zinc-300 mb-1.5">Nombre *</label>
                   <input
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     required
-                    className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                    className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Descripción</label>
+                  <label className="block text-sm font-medium text-zinc-300 mb-1.5">Descripción</label>
                   <textarea
                     value={form.description}
                     onChange={(e) => setForm({ ...form, description: e.target.value })}
                     rows={2}
-                    className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm resize-none"
+                    className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm resize-none"
                   />
                 </div>
 
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1.5">Categoría</label>
+                    <label className="block text-sm font-medium text-zinc-300 mb-1.5">Categoría</label>
                     <input
                       list="categorias"
                       value={form.category}
                       onChange={(e) => setForm({ ...form, category: e.target.value })}
                       placeholder="General"
-                      className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                      className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm"
                     />
                     <datalist id="categorias">
                       {CATEGORIES.map((c) => (
@@ -254,11 +282,11 @@ export default function AdminGptsPage() {
                     </datalist>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1.5">Modelo</label>
+                    <label className="block text-sm font-medium text-zinc-300 mb-1.5">Modelo</label>
                     <select
                       value={form.model}
                       onChange={(e) => setForm({ ...form, model: e.target.value })}
-                      className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                      className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm"
                     >
                       {MODELS.map((m) => (
                         <option key={m} value={m}>{m}</option>
@@ -266,19 +294,19 @@ export default function AdminGptsPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1.5">Orden</label>
+                    <label className="block text-sm font-medium text-zinc-300 mb-1.5">Orden</label>
                     <input
                       type="number"
                       value={form.sort_order}
                       onChange={(e) => setForm({ ...form, sort_order: Number(e.target.value) })}
-                      className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                      className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1.5">
-                    System Prompt {editingId && <span className="text-gray-500">(dejar vacío = no cambiar)</span>}
+                  <label className="block text-sm font-medium text-zinc-300 mb-1.5">
+                    System Prompt {editingId && <span className="text-zinc-500">(dejar vacío = no cambiar)</span>}
                     {!editingId && <span className="text-red-400"> *</span>}
                   </label>
                   <textarea
@@ -287,19 +315,19 @@ export default function AdminGptsPage() {
                     required={!editingId}
                     rows={6}
                     placeholder="Eres un asistente de marketing experto en..."
-                    className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm resize-none font-mono"
+                    className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm resize-none font-mono"
                   />
                 </div>
 
-                <p className="text-xs text-gray-500 bg-gray-800/50 border border-gray-700 rounded-xl px-4 py-2.5">
+                <p className="text-xs text-zinc-500 bg-zinc-800/50 border border-zinc-700 rounded-xl px-4 py-2.5">
                   Todos los GPTs incluyen las mismas capacidades: lectura de archivos, intérprete de
                   código y visión (imágenes). No es necesario configurarlo.
                 </p>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                  <label className="block text-sm font-medium text-zinc-300 mb-1.5">
                     Sugerencias de inicio{" "}
-                    <span className="text-gray-500">(botones clicables en la pantalla del GPT)</span>
+                    <span className="text-zinc-500">(botones clicables en la pantalla del GPT)</span>
                   </label>
                   <div className="space-y-2">
                     {form.conversation_starters.map((s, i) => (
@@ -308,12 +336,12 @@ export default function AdminGptsPage() {
                           value={s}
                           onChange={(e) => updateStarter(i, e.target.value)}
                           placeholder="Ej: Crea el character sheet de una mujer de 30 años..."
-                          className="flex-1 bg-gray-800 border border-gray-600 rounded-xl px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                          className="flex-1 bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm"
                         />
                         <button
                           type="button"
                           onClick={() => removeStarter(i)}
-                          className="p-2 rounded-xl text-gray-400 hover:text-red-400 hover:bg-gray-800 transition flex-shrink-0"
+                          className="p-2 rounded-xl text-zinc-400 hover:text-red-400 hover:bg-zinc-800 transition flex-shrink-0"
                         >
                           <X size={16} />
                         </button>
@@ -323,7 +351,7 @@ export default function AdminGptsPage() {
                       <button
                         type="button"
                         onClick={addStarter}
-                        className="flex items-center gap-1.5 text-sm text-purple-400 hover:text-purple-300 transition"
+                        className="flex items-center gap-1.5 text-sm text-violet-400 hover:text-violet-300 transition"
                       >
                         <Plus size={14} /> Agregar sugerencia
                       </button>
@@ -335,14 +363,14 @@ export default function AdminGptsPage() {
                   <button
                     type="submit"
                     disabled={saving}
-                    className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-semibold rounded-xl px-5 py-2.5 text-sm transition"
+                    className="bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white font-semibold rounded-xl px-5 py-2.5 text-sm transition"
                   >
                     {saving ? "Guardando..." : editingId ? "Guardar cambios" : "Crear GPT"}
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowForm(false)}
-                    className="bg-gray-800 hover:bg-gray-700 text-white font-semibold rounded-xl px-5 py-2.5 text-sm transition"
+                    className="bg-zinc-800 hover:bg-zinc-700 text-white font-semibold rounded-xl px-5 py-2.5 text-sm transition"
                   >
                     Cancelar
                   </button>
@@ -354,57 +382,77 @@ export default function AdminGptsPage() {
       )}
 
       {loading ? (
-        <div className="text-gray-400 text-center py-12">Cargando...</div>
+        <div className="text-zinc-400 text-center py-12">Cargando...</div>
       ) : gpts.length === 0 ? (
-        <div className="text-center py-16 text-gray-500">
+        <div className="text-center py-16 text-zinc-500">
           <div className="text-4xl mb-3">🤖</div>
           <p>No hay GPTs. Crea el primero.</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {gpts.map((gpt) => (
+          <p className="text-zinc-600 text-xs -mt-1 mb-1">Arrastra para reordenar el catálogo.</p>
+          {gpts.map((gpt, i) => (
             <div
               key={gpt.id}
-              className={`bg-gray-900 border rounded-2xl p-5 flex items-center gap-4 ${
-                gpt.is_active ? "border-gray-800" : "border-gray-800 opacity-60"
-              }`}
+              draggable
+              onDragStart={() => setDragIndex(i)}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={() => handleDrop(i)}
+              onDragEnd={() => setDragIndex(null)}
+              className={`bg-zinc-900 border rounded-2xl p-5 flex items-center gap-4 transition ${
+                gpt.is_active ? "border-zinc-800" : "border-zinc-800 opacity-60"
+              } ${dragIndex === i ? "opacity-40" : ""}`}
             >
-              <div className="w-10 h-10 bg-purple-600/20 rounded-xl flex items-center justify-center text-lg flex-shrink-0">
-                ✦
-              </div>
+              <span className="text-zinc-600 cursor-grab active:cursor-grabbing flex-shrink-0" title="Arrastrar para reordenar">
+                <GripVertical size={16} />
+              </span>
+              {(() => {
+                const { Icon, accentClasses } = getGptVisual(gpt.category);
+                return (
+                  <div
+                    className={`relative w-10 h-10 rounded-xl bg-gradient-to-br border flex items-center justify-center flex-shrink-0 overflow-hidden ${accentClasses}`}
+                  >
+                    {gpt.icon_url ? (
+                      <Image src={gpt.icon_url} alt="" fill sizes="40px" className="object-cover" />
+                    ) : (
+                      <Icon size={18} />
+                    )}
+                  </div>
+                );
+              })()}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <h3 className="text-white font-semibold truncate">{gpt.name}</h3>
-                  <span className="text-xs text-purple-400 bg-purple-400/10 px-2 py-0.5 rounded-full">
+                  <span className="text-xs text-violet-400 bg-violet-400/10 px-2 py-0.5 rounded-full">
                     {gpt.category}
                   </span>
                   {!gpt.is_active && (
-                    <span className="text-xs text-gray-500 bg-gray-700 px-2 py-0.5 rounded-full">
+                    <span className="text-xs text-zinc-500 bg-zinc-700 px-2 py-0.5 rounded-full">
                       Inactivo
                     </span>
                   )}
                 </div>
                 {gpt.description && (
-                  <p className="text-gray-400 text-sm mt-0.5 truncate">{gpt.description}</p>
+                  <p className="text-zinc-400 text-sm mt-0.5 truncate">{gpt.description}</p>
                 )}
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button
                   onClick={() => toggleActive(gpt)}
-                  className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-gray-800 transition"
+                  className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
                   title={gpt.is_active ? "Desactivar" : "Activar"}
                 >
                   {gpt.is_active ? <Eye size={16} /> : <EyeOff size={16} />}
                 </button>
                 <button
                   onClick={() => openEdit(gpt)}
-                  className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-gray-800 transition"
+                  className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
                 >
                   <Pencil size={16} />
                 </button>
                 <button
                   onClick={() => deleteGpt(gpt)}
-                  className="p-2 rounded-xl text-gray-400 hover:text-red-400 hover:bg-gray-800 transition"
+                  className="p-2 rounded-xl text-zinc-400 hover:text-red-400 hover:bg-zinc-800 transition"
                 >
                   <Trash2 size={16} />
                 </button>

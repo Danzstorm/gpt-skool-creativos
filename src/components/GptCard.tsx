@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Gpt } from "@/lib/types";
+import GptMark from "@/components/GptMark";
 
 interface Props {
   gpt: Gpt;
@@ -9,28 +10,29 @@ export default function GptCard({ gpt }: Props) {
   return (
     <Link
       href={`/chat?gpt=${gpt.id}`}
-      className="group relative block bg-zinc-900/70 border border-zinc-800 hover:border-zinc-700 rounded-2xl p-5 transition-all duration-200 hover:-translate-y-0.5 hover:bg-zinc-900 shadow-[0_1px_0_rgba(255,255,255,0.03)_inset] hover:shadow-[0_8px_30px_-12px_rgba(139,92,246,0.25)]"
+      className="group relative block rounded-2xl border border-stone-800/80 bg-stone-900/40 p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-stone-700 hover:bg-stone-900/70 hover:shadow-[0_10px_40px_-16px_rgba(139,92,246,0.3)]"
     >
       <div className="flex items-start gap-4">
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500/25 to-violet-500/5 border border-violet-500/20 flex items-center justify-center text-xl flex-shrink-0 overflow-hidden shadow-[0_1px_0_rgba(255,255,255,0.06)_inset]">
-          {gpt.icon_url ? (
-            <img src={gpt.icon_url} alt="" className="w-full h-full object-cover" />
-          ) : (
-            "✦"
-          )}
-        </div>
+        <GptMark
+          name={gpt.name}
+          iconUrl={gpt.icon_url}
+          category={gpt.category}
+          className="h-12 w-12 rounded-xl"
+          sizePx={48}
+          initialClassName="text-xl"
+        />
 
-        <div className="flex-1 min-w-0">
-          <h3 className="text-zinc-100 font-semibold group-hover:text-white transition truncate">
+        <div className="min-w-0 flex-1">
+          <h3 className="font-display truncate text-lg font-medium text-stone-50 transition group-hover:text-white">
             {gpt.name}
           </h3>
           {gpt.category && (
-            <span className="text-xs text-violet-400/90 font-medium">
+            <span className="text-xs font-medium uppercase tracking-[0.12em] text-violet-400/80">
               {gpt.category}
             </span>
           )}
           {gpt.description && (
-            <p className="text-zinc-400 text-sm mt-1.5 line-clamp-3 leading-relaxed">
+            <p className="mt-1.5 line-clamp-3 text-sm leading-relaxed text-stone-400">
               {gpt.description}
             </p>
           )}

@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Límite: 20 transcripciones por minuto por usuario
-  const rl = checkRateLimit(`transcribe:${user.id}`, 20, 60_000);
+  const rl = await checkRateLimit(`transcribe:${user.id}`, 20, 60_000);
   if (!rl.ok) return rateLimitResponse(rl);
 
   const formData = await request.formData();

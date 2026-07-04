@@ -140,6 +140,17 @@ export default function AdminMembersPage() {
       m.full_name?.toLowerCase().includes(search.toLowerCase())
   );
 
+  // Diff de la importación: qué cambia realmente si se confirma (mismo criterio
+  // que la ruta /api/admin/members al sincronizar).
+  const csvEmails = new Set(preview?.map((m) => m.email) ?? []);
+  const existingByEmail = new Map(members.map((m) => [m.email, m]));
+  const newCount = preview ? preview.filter((m) => !existingByEmail.has(m.email)).length : 0;
+  const updateCount = preview ? preview.length - newCount : 0;
+  const skoolActive = members.filter((m) => m.source === "skool_csv" && m.is_active);
+  const toRevoke = preview ? skoolActive.filter((m) => !csvEmails.has(m.email)) : [];
+  const partialImportWarning =
+    !!preview && skoolActive.length > 20 && preview.length < skoolActive.length * 0.6;
+
   const activeCount = members.filter((m) => m.is_active).length;
   const totalLtv = members.reduce((sum, m) => sum + (m.ltv ?? 0), 0);
   const tierCounts = members.reduce<Record<string, number>>((acc, m) => {
@@ -152,23 +163,23 @@ export default function AdminMembersPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-white">Miembros</h1>
-          <p className="text-gray-400 text-sm mt-0.5">
+          <p className="text-zinc-400 text-sm mt-0.5">
             {activeCount} activos de {members.length} total
           </p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => setShowAddForm(!showAddForm)}
-            className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white font-semibold rounded-xl px-4 py-2.5 text-sm transition"
+            className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-white font-semibold rounded-xl px-4 py-2.5 text-sm transition"
           >
             <Plus size={16} /> Agregar
           </button>
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl px-4 py-2.5 text-sm transition"
+            className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white font-semibold rounded-xl px-4 py-2.5 text-sm transition"
           >
             <Upload size={16} /> Importar CSV
           </button>
@@ -194,25 +205,25 @@ export default function AdminMembersPage() {
       {/* Resumen de métricas */}
       {members.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4">
-            <div className="text-xs text-gray-500">Miembros</div>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
+            <div className="text-xs text-zinc-500">Miembros</div>
             <div className="text-xl font-bold text-white mt-0.5">{members.length}</div>
           </div>
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4">
-            <div className="text-xs text-gray-500">Activos</div>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
+            <div className="text-xs text-zinc-500">Activos</div>
             <div className="text-xl font-bold text-green-400 mt-0.5">{activeCount}</div>
           </div>
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4">
-            <div className="text-xs text-gray-500">LTV total</div>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
+            <div className="text-xs text-zinc-500">LTV total</div>
             <div className="text-xl font-bold text-white mt-0.5">{fmtMoney(totalLtv)}</div>
           </div>
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4">
-            <div className="text-xs text-gray-500">Por tier</div>
-            <div className="text-xs text-gray-300 mt-1 space-y-0.5">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
+            <div className="text-xs text-zinc-500">Por tier</div>
+            <div className="text-xs text-zinc-300 mt-1 space-y-0.5">
               {Object.entries(tierCounts).map(([t, n]) => (
                 <div key={t} className="flex justify-between">
                   <span className="capitalize">{t}</span>
-                  <span className="text-gray-500">{n}</span>
+                  <span className="text-zinc-500">{n}</span>
                 </div>
               ))}
             </div>
@@ -222,27 +233,27 @@ export default function AdminMembersPage() {
 
       {/* Agregar miembro individual */}
       {showAddForm && (
-        <div className="bg-gray-900 border border-gray-700 rounded-2xl p-5 mb-6">
+        <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-5 mb-6">
           <h3 className="text-white font-semibold mb-4">Agregar miembro</h3>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <input
               type="email"
               placeholder="email@ejemplo.com"
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
-              className="flex-1 bg-gray-800 border border-gray-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+              className="flex-1 min-w-[200px] bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm"
             />
             <input
               type="text"
               placeholder="Nombre (opcional)"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              className="flex-1 bg-gray-800 border border-gray-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+              className="flex-1 min-w-[200px] bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm"
             />
             <button
               onClick={addSingle}
               disabled={!newEmail}
-              className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-semibold rounded-xl px-5 py-2.5 text-sm transition"
+              className="bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white font-semibold rounded-xl px-5 py-2.5 text-sm transition"
             >
               Agregar
             </button>
@@ -250,42 +261,85 @@ export default function AdminMembersPage() {
         </div>
       )}
 
-      {/* Preview de importación CSV */}
+      {/* Preview de importación CSV: diff real contra lo que ya hay en la DB */}
       {preview && (
-        <div className="bg-gray-900 border border-yellow-600/30 rounded-2xl p-5 mb-6">
+        <div className="bg-zinc-900 border border-yellow-600/30 rounded-2xl p-5 mb-6">
           <h3 className="text-white font-semibold mb-2">
             Vista previa — {preview.length} miembros detectados
           </h3>
-          <p className="text-gray-400 text-sm mb-2">
-            Los emails ya existentes serán actualizados, los nuevos serán creados.
-          </p>
-          <p className="text-amber-400/90 text-xs mb-4">
-            ⚠️ Sincronización: los miembros importados antes por CSV que NO estén en este archivo
-            serán <strong>revocados</strong> (se asume que dejaron Skool). Las altas manuales no se tocan.
-          </p>
+
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="bg-zinc-800/60 rounded-xl p-3">
+              <div className="text-lg font-bold text-green-400">{newCount}</div>
+              <div className="text-xs text-zinc-400">nuevos</div>
+            </div>
+            <div className="bg-zinc-800/60 rounded-xl p-3">
+              <div className="text-lg font-bold text-zinc-200">{updateCount}</div>
+              <div className="text-xs text-zinc-400">actualizados</div>
+            </div>
+            <div className="bg-zinc-800/60 rounded-xl p-3">
+              <div className="text-lg font-bold text-red-400">{toRevoke.length}</div>
+              <div className="text-xs text-zinc-400">a revocar</div>
+            </div>
+          </div>
+
+          {partialImportWarning ? (
+            <p className="text-red-400 text-xs mb-4 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+              ⚠️ Este archivo trae muchas menos filas que los miembros activos de Skool actuales
+              ({preview.length} vs {skoolActive.length}). Parece un export parcial — al confirmar NO se
+              revocará a nadie por seguridad. Sube el export completo si quieres sincronizar bajas.
+            </p>
+          ) : (
+            <p className="text-amber-400/90 text-xs mb-4">
+              ⚠️ Sincronización: los {toRevoke.length} miembros importados antes por CSV que no están en
+              este archivo serán <strong>revocados</strong> (se asume que dejaron Skool). Las altas
+              manuales no se tocan.
+            </p>
+          )}
+
+          {toRevoke.length > 0 && !partialImportWarning && (
+            <details className="mb-4">
+              <summary className="text-red-400 text-xs cursor-pointer">
+                Ver quiénes serán revocados ({toRevoke.length})
+              </summary>
+              <div className="max-h-32 overflow-y-auto mt-2 space-y-0.5">
+                {toRevoke.map((m) => (
+                  <div key={m.id} className="text-xs text-zinc-400">
+                    {m.email}
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
+
           <div className="max-h-48 overflow-y-auto space-y-1 mb-4">
             {preview.slice(0, 20).map((m, i) => (
-              <div key={i} className="flex items-center gap-3 text-sm text-gray-300">
-                <span className="text-gray-500 w-5 text-right">{i + 1}</span>
+              <div key={i} className="flex items-center gap-3 text-sm text-zinc-300">
+                <span className="text-zinc-500 w-5 text-right">{i + 1}</span>
                 <span>{m.email}</span>
-                {m.full_name && <span className="text-gray-500">— {m.full_name}</span>}
+                {m.full_name && <span className="text-zinc-500">— {m.full_name}</span>}
+                {!existingByEmail.has(m.email) && (
+                  <span className="text-[10px] bg-green-500/10 text-green-400 rounded-full px-1.5 py-0.5">
+                    nuevo
+                  </span>
+                )}
               </div>
             ))}
             {preview.length > 20 && (
-              <p className="text-gray-500 text-sm">... y {preview.length - 20} más</p>
+              <p className="text-zinc-500 text-sm">... y {preview.length - 20} más</p>
             )}
           </div>
           <div className="flex gap-3">
             <button
               onClick={confirmImport}
               disabled={importing}
-              className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-semibold rounded-xl px-5 py-2.5 text-sm transition"
+              className="bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white font-semibold rounded-xl px-5 py-2.5 text-sm transition"
             >
               {importing ? "Importando..." : `Confirmar import (${preview.length})`}
             </button>
             <button
               onClick={() => setPreview(null)}
-              className="bg-gray-800 hover:bg-gray-700 text-white font-semibold rounded-xl px-5 py-2.5 text-sm transition"
+              className="bg-zinc-800 hover:bg-zinc-700 text-white font-semibold rounded-xl px-5 py-2.5 text-sm transition"
             >
               Cancelar
             </button>
@@ -299,14 +353,14 @@ export default function AdminMembersPage() {
         placeholder="Buscar por email o nombre..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm mb-4"
+        className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-2.5 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm mb-4"
       />
 
       {/* Lista */}
       {loading ? (
-        <div className="text-gray-400 text-center py-12">Cargando...</div>
+        <div className="text-zinc-400 text-center py-12">Cargando...</div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-gray-500">
+        <div className="text-center py-16 text-zinc-500">
           <div className="text-4xl mb-3">👥</div>
           <p>No hay miembros. Importa un CSV de Skool o agrega uno manualmente.</p>
         </div>
@@ -315,14 +369,14 @@ export default function AdminMembersPage() {
           {filtered.map((member) => (
             <div
               key={member.id}
-              className={`bg-gray-900 border rounded-2xl px-5 py-3.5 flex items-center gap-4 ${
-                member.is_active ? "border-gray-800" : "border-gray-800 opacity-60"
+              className={`bg-zinc-900 border rounded-2xl px-5 py-3.5 flex items-center gap-4 ${
+                member.is_active ? "border-zinc-800" : "border-zinc-800 opacity-60"
               }`}
             >
               <div className="flex-1 min-w-0">
                 <div className="text-white text-sm font-medium truncate">{member.email}</div>
                 {member.full_name && (
-                  <div className="text-gray-400 text-xs mt-0.5">{member.full_name}</div>
+                  <div className="text-zinc-400 text-xs mt-0.5">{member.full_name}</div>
                 )}
               </div>
               {member.tier && (
@@ -331,7 +385,7 @@ export default function AdminMembersPage() {
                 </span>
               )}
               {member.ltv != null && (
-                <span className="text-xs text-gray-400 tabular-nums hidden sm:inline" title="Lifetime value">
+                <span className="text-xs text-zinc-400 tabular-nums hidden sm:inline" title="Lifetime value">
                   {fmtMoney(member.ltv)}
                 </span>
               )}
@@ -339,7 +393,7 @@ export default function AdminMembersPage() {
                 className={`text-xs px-2.5 py-1 rounded-full font-medium ${
                   member.is_active
                     ? "bg-green-900/30 text-green-400"
-                    : "bg-gray-700 text-gray-500"
+                    : "bg-zinc-700 text-zinc-500"
                 }`}
               >
                 {member.is_active ? "Activo" : "Revocado"}
@@ -347,14 +401,14 @@ export default function AdminMembersPage() {
               <div className="flex items-center gap-1 flex-shrink-0">
                 <button
                   onClick={() => toggleActive(member)}
-                  className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-gray-800 transition"
+                  className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
                   title={member.is_active ? "Revocar acceso" : "Restaurar acceso"}
                 >
                   {member.is_active ? <UserX size={15} /> : <UserCheck size={15} />}
                 </button>
                 <button
                   onClick={() => deleteMember(member)}
-                  className="p-2 rounded-xl text-gray-400 hover:text-red-400 hover:bg-gray-800 transition"
+                  className="p-2 rounded-xl text-zinc-400 hover:text-red-400 hover:bg-zinc-800 transition"
                 >
                   <Trash2 size={15} />
                 </button>

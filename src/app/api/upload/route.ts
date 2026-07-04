@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Límite: 20 archivos por minuto por usuario (protege saldo/almacenamiento OpenAI)
-  const rl = checkRateLimit(`upload:${user.id}`, 20, 60_000);
+  const rl = await checkRateLimit(`upload:${user.id}`, 20, 60_000);
   if (!rl.ok) return rateLimitResponse(rl);
 
   const formData = await request.formData();
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Validar tipo: solo formatos soportados por Assistants (evita subir binarios arbitrarios)
+  // Validar tipo: solo formatos soportados por Responses (evita subir binarios arbitrarios)
   if (file.type && !ALLOWED_TYPES.includes(file.type)) {
     return NextResponse.json(
       { error: `Tipo de archivo no permitido: ${file.type}` },
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
 
   const uploaded = await openai.files.create({
     file,
-    purpose: "assistants",
+    purpose: "user_data",
   });
 
   // Persistir copia en Storage + mapeo, para reconstruir miniaturas al recargar

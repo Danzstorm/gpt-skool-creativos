@@ -1,30 +1,35 @@
-import OpenAI from "openai";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Message } from "@/lib/types";
 
-export async function getThreadMessages(openaiThreadId: string): Promise<Message[]> {
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// El historial vive en la tabla local `messages` (caché instantánea, poblada
+// en cada turno y, para conversaciones previas a la migración a Responses API,
+// por el backfill de scripts/backfill-thread-messages.ts). El contexto que el
+// modelo usa vive en la Conversation de OpenAI; esta tabla es solo para la UI.
+export async function getThreadMessages(
+  supabase: SupabaseClient,
+  threadId: string
+): Promise<Message[]> {
+  const { data, error } = await supabase
+    .from("messages")
+    .select("role, content, files")
+    .eq("thread_id", threadId)
+    .order("created_at", { ascending: true });
 
-  const { data: oaiMessages } = await openai.beta.threads.messages.list(openaiThreadId, {
-    order: "asc",
-    limit: 100,
+  if (error || !data) return [];
+
+  return data.map((m) => {
+    const rawFiles = (m.files as Array<{ openai_file_id: string; type: "image" | "document"; name?: string }> | null) ?? [];
+    return {
+      role: m.role as "user" | "assistant",
+      content: m.content,
+      files:
+        rawFiles.length > 0
+          ? rawFiles.map((f) => ({
+              openai_file_id: f.openai_file_id,
+              type: f.type,
+              name: f.name || (f.type === "image" ? "imagen" : "archivo"),
+            }))
+          : undefined,
+    };
   });
-
-  return oaiMessages
-    .map((msg) => {
-      const text = msg.content
-        .filter((c) => c.type === "text")
-        .map((c) => (c.type === "text" ? c.text.value : ""))
-        .join("\n");
-      const imageFiles = msg.content
-        .filter((c) => c.type === "image_file")
-        .map((c) => (c.type === "image_file" ? c.image_file.file_id : ""))
-        .filter(Boolean)
-        .map((fid) => ({ name: "imagen", openai_file_id: fid, type: "image" as const }));
-      return {
-        role: msg.role as "user" | "assistant",
-        content: text,
-        files: imageFiles.length > 0 ? imageFiles : undefined,
-      };
-    })
-    .filter((m) => m.content.trim().length > 0 || (m.files && m.files.length > 0));
 }

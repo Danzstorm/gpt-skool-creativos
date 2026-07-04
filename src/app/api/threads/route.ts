@@ -28,7 +28,23 @@ export async function GET(request: NextRequest) {
   const { data, error } = await query;
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+
+  // Preview del último mensaje por conversación (una sola query vía RPC, no N+1).
+  const ids = (data ?? []).map((t) => t.id);
+  const previews = new Map<string, string>();
+  if (ids.length > 0) {
+    const { data: recent } = await supabase.rpc("latest_messages_for_threads", { thread_ids: ids });
+    for (const m of recent ?? []) {
+      previews.set(m.thread_id, m.content.slice(0, 80));
+    }
+  }
+
+  const withPreviews = (data ?? []).map((t) => ({
+    ...t,
+    last_message_preview: previews.get(t.id),
+  }));
+
+  return NextResponse.json(withPreviews);
 }
 
 export async function POST(request: NextRequest) {
@@ -42,7 +58,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Límite: 15 conversaciones nuevas por minuto por usuario (evita spam de threads)
-  const rl = checkRateLimit(`thread-create:${user.id}`, 15, 60_000);
+  const rl = await checkRateLimit(`thread-create:${user.id}`, 15, 60_000);
   if (!rl.ok) return rateLimitResponse(rl);
 
   const { gptId } = await request.json();
@@ -50,14 +66,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Falta gptId" }, { status: 400 });
   }
 
-  const openaiThread = await openai.beta.threads.create();
+  const conversation = await openai.conversations.create({
+    metadata: { user_id: user.id, gpt_id: gptId },
+  });
 
   const { data, error } = await supabase
     .from("threads")
     .insert({
       user_id: user.id,
       gpt_id: gptId,
-      openai_thread_id: openaiThread.id,
+      openai_conversation_id: conversation.id,
     })
     .select("id, title, created_at, updated_at")
     .single();

@@ -32,11 +32,13 @@ export default async function ProtectedLayout({
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-40 border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-xl px-4 py-3">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <Link href="/chat" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 bg-gradient-to-br from-violet-500 to-violet-700 rounded-lg flex items-center justify-center text-sm shadow-[0_1px_0_rgba(255,255,255,0.15)_inset] group-hover:shadow-[0_0_18px_-4px_rgba(139,92,246,0.6)] transition-shadow">
-              ✦
-            </div>
-            <span className="font-semibold text-zinc-100 tracking-tight">GPT Creativos</span>
+          <Link href="/chat" className="group flex items-baseline gap-2">
+            <span className="font-display text-xl font-semibold tracking-tight text-stone-50">
+              Creativos
+            </span>
+            <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-stone-500">
+              GPT
+            </span>
           </Link>
 
           <nav className="flex items-center gap-1">

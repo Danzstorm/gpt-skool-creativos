@@ -31,7 +31,16 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  const publicPaths = ["/login", "/unauthorized", "/auth/callback"];
+  // icon/apple-icon/opengraph-image son rutas generadas por Next (next/og) para
+  // favicon y preview de link — deben verse sin sesión (visitantes, crawlers de Skool/redes).
+  const publicPaths = [
+    "/login",
+    "/unauthorized",
+    "/auth/callback",
+    "/icon",
+    "/apple-icon",
+    "/opengraph-image",
+  ];
   const isPublic = pathname === "/" || publicPaths.some((p) => pathname.startsWith(p));
   const isApi = pathname.startsWith("/api/");
 

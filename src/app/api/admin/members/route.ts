@@ -1,4 +1,5 @@
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { syncMembers, type IncomingMember } from "@/lib/members-sync";
 import { NextRequest, NextResponse } from "next/server";
 
 async function requireAdmin() {
@@ -35,68 +36,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Lista de miembros requerida" }, { status: 400 });
   }
 
-  type IncomingMember = {
-    email: string;
-    full_name?: string;
-    tier?: string | null;
-    ltv?: number | null;
-    price?: number | null;
-    recurring_interval?: string | null;
-    joined_date?: string | null;
-    invited_by?: string | null;
-  };
-
   const serviceClient = createServiceClient();
-  const emails = (members as IncomingMember[]).map((m) => m.email.toLowerCase().trim());
-
-  const { data, error } = await serviceClient
-    .from("allowed_members")
-    .upsert(
-      (members as IncomingMember[]).map((m) => ({
-        email: m.email.toLowerCase().trim(),
-        full_name: m.full_name || null,
-        is_active: true,
-        ...(sync && { source: "skool_csv" }),
-        ...(m.tier !== undefined && { tier: m.tier }),
-        ...(m.ltv !== undefined && { ltv: m.ltv }),
-        ...(m.price !== undefined && { price: m.price }),
-        ...(m.recurring_interval !== undefined && { recurring_interval: m.recurring_interval }),
-        ...(m.joined_date !== undefined && { joined_date: m.joined_date }),
-        ...(m.invited_by !== undefined && { invited_by: m.invited_by }),
-      })),
-      { onConflict: "email" }
-    )
-    .select();
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  let revoked = 0;
-  let warning: string | undefined;
-  if (sync) {
-    // Revocar los 'skool_csv' activos que NO están en este import (diff en JS para evitar problemas de comillas)
-    const { data: existing } = await serviceClient
-      .from("allowed_members")
-      .select("email")
-      .eq("source", "skool_csv")
-      .eq("is_active", true);
-
-    const existingCount = existing?.length ?? 0;
-
-    // Guardarriel: si el CSV trae muchas menos filas de lo normal (export parcial/corrupto),
-    // NO revocar masivamente. Solo se agregó/actualizó; el revoke se frena y se avisa.
-    if (existingCount > 20 && emails.length < existingCount * 0.6) {
-      warning = `Import parcial detectado (${emails.length} filas vs ${existingCount} activos). No se revocó a nadie por seguridad. Sube el export completo de Skool.`;
-    } else {
-      const importedSet = new Set(emails);
-      const toRevoke = (existing ?? []).map((r) => r.email).filter((e) => !importedSet.has(e));
-
-      for (let i = 0; i < toRevoke.length; i += 200) {
-        const chunk = toRevoke.slice(i, i + 200);
-        await serviceClient.from("allowed_members").update({ is_active: false }).in("email", chunk);
-      }
-      revoked = toRevoke.length;
-    }
+  try {
+    const result = await syncMembers(serviceClient, members as IncomingMember[], Boolean(sync));
+    return NextResponse.json(result);
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "Error de importación" },
+      { status: 500 }
+    );
   }
-
-  return NextResponse.json({ imported: data?.length ?? 0, revoked, ...(warning && { warning }) });
 }

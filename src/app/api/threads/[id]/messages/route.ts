@@ -16,7 +16,7 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
 
   const { data: thread, error } = await supabase
     .from("threads")
-    .select("openai_thread_id")
+    .select("id")
     .eq("id", id)
     .single();
 
@@ -24,9 +24,9 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
     return NextResponse.json({ error: "Conversación no encontrada" }, { status: 404 });
   }
 
-  const messages = await getThreadMessages(thread.openai_thread_id);
+  const messages = await getThreadMessages(supabase, id);
 
-  // Resolver miniaturas de imágenes desde Storage (URLs firmadas).
+  // Resolver miniaturas de imágenes/documentos desde Storage (URLs firmadas), en paralelo.
   // El thread ya se validó como del usuario (RLS arriba); firmamos con service role.
   const fileIds = messages.flatMap((m) => m.files?.map((f) => f.openai_file_id) ?? []);
   if (fileIds.length > 0) {
@@ -37,18 +37,18 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
       .in("openai_file_id", fileIds);
     const map = new Map((rows ?? []).map((r) => [r.openai_file_id, r]));
 
-    for (const m of messages) {
-      if (!m.files) continue;
-      for (const f of m.files) {
+    const targets = messages.flatMap((m) => m.files ?? []);
+    await Promise.all(
+      targets.map(async (f) => {
         const row = map.get(f.openai_file_id);
-        if (!row) continue;
+        if (!row) return;
         const { data: signed } = await service.storage
           .from("chat-uploads")
           .createSignedUrl(row.storage_path, 3600);
         if (signed?.signedUrl) f.previewUrl = signed.signedUrl;
         if (row.name) f.name = row.name;
-      }
-    }
+      })
+    );
   }
 
   return NextResponse.json(messages);

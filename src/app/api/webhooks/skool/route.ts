@@ -1,5 +1,15 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
+import { createHash, timingSafeEqual } from "crypto";
+
+// Compara en tiempo constante hasheando ambos valores primero: evita tanto el
+// leak de timing por longitud (timingSafeEqual falla si los buffers difieren
+// en tamaño) como por contenido.
+function secretsMatch(a: string, b: string): boolean {
+  const ha = createHash("sha256").update(a).digest();
+  const hb = createHash("sha256").update(b).digest();
+  return timingSafeEqual(ha, hb);
+}
 
 // Webhook genérico para automatizar altas/bajas desde Skool.
 // Funciona con cualquier fuente que pueda hacer un POST: webhook nativo de Skool,
@@ -21,7 +31,7 @@ export async function POST(request: NextRequest) {
     "";
 
   const expected = process.env.SKOOL_WEBHOOK_SECRET;
-  if (!expected || secret !== expected) {
+  if (!expected || !secret || !secretsMatch(secret, expected)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 

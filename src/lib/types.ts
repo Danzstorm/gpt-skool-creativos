@@ -13,7 +13,9 @@ export interface Gpt {
 }
 
 export interface GptWithAssistantId extends Gpt {
-  openai_assistant_id: string;
+  openai_assistant_id: string | null; // legacy (Assistants API)
+  system_prompt?: string;
+  model?: string;
 }
 
 export interface AllowedMember {
@@ -27,6 +29,7 @@ export interface AllowedMember {
   recurring_interval: string | null;
   joined_date: string | null;
   invited_by: string | null;
+  source: "manual" | "skool_csv" | "skool_webhook";
   added_at: string;
 }
 
@@ -42,7 +45,8 @@ export interface Thread {
   id: string;
   user_id: string;
   gpt_id: string;
-  openai_thread_id: string;
+  openai_thread_id: string | null; // legacy (Assistants API)
+  openai_conversation_id: string | null;
   title: string;
   created_at: string;
   updated_at: string;
@@ -55,6 +59,7 @@ export interface ThreadSummary {
   gpt_id: string;
   created_at: string;
   updated_at: string;
+  last_message_preview?: string;
 }
 
 export interface UploadedFile {

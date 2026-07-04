@@ -1,15 +1,6 @@
 -- ============================================================
 -- GPT Creativos Platform — Supabase Schema
---
--- Este archivo ya NO es la fuente de verdad. El schema vive en
--- supabase/migrations/ (adoptado 2026-07-03). Este archivo se conserva
--- congelado como snapshot histórico (igual al baseline en
--- supabase/migrations/20260703215753_baseline.sql) para referencia rápida.
---
--- Para cambios de schema nuevos:
---   supabase migration new <nombre>
---   (editar el .sql generado en supabase/migrations/)
---   supabase db push --linked
+-- Ejecutar en el SQL Editor de Supabase
 -- ============================================================
 
 -- Miembros aprobados (exportado de Skool)

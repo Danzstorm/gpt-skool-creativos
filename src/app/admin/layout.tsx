@@ -23,27 +23,29 @@ export default async function AdminLayout({
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="border-b border-gray-800 bg-gray-950 px-4 py-3">
+      <header className="border-b border-zinc-800 bg-zinc-950 px-4 py-3">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href="/dashboard" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center text-sm">
-                ✦
-              </div>
-              <span className="font-semibold text-white">GPT Creativos</span>
+            <Link href="/dashboard" className="flex items-baseline gap-2">
+              <span className="font-display text-xl font-semibold tracking-tight text-stone-50">
+                Creativos
+              </span>
+              <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-stone-500">
+                GPT
+              </span>
             </Link>
-            <span className="text-gray-600">/</span>
-            <span className="text-purple-400 text-sm font-medium">Admin</span>
+            <span className="text-stone-600">/</span>
+            <span className="text-sm font-medium text-violet-400">Admin</span>
           </div>
 
           <nav className="flex items-center gap-4 text-sm">
-            <Link href="/admin" className="text-gray-400 hover:text-white transition flex items-center gap-1.5">
+            <Link href="/admin" className="text-zinc-400 hover:text-white transition flex items-center gap-1.5">
               <LayoutDashboard size={15} /> Dashboard
             </Link>
-            <Link href="/admin/gpts" className="text-gray-400 hover:text-white transition flex items-center gap-1.5">
+            <Link href="/admin/gpts" className="text-zinc-400 hover:text-white transition flex items-center gap-1.5">
               <Bot size={15} /> GPTs
             </Link>
-            <Link href="/admin/members" className="text-gray-400 hover:text-white transition flex items-center gap-1.5">
+            <Link href="/admin/members" className="text-zinc-400 hover:text-white transition flex items-center gap-1.5">
               <Users size={15} /> Miembros
             </Link>
           </nav>

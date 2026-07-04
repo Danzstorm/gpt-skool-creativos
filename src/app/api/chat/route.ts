@@ -2,12 +2,14 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { runStreamResponse } from "@/lib/chat-stream";
+import { buildUserInput, type IncomingFile } from "@/lib/chat-content";
 import { estimateCost } from "@/lib/pricing";
 import OpenAI from "openai";
+import type { Tool } from "openai/resources/responses/responses";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// Vercel corta funciones serverless por tiempo. Las respuestas de Assistants
+// Vercel corta funciones serverless por tiempo. Las respuestas del modelo
 // pueden tardar; sin esto el stream se corta a mitad. (El plan debe permitir >60s.)
 export const maxDuration = 60;
 
@@ -22,7 +24,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Límite: 30 mensajes por minuto por usuario (protege saldo OpenAI de abuso)
-  const rl = checkRateLimit(`chat:${user.id}`, 30, 60_000);
+  const rl = await checkRateLimit(`chat:${user.id}`, 30, 60_000);
   if (!rl.ok) return rateLimitResponse(rl);
 
   const { gptId, threadId, message, files, replaceLast } = await request.json();
@@ -33,10 +35,9 @@ export async function POST(request: NextRequest) {
 
   const serviceClient = createServiceClient();
 
-  // Fetch assistant_id con service role (nunca expuesto al cliente)
   const { data: gpt, error: gptError } = await serviceClient
     .from("gpts")
-    .select("openai_assistant_id")
+    .select("system_prompt, model")
     .eq("id", gptId)
     .eq("is_active", true)
     .single();
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
   // La fila de threads pertenece al usuario (RLS: user_id = auth.uid())
   const { data: thread, error: threadError } = await supabase
     .from("threads")
-    .select("openai_thread_id, title")
+    .select("openai_conversation_id, title")
     .eq("id", threadId)
     .single();
 
@@ -56,76 +57,109 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Conversación no encontrada" }, { status: 404 });
   }
 
-  const openaiThreadId = thread.openai_thread_id;
-
-  // Separar archivos por tipo: imágenes van como contenido de visión;
-  // documentos van como attachments para file_search + code_interpreter.
-  type IncomingFile = { openai_file_id: string; type: "image" | "document" };
-  const incoming: IncomingFile[] = Array.isArray(files) ? files : [];
-
-  type MessageContentPart =
-    | { type: "text"; text: string }
-    | { type: "image_file"; image_file: { file_id: string } };
-
-  const contentParts: MessageContentPart[] = [{ type: "text", text: message }];
-  for (const f of incoming) {
-    if (f.type === "image") {
-      contentParts.push({ type: "image_file", image_file: { file_id: f.openai_file_id } });
-    }
+  // Lock: evita 2 respuestas concurrentes sobre el mismo thread (2 pestañas, doble envío).
+  const { data: locked } = await supabase.rpc("acquire_thread_lock", { p_thread_id: threadId });
+  if (!locked) {
+    return NextResponse.json(
+      { error: "Ya hay una respuesta en curso para esta conversación." },
+      { status: 409 }
+    );
   }
 
-  const docAttachments = incoming
-    .filter((f) => f.type === "document")
-    .map((f) => ({
-      file_id: f.openai_file_id,
-      tools: [{ type: "file_search" as const }, { type: "code_interpreter" as const }],
-    }));
+  let conversationId = thread.openai_conversation_id;
+  if (!conversationId) {
+    const conversation = await openai.conversations.create({
+      metadata: { user_id: user.id, gpt_id: gptId },
+    });
+    conversationId = conversation.id;
+    await supabase.from("threads").update({ openai_conversation_id: conversationId }).eq("id", threadId);
+  }
 
-  // Editar y reenviar: borrar el último turno (respuesta del asistente + mensaje del usuario) antes de reponer
+  const incoming: IncomingFile[] = Array.isArray(files) ? files : [];
+  const docFileIds = incoming.filter((f) => f.type === "document").map((f) => f.openai_file_id);
+
+  // Todos los GPTs pueden ejecutar código (equivalente a code_interpreter siempre activo en Assistants).
+  const tools: Tool[] = [
+    { type: "code_interpreter", container: { type: "auto", ...(docFileIds.length > 0 && { file_ids: docFileIds }) } },
+  ];
+
+  // Editar y reenviar: borrar el último turno (respuesta del asistente + mensaje del usuario)
+  // tanto de la Conversation de OpenAI como de la caché local, antes de reponer.
   if (replaceLast) {
-    const { data: recent } = await openai.beta.threads.messages.list(openaiThreadId, {
+    const recentItems = await openai.conversations.items.list(conversationId, {
       order: "desc",
       limit: 2,
     });
-    if (recent[0]?.role === "assistant") {
-      await openai.beta.threads.messages.delete(recent[0].id, { thread_id: openaiThreadId });
-      if (recent[1]?.role === "user") {
-        await openai.beta.threads.messages.delete(recent[1].id, { thread_id: openaiThreadId });
+    const [first, second] = recentItems.data;
+    let toDeleteLocal = 1;
+    if (first?.type === "message" && first.role === "assistant") {
+      await openai.conversations.items.delete(first.id, { conversation_id: conversationId });
+      if (second?.type === "message" && second.role === "user") {
+        await openai.conversations.items.delete(second.id, { conversation_id: conversationId });
+        toDeleteLocal = 2;
       }
-    } else if (recent[0]?.role === "user") {
-      await openai.beta.threads.messages.delete(recent[0].id, { thread_id: openaiThreadId });
+    } else if (first?.type === "message" && first.role === "user") {
+      await openai.conversations.items.delete(first.id, { conversation_id: conversationId });
+    }
+
+    const { data: lastLocal } = await serviceClient
+      .from("messages")
+      .select("id")
+      .eq("thread_id", threadId)
+      .order("created_at", { ascending: false })
+      .limit(toDeleteLocal);
+    if (lastLocal && lastLocal.length > 0) {
+      await serviceClient.from("messages").delete().in("id", lastLocal.map((m) => m.id));
     }
   }
 
-  // Agregar mensaje al thread
-  await openai.beta.threads.messages.create(openaiThreadId, {
+  await serviceClient.from("messages").insert({
+    thread_id: threadId,
+    user_id: user.id,
     role: "user",
-    content: contentParts,
-    ...(docAttachments.length > 0 ? { attachments: docAttachments } : {}),
+    content: message,
+    files: incoming.length > 0 ? incoming : null,
   });
 
-  return runStreamResponse(openaiThreadId, gpt.openai_assistant_id, async (meta) => {
-    const isDefaultTitle = thread.title === "Nueva conversación";
-    await supabase
-      .from("threads")
-      .update({
-        updated_at: new Date().toISOString(),
-        ...(isDefaultTitle && { title: message.slice(0, 40) }),
-      })
-      .eq("id", threadId);
+  const input = buildUserInput(message, incoming);
 
-    // Registrar evento de uso con tokens y costo estimado (best-effort)
-    serviceClient
-      .from("usage_events")
-      .insert({
-        user_id: user.id,
-        gpt_id: gptId,
+  return runStreamResponse({
+    conversationId,
+    model: gpt.model || "gpt-4.1-mini",
+    instructions: gpt.system_prompt || "",
+    input,
+    tools,
+    onAssistantText: async (text) => {
+      await serviceClient.from("messages").insert({
         thread_id: threadId,
-        model: meta.model,
-        tokens_in: meta.tokensIn,
-        tokens_out: meta.tokensOut,
-        cost: estimateCost(meta.model, meta.tokensIn, meta.tokensOut),
-      })
-      .then(() => {}, () => {});
+        user_id: user.id,
+        role: "assistant",
+        content: text,
+      });
+    },
+    onComplete: async (meta) => {
+      // updated_at se actualiza solo (trigger); acá solo el título si sigue siendo el default.
+      const isDefaultTitle = thread.title === "Nueva conversación";
+      if (isDefaultTitle) {
+        await supabase.from("threads").update({ title: message.slice(0, 40) }).eq("id", threadId);
+      }
+
+      // Registrar evento de uso con tokens y costo estimado (best-effort)
+      serviceClient
+        .from("usage_events")
+        .insert({
+          user_id: user.id,
+          gpt_id: gptId,
+          thread_id: threadId,
+          model: meta.model,
+          tokens_in: meta.tokensIn,
+          tokens_out: meta.tokensOut,
+          cost: estimateCost(meta.model, meta.tokensIn, meta.tokensOut),
+        })
+        .then(() => {}, () => {});
+    },
+    onSettled: async () => {
+      await supabase.rpc("release_thread_lock", { p_thread_id: threadId });
+    },
   });
 }

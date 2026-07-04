@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
@@ -58,25 +59,33 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-violet-500 to-violet-700 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-[0_0_40px_-8px_rgba(139,92,246,0.5),0_1px_0_rgba(255,255,255,0.15)_inset]">
-            <span className="text-2xl">✦</span>
-          </div>
-          <h1 className="text-2xl font-bold text-zinc-100 tracking-tight">GPT Creativos</h1>
-          <p className="text-zinc-400 mt-1.5 text-sm">
-            Acceso exclusivo para miembros de la comunidad
+    <div className="grain relative flex min-h-screen items-center justify-center bg-[var(--background)] px-4 text-stone-100">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 top-[-160px] -z-0 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-violet-600/15 blur-[150px]"
+      />
+      <div className="relative z-10 w-full max-w-sm">
+        <div className="mb-9 text-center">
+          <Link href="/" className="inline-flex items-baseline gap-2">
+            <span className="font-display text-3xl font-semibold tracking-tight text-stone-50">
+              Creativos
+            </span>
+            <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-stone-500">
+              GPT
+            </span>
+          </Link>
+          <p className="mt-3 text-sm text-stone-400">
+            Acceso exclusivo para la comunidad
           </p>
         </div>
 
         {status === "sent" ? (
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 text-center">
-            <div className="text-3xl mb-3">📧</div>
-            <h2 className="text-white font-semibold mb-2">Revisa tu correo</h2>
-            <p className="text-gray-400 text-sm">
+          <div className="rounded-2xl border border-stone-800 bg-stone-900/40 p-7 text-center">
+            <div className="mb-3 text-3xl">📧</div>
+            <h2 className="font-display mb-2 text-xl font-medium text-stone-50">Revisa tu correo</h2>
+            <p className="text-sm leading-relaxed text-stone-400">
               Te enviamos un enlace de acceso a{" "}
-              <span className="text-purple-400">{email}</span>. El enlace expira
+              <span className="text-violet-300">{email}</span>. El enlace expira
               en 10 minutos.
             </p>
           </div>
@@ -85,7 +94,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={handleGoogle}
-              className="w-full flex items-center justify-center gap-2.5 bg-white hover:bg-zinc-100 text-zinc-800 font-semibold rounded-xl px-4 py-3 transition active:scale-[0.99]"
+              className="w-full flex items-center justify-center gap-2.5 bg-stone-50 hover:bg-white text-stone-800 font-semibold rounded-xl px-4 py-3 transition active:scale-[0.99]"
             >
               <svg width="18" height="18" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -96,14 +105,14 @@ export default function LoginPage() {
               Continuar con Google
             </button>
 
-            <div className="flex items-center gap-3 text-xs text-zinc-600">
-              <div className="flex-1 h-px bg-zinc-800" />
+            <div className="flex items-center gap-3 text-xs text-stone-600">
+              <div className="flex-1 h-px bg-stone-800" />
               o con tu correo
-              <div className="flex-1 h-px bg-zinc-800" />
+              <div className="flex-1 h-px bg-stone-800" />
             </div>
 
             {status === "error" && (
-              <div className="bg-red-900/30 border border-red-700/50 rounded-xl px-4 py-3 text-red-400 text-sm">
+              <div className="bg-red-950/40 border border-red-800/50 rounded-xl px-4 py-3 text-red-300 text-sm">
                 {errorMsg}
                 {errorMsg.toLowerCase().includes("acceso") && (
                   <a
@@ -122,7 +131,7 @@ export default function LoginPage() {
             <div>
               <label
                 htmlFor="email"
-                className="block text-sm font-medium text-gray-300 mb-1.5"
+                className="block text-sm font-medium text-stone-300 mb-1.5"
               >
                 Correo electrónico
               </label>
@@ -133,21 +142,21 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="tu@email.com"
                 required
-                className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                className="w-full bg-stone-900/60 border border-stone-700 rounded-xl px-4 py-3 text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition"
               />
             </div>
 
             <button
               type="submit"
               disabled={status === "loading" || !email}
-              className="w-full bg-gradient-to-br from-violet-600 to-violet-700 hover:from-violet-500 hover:to-violet-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl px-4 py-3 transition active:scale-[0.99] shadow-[0_1px_0_rgba(255,255,255,0.15)_inset]"
+              className="w-full bg-stone-50 hover:bg-white text-stone-950 font-semibold rounded-xl px-4 py-3 transition active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {status === "loading" ? "Verificando..." : "Enviar enlace de acceso"}
             </button>
 
-            <p className="text-center text-xs text-gray-500">
+            <p className="text-center text-xs text-stone-500">
               Acceso solo para miembros de{" "}
-              <span className="text-gray-400">Skool Creativos</span>. No hay registro abierto.
+              <span className="text-stone-400">Skool Creativos</span>. No hay registro abierto.
             </p>
           </form>
           </div>

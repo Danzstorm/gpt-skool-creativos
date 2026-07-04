@@ -1,5 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
+import OpenAI from "openai";
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient();
@@ -41,8 +44,23 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
 
   const { id } = await params;
 
+  const { data: thread } = await supabase
+    .from("threads")
+    .select("openai_conversation_id")
+    .eq("id", id)
+    .single();
+
   const { error } = await supabase.from("threads").delete().eq("id", id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  if (thread?.openai_conversation_id) {
+    try {
+      await openai.conversations.delete(thread.openai_conversation_id);
+    } catch {
+      // best-effort: no bloquear el borrado local si la Conversation ya no existe
+    }
+  }
+
   return NextResponse.json({ ok: true });
 }

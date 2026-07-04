@@ -1,8 +1,5 @@
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 async function requireAdmin() {
   const supabase = await createClient();
@@ -42,20 +39,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Nombre y system prompt requeridos" }, { status: 400 });
   }
 
-  // Todos los GPTs tienen todas las capacidades (archivos, código, visión). No es configurable.
-  const tools: OpenAI.Beta.Assistants.AssistantTool[] = [
-    { type: "file_search" },
-    { type: "code_interpreter" },
-  ];
-
-  const assistant = await openai.beta.assistants.create({
-    name,
-    description,
-    instructions: system_prompt,
-    model: model || "gpt-4.1-mini",
-    tools,
-  });
-
   const serviceClient = createServiceClient();
   const { data, error } = await serviceClient
     .from("gpts")
@@ -64,7 +47,9 @@ export async function POST(request: NextRequest) {
       description,
       category: category || "General",
       icon_url: icon_url || null,
-      openai_assistant_id: assistant.id,
+      system_prompt,
+      model: model || "gpt-4.1-mini",
+      // Todos los GPTs tienen todas las capacidades (archivos, código, visión). No es configurable.
       tools_enabled: { file_search: true, code_interpreter: true },
       vision_enabled: true,
       conversation_starters: Array.isArray(conversation_starters) ? conversation_starters : [],
