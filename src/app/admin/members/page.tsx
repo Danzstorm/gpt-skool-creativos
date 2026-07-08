@@ -1,14 +1,15 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import type { AllowedMember } from "@/lib/types";
-import { Upload, UserX, UserCheck, Trash2, Plus } from "lucide-react";
+import type { AllowedMember, WebhookEvent } from "@/lib/types";
+import { Upload, UserX, UserCheck, Trash2, Plus, Download } from "lucide-react";
 import Papa from "papaparse";
 
 export default function AdminMembersPage() {
   const [members, setMembers] = useState<AllowedMember[]>([]);
   const [loading, setLoading] = useState(false);
   const [importMsg, setImportMsg] = useState("");
+  const [webhookEvents, setWebhookEvents] = useState<WebhookEvent[]>([]);
   type ParsedMember = {
     email: string;
     full_name: string;
@@ -21,13 +22,17 @@ export default function AdminMembersPage() {
   };
   const [preview, setPreview] = useState<ParsedMember[] | null>(null);
   const [importing, setImporting] = useState(false);
+  const [revokedAfterImport, setRevokedAfterImport] = useState<string[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [newName, setNewName] = useState("");
   const [search, setSearch] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { loadMembers(); }, []);
+  useEffect(() => {
+    loadMembers();
+    loadWebhookEvents();
+  }, []);
 
   async function loadMembers() {
     setLoading(true);
@@ -35,6 +40,38 @@ export default function AdminMembersPage() {
     const data = await res.json();
     setMembers(Array.isArray(data) ? data : []);
     setLoading(false);
+  }
+
+  async function loadWebhookEvents() {
+    const res = await fetch("/api/admin/webhook-events");
+    const data = await res.json();
+    setWebhookEvents(Array.isArray(data) ? data : []);
+  }
+
+  function exportCsv() {
+    const csv = Papa.unparse(
+      members.map((m) => ({
+        email: m.email,
+        full_name: m.full_name ?? "",
+        is_active: m.is_active,
+        tier: m.tier ?? "",
+        ltv: m.ltv ?? "",
+        price: m.price ?? "",
+        recurring_interval: m.recurring_interval ?? "",
+        joined_date: m.joined_date ?? "",
+        invited_by: m.invited_by ?? "",
+        source: m.source,
+        monthly_message_limit: m.monthly_message_limit ?? "",
+        added_at: m.added_at,
+      }))
+    );
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `miembros-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   function handleCsvFile(file: File) {
@@ -95,6 +132,7 @@ export default function AdminMembersPage() {
     const data = await res.json().catch(() => ({}));
     setImporting(false);
     setPreview(null);
+    setRevokedAfterImport(data?.revokedEmails ?? []);
     if (data?.warning) {
       setImportMsg(data.warning);
     } else {
@@ -102,6 +140,16 @@ export default function AdminMembersPage() {
         `Importados: ${data?.imported ?? 0}${data?.revoked ? ` · revocados: ${data.revoked}` : ""}.`
       );
     }
+    loadMembers();
+  }
+
+  async function reactivate(member: AllowedMember) {
+    await fetch(`/api/admin/members/${member.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ is_active: true }),
+    });
+    setRevokedAfterImport((prev) => prev.filter((e) => e !== member.email));
     loadMembers();
   }
 
@@ -125,6 +173,18 @@ export default function AdminMembersPage() {
       body: JSON.stringify({ is_active: !member.is_active }),
     });
     loadMembers();
+  }
+
+  async function updateQuota(member: AllowedMember, raw: string) {
+    const value = raw.trim() === "" ? null : Number(raw);
+    if (value !== null && (!Number.isFinite(value) || value < 0)) return;
+    if (value === member.monthly_message_limit) return;
+    await fetch(`/api/admin/members/${member.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ monthly_message_limit: value }),
+    });
+    setMembers((prev) => prev.map((m) => (m.id === member.id ? { ...m, monthly_message_limit: value } : m)));
   }
 
   async function deleteMember(member: AllowedMember) {
@@ -178,8 +238,15 @@ export default function AdminMembersPage() {
             <Plus size={16} /> Agregar
           </button>
           <button
+            onClick={exportCsv}
+            disabled={members.length === 0}
+            className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 text-white font-semibold rounded-xl px-4 py-2.5 text-sm transition"
+          >
+            <Download size={16} /> Exportar CSV
+          </button>
+          <button
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white font-semibold rounded-xl px-4 py-2.5 text-sm transition"
+            className="flex items-center gap-2 bg-zinc-100 hover:bg-white text-zinc-900 font-semibold rounded-xl px-4 py-2.5 text-sm transition"
           >
             <Upload size={16} /> Importar CSV
           </button>
@@ -199,6 +266,39 @@ export default function AdminMembersPage() {
           <button onClick={() => setImportMsg("")} className="text-amber-300/70 hover:text-white flex-shrink-0">
             ✕
           </button>
+        </div>
+      )}
+
+      {/* Transparencia post-import: quién quedó revocado, por si el export de Skool
+          vino incompleto y hay que restaurar a alguien vigente manualmente. */}
+      {revokedAfterImport.length > 0 && (
+        <div className="mb-4 bg-red-500/5 border border-red-500/20 rounded-xl px-4 py-3">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm text-red-300 font-medium">
+              {revokedAfterImport.length} miembro(s) revocado(s) en este import
+            </p>
+            <button
+              onClick={() => setRevokedAfterImport([])}
+              className="text-red-300/70 hover:text-white text-xs"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="space-y-1.5">
+            {members
+              .filter((m) => revokedAfterImport.includes(m.email))
+              .map((m) => (
+                <div key={m.id} className="flex items-center justify-between text-xs text-zinc-300">
+                  <span>{m.email}</span>
+                  <button
+                    onClick={() => reactivate(m)}
+                    className="text-zinc-400 hover:text-white underline underline-offset-2"
+                  >
+                    Reactivar
+                  </button>
+                </div>
+              ))}
+          </div>
         </div>
       )}
 
@@ -241,19 +341,19 @@ export default function AdminMembersPage() {
               placeholder="email@ejemplo.com"
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
-              className="flex-1 min-w-[200px] bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm"
+              className="flex-1 min-w-[200px] bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500 text-sm"
             />
             <input
               type="text"
               placeholder="Nombre (opcional)"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              className="flex-1 min-w-[200px] bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm"
+              className="flex-1 min-w-[200px] bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500 text-sm"
             />
             <button
               onClick={addSingle}
               disabled={!newEmail}
-              className="bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white font-semibold rounded-xl px-5 py-2.5 text-sm transition"
+              className="bg-zinc-100 hover:bg-white disabled:opacity-50 text-zinc-900 font-semibold rounded-xl px-5 py-2.5 text-sm transition"
             >
               Agregar
             </button>
@@ -333,7 +433,7 @@ export default function AdminMembersPage() {
             <button
               onClick={confirmImport}
               disabled={importing}
-              className="bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white font-semibold rounded-xl px-5 py-2.5 text-sm transition"
+              className="bg-zinc-100 hover:bg-white disabled:opacity-50 text-zinc-900 font-semibold rounded-xl px-5 py-2.5 text-sm transition"
             >
               {importing ? "Importando..." : `Confirmar import (${preview.length})`}
             </button>
@@ -353,7 +453,7 @@ export default function AdminMembersPage() {
         placeholder="Buscar por email o nombre..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-2.5 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm mb-4"
+        className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-2.5 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500 text-sm mb-4"
       />
 
       {/* Lista */}
@@ -380,7 +480,7 @@ export default function AdminMembersPage() {
                 )}
               </div>
               {member.tier && (
-                <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-violet-500/10 text-violet-300 capitalize hidden sm:inline">
+                <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-zinc-800 text-zinc-300 capitalize hidden sm:inline">
                   {member.tier}
                 </span>
               )}
@@ -389,6 +489,15 @@ export default function AdminMembersPage() {
                   {fmtMoney(member.ltv)}
                 </span>
               )}
+              <input
+                type="number"
+                min={0}
+                defaultValue={member.monthly_message_limit ?? ""}
+                onBlur={(e) => updateQuota(member, e.target.value)}
+                placeholder="∞"
+                title="Límite mensual de mensajes (vacío = usa el default global de Ajustes)"
+                className="hidden md:block w-16 bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-zinc-200 text-center focus:outline-none focus:ring-1 focus:ring-zinc-500"
+              />
               <span
                 className={`text-xs px-2.5 py-1 rounded-full font-medium ${
                   member.is_active
@@ -415,6 +524,34 @@ export default function AdminMembersPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Auditoría de integración: confirma que Zapier/Skool realmente está
+          llegando al webhook, y con qué resultado. */}
+      {webhookEvents.length > 0 && (
+        <div className="mt-8">
+          <h2 className="text-sm font-semibold text-zinc-300 mb-2">Actividad de integración (Zapier/Skool)</h2>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl divide-y divide-zinc-800/80 max-h-80 overflow-y-auto">
+            {webhookEvents.map((ev) => (
+              <div key={ev.id} className="flex items-center gap-3 px-4 py-2.5 text-xs">
+                <span
+                  className={`px-2 py-0.5 rounded-full font-medium ${
+                    ev.success ? "bg-green-900/30 text-green-400" : "bg-red-900/30 text-red-400"
+                  }`}
+                >
+                  {ev.success ? "OK" : "Error"}
+                </span>
+                <span className="text-zinc-500 w-24 flex-shrink-0">{ev.source}</span>
+                <span className="text-zinc-400 flex-shrink-0">{ev.action ?? "—"}</span>
+                <span className="text-zinc-300 truncate flex-1">{ev.email ?? "—"}</span>
+                {ev.error && <span className="text-red-400/80 truncate max-w-[200px]">{ev.error}</span>}
+                <span className="text-zinc-600 flex-shrink-0">
+                  {new Date(ev.created_at).toLocaleString("es", { dateStyle: "short", timeStyle: "short" })}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

@@ -1,9 +1,11 @@
 import { ImageResponse } from "next/og";
+import { getAppSettings } from "@/lib/app-settings";
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-export default function OpengraphImage() {
+export default async function OpengraphImage() {
+  const settings = await getAppSettings();
   return new ImageResponse(
     (
       <div
@@ -49,7 +51,7 @@ export default function OpengraphImage() {
           </svg>
         </div>
         <div style={{ fontSize: 62, fontWeight: 700, color: "#f4f4f5", letterSpacing: "-0.02em" }}>
-          GPT Creativos
+          {`GPT ${settings.community_name}`}
         </div>
         <div style={{ fontSize: 28, color: "#a1a1aa", marginTop: 14 }}>
           Los GPTs de la comunidad, en un solo lugar

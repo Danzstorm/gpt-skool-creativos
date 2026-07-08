@@ -14,12 +14,21 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
   const { id } = await params;
-  const { is_active } = await request.json();
+  let is_active: boolean | undefined;
+  let monthly_message_limit: number | null | undefined;
+  try {
+    ({ is_active, monthly_message_limit } = await request.json());
+  } catch {
+    return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
+  }
 
   const serviceClient = createServiceClient();
   const { data, error } = await serviceClient
     .from("allowed_members")
-    .update({ is_active })
+    .update({
+      ...(is_active !== undefined && { is_active }),
+      ...(monthly_message_limit !== undefined && { monthly_message_limit }),
+    })
     .eq("id", id)
     .select()
     .single();

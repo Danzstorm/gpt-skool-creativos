@@ -53,12 +53,24 @@ export async function POST(request: NextRequest) {
 
   const service = createServiceClient();
 
+  // Best-effort: auditoría para que el admin vea en /admin/members que Zapier
+  // realmente está llegando (y con qué resultado), sin condicionar la respuesta.
+  const logEvent = (success: boolean, error?: string) =>
+    service.from("webhook_events").insert({ source: "skool_webhook", email, action, success, error }).then(
+      () => {},
+      () => {}
+    );
+
   if (action === "remove") {
     const { error } = await service
       .from("allowed_members")
       .update({ is_active: false })
       .eq("email", email);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      logEvent(false, error.message);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    logEvent(true);
     return NextResponse.json({ ok: true, email, action: "revoked" });
   }
 
@@ -100,6 +112,10 @@ export async function POST(request: NextRequest) {
     },
     { onConflict: "email" }
   );
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    logEvent(false, error.message);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  logEvent(true);
   return NextResponse.json({ ok: true, email, action: "activated" });
 }

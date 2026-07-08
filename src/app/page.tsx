@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getAppSettings } from "@/lib/app-settings";
 import type { Gpt } from "@/lib/types";
 import { ArrowUpRight, Lock, Sparkles, MessagesSquare, Wand2, ImageIcon } from "lucide-react";
-import GptMark from "@/components/GptMark";
+import GptGlyph from "@/components/chat/GptGlyph";
 
 export default async function Landing() {
   const supabase = await createClient();
@@ -13,6 +14,8 @@ export default async function Landing() {
 
   // Con sesión, directo al producto
   if (user) redirect("/chat");
+
+  const settings = await getAppSettings();
 
   const { data: gpts } = await supabase
     .from("gpts_public")
@@ -50,7 +53,7 @@ export default async function Landing() {
         <div className="flex items-center justify-between">
           <Link href="/" className="group flex items-baseline gap-2">
             <span className="font-display text-2xl font-semibold tracking-tight text-stone-50">
-              Creativos
+              {settings.community_name}
             </span>
             <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-violet-400/80">
               GPT
@@ -142,7 +145,8 @@ export default async function Landing() {
                 />
               </Link>
               <span className="inline-flex items-center gap-1.5 text-xs text-stone-400">
-                <Lock size={12} className="text-violet-400/70" /> Solo miembros del Skool de Creativos
+                <Lock size={12} className="text-violet-400/70" /> Solo miembros del Skool de{" "}
+                {settings.community_name}
               </span>
             </div>
           </div>
@@ -191,13 +195,11 @@ export default async function Landing() {
                   className="ring-gradient group fade-up relative flex items-start gap-5 rounded-2xl border border-stone-800/80 bg-stone-900/30 p-6 transition-all duration-300 hover:-translate-y-0.5 hover:border-violet-500/40 hover:bg-stone-900/60"
                   style={{ animationDelay: `${i * 60}ms` }}
                 >
-                  <GptMark
-                    name={g.name}
-                    iconUrl={g.icon_url}
-                    category={g.category}
+                  <GptGlyph
+                    gpt={g}
                     className="h-14 w-14 rounded-xl ring-1 ring-white/5 transition-transform group-hover:scale-105"
-                    sizePx={56}
-                    initialClassName="text-2xl"
+                    sizePx="56px"
+                    textClassName="text-2xl"
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2.5">
@@ -223,7 +225,7 @@ export default async function Landing() {
 
       <footer className="relative z-10 border-t border-stone-800/70 px-6 py-8 sm:px-10 lg:px-16">
         <div className="mx-auto flex max-w-7xl items-center justify-between text-xs text-stone-500">
-          <span className="font-display text-sm text-stone-400">Creativos</span>
+          <span className="font-display text-sm text-stone-400">{settings.community_name}</span>
           <span>Acceso privado para la comunidad</span>
         </div>
       </footer>

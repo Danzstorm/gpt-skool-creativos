@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Fraunces } from "next/font/google";
+import { getAppSettings } from "@/lib/app-settings";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -20,11 +21,14 @@ const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ??
   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
 
-export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
-  title: "GPT Creativos",
-  description: "Plataforma de GPTs para la comunidad de Creativos",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getAppSettings();
+  return {
+    metadataBase: new URL(siteUrl),
+    title: `GPT ${settings.community_name}`,
+    description: `Plataforma de GPTs para la comunidad de ${settings.community_name}`,
+  };
+}
 
 export default function RootLayout({
   children,

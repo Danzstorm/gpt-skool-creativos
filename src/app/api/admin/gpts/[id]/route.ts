@@ -27,8 +27,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
   const { id } = await params;
-  const body = await request.json();
-  const { name, description, category, system_prompt, model, conversation_starters, sort_order, is_active, icon_url } = body;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- body de forma libre, validado campo a campo abajo
+  let body: any;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
+  }
+  const { name, description, category, system_prompt, model, conversation_starters, sort_order, is_active, icon_url, author } = body;
 
   const serviceClient = createServiceClient();
   const { data: gpt } = await serviceClient.from("gpts").select("id").eq("id", id).single();
@@ -41,6 +47,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       ...(description !== undefined && { description }),
       ...(category && { category }),
       ...(icon_url !== undefined && { icon_url }),
+      ...(author !== undefined && { author }),
       ...(system_prompt && { system_prompt }),
       ...(model && { model }),
       // Todos los GPTs mantienen todas las capacidades.

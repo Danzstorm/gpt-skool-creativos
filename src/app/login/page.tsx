@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
@@ -8,6 +8,23 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "sent" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const [communityName, setCommunityName] = useState("Creativos");
+  const [skoolUrl, setSkoolUrl] = useState(process.env.NEXT_PUBLIC_SKOOL_URL || "https://www.skool.com/");
+
+  // Marca (white-label) vía RLS pública de app_settings — sin esto cada cliente
+  // nuevo requeriría tocar código para su nombre/comunidad.
+  useEffect(() => {
+    (async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("app_settings")
+        .select("community_name, skool_url")
+        .eq("id", 1)
+        .single();
+      if (data?.community_name) setCommunityName(data.community_name);
+      if (data?.skool_url) setSkoolUrl(data.skool_url);
+    })();
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -68,7 +85,7 @@ export default function LoginPage() {
         <div className="mb-9 text-center">
           <Link href="/" className="inline-flex items-baseline gap-2">
             <span className="font-display text-3xl font-semibold tracking-tight text-stone-50">
-              Creativos
+              {communityName}
             </span>
             <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-stone-500">
               GPT
@@ -116,12 +133,12 @@ export default function LoginPage() {
                 {errorMsg}
                 {errorMsg.toLowerCase().includes("acceso") && (
                   <a
-                    href={process.env.NEXT_PUBLIC_SKOOL_URL || "https://www.skool.com/"}
+                    href={skoolUrl}
                     target="_blank"
                     rel="noreferrer"
                     className="block mt-2 text-violet-300 underline"
                   >
-                    Unirme al Skool de Creativos →
+                    Unirme al Skool de {communityName} →
                   </a>
                 )}
               </div>
@@ -156,7 +173,7 @@ export default function LoginPage() {
 
             <p className="text-center text-xs text-stone-500">
               Acceso solo para miembros de{" "}
-              <span className="text-stone-400">Skool Creativos</span>. No hay registro abierto.
+              <span className="text-stone-400">Skool {communityName}</span>. No hay registro abierto.
             </p>
           </form>
           </div>

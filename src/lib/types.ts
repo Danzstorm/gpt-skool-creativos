@@ -4,6 +4,7 @@ export interface Gpt {
   description: string | null;
   category: string;
   icon_url: string | null;
+  author: string | null;
   tools_enabled: { file_search: boolean; code_interpreter: boolean };
   vision_enabled: boolean;
   conversation_starters: string[];
@@ -31,6 +32,25 @@ export interface AllowedMember {
   invited_by: string | null;
   source: "manual" | "skool_csv" | "skool_webhook";
   added_at: string;
+  monthly_message_limit: number | null;
+}
+
+export interface AppSettings {
+  community_name: string;
+  logo_url: string | null;
+  skool_url: string | null;
+  support_email: string | null;
+  default_monthly_message_limit: number | null;
+}
+
+export interface WebhookEvent {
+  id: string;
+  source: string;
+  email: string | null;
+  action: string | null;
+  success: boolean;
+  error: string | null;
+  created_at: string;
 }
 
 export interface Profile {

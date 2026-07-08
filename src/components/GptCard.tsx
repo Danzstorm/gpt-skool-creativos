@@ -1,41 +1,45 @@
 import Link from "next/link";
 import type { Gpt } from "@/lib/types";
-import GptMark from "@/components/GptMark";
+import GptGlyph from "@/components/chat/GptGlyph";
+import { getGptVisual } from "@/lib/gpt-visual";
 
 interface Props {
   gpt: Gpt;
 }
 
 export default function GptCard({ gpt }: Props) {
+  const { accentClasses } = getGptVisual(gpt.category);
+
   return (
     <Link
       href={`/chat?gpt=${gpt.id}`}
-      className="group relative block rounded-2xl border border-stone-800/80 bg-stone-900/40 p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-stone-700 hover:bg-stone-900/70 hover:shadow-[0_10px_40px_-16px_rgba(139,92,246,0.3)]"
+      className="group relative block rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-zinc-700 hover:bg-zinc-900/70"
     >
       <div className="flex items-start gap-4">
-        <GptMark
-          name={gpt.name}
-          iconUrl={gpt.icon_url}
-          category={gpt.category}
+        <GptGlyph
+          gpt={gpt}
           className="h-12 w-12 rounded-xl"
-          sizePx={48}
-          initialClassName="text-xl"
+          sizePx="48px"
+          textClassName="text-xl"
         />
 
         <div className="min-w-0 flex-1">
-          <h3 className="font-display truncate text-lg font-medium text-stone-50 transition group-hover:text-white">
+          <h3 className="font-display truncate text-lg font-medium text-zinc-50 transition group-hover:text-white">
             {gpt.name}
           </h3>
           {gpt.category && (
-            <span className="text-xs font-medium uppercase tracking-[0.12em] text-violet-400/80">
+            <span
+              className={`inline-block mt-0.5 rounded-full border bg-gradient-to-br px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.1em] ${accentClasses}`}
+            >
               {gpt.category}
             </span>
           )}
           {gpt.description && (
-            <p className="mt-1.5 line-clamp-3 text-sm leading-relaxed text-stone-400">
+            <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-zinc-400">
               {gpt.description}
             </p>
           )}
+          {gpt.author && <p className="mt-1.5 text-xs text-zinc-600">By {gpt.author}</p>}
         </div>
       </div>
     </Link>

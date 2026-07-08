@@ -2,21 +2,26 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import type { Gpt, Message, UploadedFile, ThreadSummary } from "@/lib/types";
-import { Menu, ArrowDown } from "lucide-react";
+import { Menu, ArrowDown, ChevronDown, PanelLeftOpen, SquarePen } from "lucide-react";
 import Sparkle from "./Sparkle";
 import GptGlyph from "./chat/GptGlyph";
 import ChatSidebar from "./chat/ChatSidebar";
 import MessageBubble from "./chat/MessageBubble";
 import Composer, { type ComposerHandle } from "./chat/Composer";
+import GptChatsModal from "./chat/GptChatsModal";
+import { consumeSSE } from "@/lib/stream-client";
+
+const SIDEBAR_COLLAPSED_KEY = "chat_sidebar_collapsed";
 
 interface Props {
   gpts: Gpt[];
   threads: ThreadSummary[];
   initialThreadId?: string | null;
   initialGptId?: string | null;
+  profile: { fullName: string | null; email: string | null; isAdmin: boolean };
 }
 
-export default function UnifiedChat({ gpts, threads, initialThreadId, initialGptId }: Props) {
+export default function UnifiedChat({ gpts, threads, initialThreadId, initialGptId, profile }: Props) {
   const [threadList, setThreadList] = useState<ThreadSummary[]>(threads);
   const initialThread = initialThreadId ? threads.find((t) => t.id === initialThreadId) : null;
 
@@ -31,11 +36,29 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
   const [isLoading, setIsLoading] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [chatSearch, setChatSearch] = useState("");
+  const [gptChatsModalId, setGptChatsModalId] = useState<string | null>(null);
+
+  // Aplicado post-montaje (no en el estado inicial) para que el SSR/primer
+  // render coincida siempre con "expandido" y no genere hydration mismatch;
+  // leer localStorage en el lazy initializer de useState rompería esa paridad.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1") setSidebarCollapsed(true);
+  }, []);
+
+  const toggleSidebarCollapsed = useCallback(() => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? "1" : "0");
+      return next;
+    });
+  }, []);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -122,32 +145,39 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
 
   const renameThread = useCallback(
     async (id: string) => {
-      if (!renameValue.trim()) {
-        setRenamingId(null);
-        return;
-      }
+      // Se limpia renamingId ANTES del await: el input se desmonta de inmediato,
+      // así un segundo evento (blur tras Enter, doble click) no puede reenviar
+      // el mismo rename mientras el primero sigue en vuelo.
+      if (renamingId !== id) return;
+      const title = renameValue.trim();
+      setRenamingId(null);
+      if (!title) return;
+
       const res = await fetch(`/api/threads/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: renameValue.trim() }),
+        body: JSON.stringify({ title }),
       });
       if (res.ok) {
         const updated = await res.json();
         setThreadList((prev) => prev.map((t) => (t.id === id ? { ...t, title: updated.title } : t)));
       }
-      setRenamingId(null);
     },
-    [renameValue]
+    [renameValue, renamingId]
   );
 
   const deleteThread = useCallback(
     async (id: string) => {
+      if (!confirm("¿Borrar esta conversación? Esta acción no se puede deshacer.")) return;
       await fetch(`/api/threads/${id}`, { method: "DELETE" });
       setThreadList((prev) => prev.filter((t) => t.id !== id));
       if (id === activeThreadId) newChat();
     },
     [activeThreadId, newChat]
   );
+
+  const openGptChats = useCallback((gptId: string) => setGptChatsModalId(gptId), []);
+  const closeGptChats = useCallback(() => setGptChatsModalId(null), []);
 
   const uploadFiles = useCallback(async (files: File[]) => {
     for (const file of files) {
@@ -196,31 +226,22 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
     if (res.status === 409) {
       throw new Error("Ya hay una respuesta en curso para esta conversación. Espera a que termine.");
     }
+    if (res.status === 403) {
+      const data = await res.json().catch(() => null);
+      throw new Error(data?.error || "Alcanzaste tu límite de mensajes de este mes.");
+    }
     if (!res.ok) throw new Error("Error al enviar mensaje");
 
-    const reader = res.body!.getReader();
-    const decoder = new TextDecoder();
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      const chunk = decoder.decode(value);
-      const lines = chunk.split("\n").filter((l) => l.startsWith("data: "));
-      for (const line of lines) {
-        const data = line.replace("data: ", "");
-        if (data === "[DONE]") continue;
-        const parsed = JSON.parse(data);
-        if (parsed.text) {
-          setMessages((prev) => {
-            const updated = [...prev];
-            updated[updated.length - 1] = {
-              ...updated[updated.length - 1],
-              content: updated[updated.length - 1].content + parsed.text,
-            };
-            return updated;
-          });
-        }
-      }
-    }
+    await consumeSSE(res, (text) => {
+      setMessages((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
+          ...updated[updated.length - 1],
+          content: updated[updated.length - 1].content + text,
+        };
+        return updated;
+      });
+    });
   }
 
   // Agrega un placeholder de asistente y streamea la respuesta desde `url`
@@ -239,10 +260,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
       await consumeStream(res);
     } catch (err) {
       const aborted = err instanceof DOMException && err.name === "AbortError";
-      const errMsg =
-        err instanceof Error && (err.message.includes("Demasiados") || err.message.includes("en curso"))
-          ? err.message
-          : "Error al obtener respuesta. Intenta de nuevo.";
+      const errMsg = err instanceof Error ? err.message : "Error al obtener respuesta. Intenta de nuevo.";
       setMessages((prev) => {
         const updated = [...prev];
         const last = updated[updated.length - 1];
@@ -368,20 +386,30 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
 
   const showComposer = !!activeGpt;
 
+  const gptChatsModalGpt = gptChatsModalId ? gpts.find((g) => g.id === gptChatsModalId) : null;
+  const gptChatsModalThreads = useMemo(
+    () => (gptChatsModalId ? threadList.filter((t) => t.gpt_id === gptChatsModalId) : []),
+    [threadList, gptChatsModalId]
+  );
+
   return (
-    <div className="flex h-[calc(100dvh-57px)] relative">
+    <div className="flex h-dvh relative">
       <ChatSidebar
         gpts={gpts}
         threadList={threadList}
         activeGptId={activeGptId}
         activeThreadId={activeThreadId}
         sidebarOpen={sidebarOpen}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={toggleSidebarCollapsed}
+        profile={profile}
         chatSearch={chatSearch}
         onSearchChange={setChatSearch}
         onSelectGpt={selectGpt}
         onSelectThread={selectThread}
         onNewChat={newChat}
         onCloseSidebar={closeSidebar}
+        onOpenGptChats={openGptChats}
         renamingId={renamingId}
         renameValue={renameValue}
         onRenameValueChange={setRenameValue}
@@ -395,18 +423,22 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
       <div
         className="flex flex-col flex-1 min-w-0 relative"
         onDragOver={(e) => {
-          if (!showComposer) return;
+          // preventDefault siempre: si no, sin GPT activo el navegador abre el
+          // archivo soltado en vez de ignorarlo.
           e.preventDefault();
-          setIsDragging(true);
+          if (showComposer) setIsDragging(true);
         }}
         onDragLeave={(e) => {
           if (e.currentTarget === e.target) setIsDragging(false);
         }}
-        onDrop={handleDrop}
+        onDrop={(e) => {
+          e.preventDefault();
+          if (showComposer) handleDrop(e);
+        }}
       >
         {isDragging && showComposer && (
-          <div className="absolute inset-0 z-10 bg-violet-600/10 border-2 border-dashed border-violet-500/50 rounded-2xl m-2 flex items-center justify-center pointer-events-none">
-            <p className="text-violet-200 text-sm font-medium">Suelta imágenes o archivos aquí</p>
+          <div className="absolute inset-0 z-10 bg-zinc-800/40 border-2 border-dashed border-zinc-600 rounded-2xl m-2 flex items-center justify-center pointer-events-none">
+            <p className="text-zinc-200 text-sm font-medium">Suelta imágenes o archivos aquí</p>
           </div>
         )}
         {/* Header */}
@@ -418,11 +450,36 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
           >
             <Menu size={20} />
           </button>
+          {sidebarCollapsed && (
+            <div className="hidden md:flex items-center gap-1 -ml-1">
+              <button
+                onClick={toggleSidebarCollapsed}
+                className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800/60 transition"
+                title="Expandir panel"
+                aria-label="Expandir panel"
+              >
+                <PanelLeftOpen size={18} />
+              </button>
+              <button
+                onClick={newChat}
+                className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800/60 transition"
+                title="Nuevo chat"
+                aria-label="Nuevo chat"
+              >
+                <SquarePen size={18} />
+              </button>
+            </div>
+          )}
           {activeGpt ? (
-            <>
-              <GptGlyph gpt={activeGpt} size="lg" />
-              <h2 className="text-zinc-100 font-semibold text-sm truncate">{activeGpt.name}</h2>
-            </>
+            <button
+              onClick={() => openGptChats(activeGpt.id)}
+              className="flex items-center gap-2 min-w-0 rounded-lg px-1.5 py-1 -ml-1.5 hover:bg-zinc-800/60 transition"
+              title="Ver conversaciones de este GPT"
+            >
+              <GptGlyph gpt={activeGpt} size="sm" />
+              <h2 className="text-zinc-100 font-medium text-[13px] truncate">{activeGpt.name}</h2>
+              <ChevronDown size={14} className="text-zinc-600 flex-shrink-0" />
+            </button>
           ) : (
             <h2 className="text-zinc-400 font-medium text-sm">Elige un GPT para empezar</h2>
           )}
@@ -432,7 +489,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
         <div
           ref={scrollRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto px-4 py-6 space-y-6"
+          className="flex-1 overflow-y-auto px-4 py-6"
         >
           {isLoadingHistory && (
             <div className="space-y-4 animate-pulse max-w-2xl mx-auto w-full">
@@ -458,11 +515,14 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
           {activeGpt && messages.length === 0 && !isLoadingHistory && (
             <div className="flex flex-col items-center justify-center h-full text-center py-12 max-w-2xl mx-auto">
               <div className="mb-5">
-                <GptGlyph gpt={activeGpt} size="lg" />
+                <GptGlyph gpt={activeGpt} size="xl" />
               </div>
               <h3 className="font-display text-2xl font-medium tracking-tight text-stone-50 mb-2">{activeGpt.name}</h3>
               {activeGpt.description && (
                 <p className="text-zinc-400 text-sm max-w-md">{activeGpt.description}</p>
+              )}
+              {activeGpt.author && (
+                <p className="text-zinc-600 text-xs mt-1.5">By {activeGpt.author}</p>
               )}
               {activeGpt.conversation_starters && activeGpt.conversation_starters.length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-8 w-full">
@@ -470,7 +530,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
                     <button
                       key={i}
                       onClick={() => sendMessage(starter)}
-                      className="text-left border border-zinc-800 hover:border-violet-500/40 bg-zinc-900/50 hover:bg-zinc-900 rounded-2xl px-4 py-3 text-sm text-zinc-300 hover:text-zinc-100 transition-all hover:-translate-y-0.5"
+                      className="text-left border border-zinc-800 hover:border-zinc-600 bg-zinc-900/50 hover:bg-zinc-900 rounded-2xl px-4 py-3 text-sm text-zinc-300 hover:text-zinc-100 transition-all hover:-translate-y-0.5"
                     >
                       {starter}
                     </button>
@@ -480,26 +540,30 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
             </div>
           )}
 
-          {messages.map((msg, i) => {
-            const isLast = i === messages.length - 1;
-            const streaming = isLoading && isLast && msg.role === "assistant";
-            return (
-              <MessageBubble
-                key={i}
-                index={i}
-                message={msg}
-                activeGpt={activeGpt}
-                isLast={isLast}
-                streaming={streaming}
-                canRegenerate={isLast && !isLoading}
-                canEdit={i === lastUserIndex && !isLoading}
-                isCopied={copiedIndex === i}
-                onCopy={copyMessage}
-                onRegenerate={regenerate}
-                onEdit={startEdit}
-              />
-            );
-          })}
+          {messages.length > 0 && (
+            <div className="max-w-3xl mx-auto w-full space-y-6">
+              {messages.map((msg, i) => {
+                const isLast = i === messages.length - 1;
+                const streaming = isLoading && isLast && msg.role === "assistant";
+                return (
+                  <MessageBubble
+                    key={i}
+                    index={i}
+                    message={msg}
+                    activeGpt={activeGpt}
+                    isLast={isLast}
+                    streaming={streaming}
+                    canRegenerate={isLast && !isLoading}
+                    canEdit={i === lastUserIndex && !isLoading}
+                    isCopied={copiedIndex === i}
+                    onCopy={copyMessage}
+                    onRegenerate={regenerate}
+                    onEdit={startEdit}
+                  />
+                );
+              })}
+            </div>
+          )}
           <div ref={bottomRef} />
         </div>
 
@@ -527,6 +591,24 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
           />
         )}
       </div>
+
+      {gptChatsModalGpt && (
+        <GptChatsModal
+          gpt={gptChatsModalGpt}
+          threads={gptChatsModalThreads}
+          activeThreadId={activeThreadId}
+          onClose={closeGptChats}
+          onSelectThread={selectThread}
+          onNewChat={() => selectGpt(gptChatsModalGpt.id)}
+          renamingId={renamingId}
+          renameValue={renameValue}
+          onRenameValueChange={setRenameValue}
+          onStartRename={startRename}
+          onSubmitRename={renameThread}
+          onCancelRename={cancelRename}
+          onDeleteThread={deleteThread}
+        />
+      )}
     </div>
   );
 }

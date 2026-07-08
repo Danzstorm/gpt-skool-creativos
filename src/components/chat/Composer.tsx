@@ -1,7 +1,8 @@
-import { forwardRef, memo, useImperativeHandle, useRef, useState } from "react";
-import { Send, Paperclip, Mic, MicOff, X, Square } from "lucide-react";
+import { forwardRef, memo, useCallback, useImperativeHandle, useRef, useState } from "react";
+import { ArrowUp, Plus, Image as ImageIcon, Paperclip, Mic, MicOff, X, Square } from "lucide-react";
 import type { UploadedFile } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useDismissable } from "@/lib/useDismissable";
 
 export interface ComposerHandle {
   setText: (text: string) => void;
@@ -28,11 +29,15 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [micError, setMicError] = useState("");
+  const [attachMenuOpen, setAttachMenuOpen] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+
+  const closeAttachMenu = useCallback(() => setAttachMenuOpen(false), []);
+  const attachMenuRef = useDismissable<HTMLDivElement>(attachMenuOpen, closeAttachMenu);
 
   function autoResize() {
     const el = textareaRef.current;
@@ -54,6 +59,14 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   function handleFileUpload(files: FileList | null) {
     if (!files || files.length === 0) return;
     onFilesSelected(Array.from(files));
+  }
+
+  function openFilePicker(accept: string) {
+    setAttachMenuOpen(false);
+    const el = fileInputRef.current;
+    if (!el) return;
+    el.accept = accept;
+    el.click();
   }
 
   function handlePaste(e: React.ClipboardEvent) {
@@ -130,7 +143,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   }
 
   return (
-    <div className="border-t border-zinc-800/80 bg-zinc-950 px-4 py-4">
+    <div className="border-t border-zinc-800/80 bg-zinc-950 px-4 py-3">
       {attachedFiles.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-3 max-w-3xl mx-auto">
           {attachedFiles.map((f, i) => {
@@ -197,7 +210,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
         </div>
       )}
 
-      <div className="flex items-end gap-2 bg-zinc-900/80 border border-zinc-700/70 focus-within:border-violet-500/50 rounded-2xl px-3 py-2 transition-colors shadow-[0_1px_0_rgba(255,255,255,0.03)_inset] max-w-3xl mx-auto">
+      <div className="flex items-end gap-2 bg-zinc-900/80 border border-zinc-700/70 focus-within:border-zinc-500 rounded-2xl px-3 py-1.5 transition-colors shadow-[0_1px_0_rgba(255,255,255,0.03)_inset] max-w-3xl mx-auto">
         <input
           ref={fileInputRef}
           type="file"
@@ -206,13 +219,39 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           className="hidden"
           onChange={(e) => handleFileUpload(e.target.files)}
         />
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="text-zinc-500 hover:text-zinc-300 transition flex-shrink-0 mb-0.5"
-          title="Adjuntar imágenes o documentos (también puedes pegar o arrastrar)"
-        >
-          <Paperclip size={18} />
-        </button>
+
+        <div ref={attachMenuRef} className="relative flex-shrink-0">
+          {attachMenuOpen && (
+            <div className="absolute bottom-full left-0 mb-2 w-48 bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl overflow-hidden py-1">
+              <button
+                type="button"
+                onClick={() => openFilePicker("image/*")}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition text-left"
+              >
+                <ImageIcon size={15} />
+                Imágenes
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  openFilePicker("application/pdf,.txt,.md,.py,.js,.ts,.csv,.xlsx,.docx")
+                }
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition text-left"
+              >
+                <Paperclip size={15} />
+                Archivos
+              </button>
+            </div>
+          )}
+          <button
+            onClick={() => setAttachMenuOpen((v) => !v)}
+            className="text-zinc-500 hover:text-zinc-300 transition mb-0.5"
+            title="Adjuntar imágenes o archivos (también puedes pegar o arrastrar)"
+            aria-label="Adjuntar"
+          >
+            <Plus size={17} />
+          </button>
+        </div>
 
         <textarea
           ref={textareaRef}
@@ -226,7 +265,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           placeholder={isTranscribing ? "Transcribiendo audio..." : "Escribe un mensaje... (Enter para enviar)"}
           disabled={isLoading || isTranscribing}
           rows={1}
-          className="flex-1 bg-transparent text-white placeholder-zinc-500 resize-none focus:outline-none text-sm py-1 max-h-[180px] leading-relaxed"
+          className="flex-1 bg-transparent text-white placeholder-zinc-500 resize-none focus:outline-none text-sm py-0.5 max-h-[180px] leading-relaxed"
         />
 
         <button
@@ -238,28 +277,29 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           )}
           title={isRecording ? "Toca para detener y transcribir" : "Toca para grabar"}
         >
-          {isRecording ? <MicOff size={18} /> : <Mic size={18} />}
+          {isRecording ? <MicOff size={17} /> : <Mic size={17} />}
         </button>
 
         {isLoading ? (
           <button
             onClick={onStop}
-            className="bg-zinc-700 hover:bg-zinc-600 text-white rounded-xl p-1.5 flex-shrink-0 transition"
+            className="bg-zinc-700 hover:bg-zinc-600 text-white rounded-full p-1.5 flex-shrink-0 transition"
             title="Detener respuesta"
           >
-            <Square size={16} className="fill-current" />
+            <Square size={13} className="fill-current" />
           </button>
         ) : (
           <button
             onClick={submit}
             disabled={!input.trim() && attachedFiles.length === 0}
-            className="bg-gradient-to-br from-violet-600 to-violet-700 hover:from-violet-500 hover:to-violet-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl p-1.5 flex-shrink-0 transition active:scale-95 shadow-[0_1px_0_rgba(255,255,255,0.15)_inset]"
+            className="bg-zinc-100 hover:bg-white disabled:bg-zinc-700 disabled:text-zinc-500 text-zinc-900 disabled:cursor-not-allowed rounded-full p-1.5 flex-shrink-0 transition active:scale-95"
+            aria-label="Enviar"
           >
-            <Send size={16} />
+            <ArrowUp size={15} strokeWidth={2.5} />
           </button>
         )}
       </div>
-      <p className="text-center text-xs text-zinc-600 mt-2">
+      <p className="text-center text-xs text-zinc-600 mt-1.5">
         Los GPTs pueden cometer errores. Verifica información importante.
       </p>
     </div>

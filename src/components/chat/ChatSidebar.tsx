@@ -1,22 +1,10 @@
 import { memo, useMemo } from "react";
-import { MessageSquarePlus } from "lucide-react";
+import { PanelLeftClose, Search, SquarePen } from "lucide-react";
 import type { Gpt, ThreadSummary } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import GptGlyph from "./GptGlyph";
 import ThreadListItem from "./ThreadListItem";
-
-const GROUP_ORDER = ["Hoy", "Ayer", "Últimos 7 días", "Anteriores"] as const;
-
-function groupLabel(dateStr: string): (typeof GROUP_ORDER)[number] {
-  const d = new Date(dateStr);
-  const now = new Date();
-  const startOfDay = (dt: Date) => new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()).getTime();
-  const diffDays = Math.round((startOfDay(now) - startOfDay(d)) / 86_400_000);
-  if (diffDays <= 0) return "Hoy";
-  if (diffDays === 1) return "Ayer";
-  if (diffDays <= 7) return "Últimos 7 días";
-  return "Anteriores";
-}
+import SidebarFooter from "./SidebarFooter";
 
 interface Props {
   gpts: Gpt[];
@@ -24,12 +12,16 @@ interface Props {
   activeGptId: string | null;
   activeThreadId: string | null;
   sidebarOpen: boolean;
+  collapsed: boolean;
+  onToggleCollapse: () => void;
+  profile: { fullName: string | null; email: string | null; isAdmin: boolean };
   chatSearch: string;
   onSearchChange: (value: string) => void;
   onSelectGpt: (gptId: string) => void;
   onSelectThread: (thread: ThreadSummary) => void;
   onNewChat: () => void;
   onCloseSidebar: () => void;
+  onOpenGptChats: (gptId: string) => void;
   renamingId: string | null;
   renameValue: string;
   onRenameValueChange: (value: string) => void;
@@ -45,12 +37,16 @@ function ChatSidebar({
   activeGptId,
   activeThreadId,
   sidebarOpen,
+  collapsed,
+  onToggleCollapse,
+  profile,
   chatSearch,
   onSearchChange,
   onSelectGpt,
   onSelectThread,
   onNewChat,
   onCloseSidebar,
+  onOpenGptChats,
   renamingId,
   renameValue,
   onRenameValueChange,
@@ -61,113 +57,122 @@ function ChatSidebar({
 }: Props) {
   const gptById = useMemo(() => new Map(gpts.map((g) => [g.id, g])), [gpts]);
 
-  const groups = useMemo(() => {
-    const filtered = threadList.filter(
-      (t) =>
-        !chatSearch ||
-        t.title.toLowerCase().includes(chatSearch.toLowerCase()) ||
-        gptById.get(t.gpt_id)?.name.toLowerCase().includes(chatSearch.toLowerCase())
-    );
-    const byGroup = new Map<string, ThreadSummary[]>();
-    for (const t of filtered) {
-      const label = groupLabel(t.updated_at);
-      if (!byGroup.has(label)) byGroup.set(label, []);
-      byGroup.get(label)!.push(t);
-    }
-    return GROUP_ORDER.map((label) => ({ label, threads: byGroup.get(label) ?? [] })).filter(
-      (g) => g.threads.length > 0
+  const filteredThreads = useMemo(() => {
+    if (!chatSearch) return threadList;
+    const q = chatSearch.toLowerCase();
+    return threadList.filter(
+      (t) => t.title.toLowerCase().includes(q) || gptById.get(t.gpt_id)?.name.toLowerCase().includes(q)
     );
   }, [threadList, chatSearch, gptById]);
 
   return (
     <>
       {sidebarOpen && (
-        <div
-          className="fixed inset-0 top-[57px] bg-black/50 z-20 md:hidden"
-          onClick={onCloseSidebar}
-        />
+        <div className="fixed inset-0 bg-black/50 z-20 md:hidden" onClick={onCloseSidebar} />
       )}
 
       <aside
         className={cn(
-          "w-64 flex-col border-r border-zinc-800/80 bg-zinc-950 z-30",
-          "md:flex md:relative md:translate-x-0",
-          "fixed top-[57px] bottom-0 left-0 flex transition-transform duration-200",
+          "flex-col border-r border-zinc-800/80 bg-zinc-950 z-30 overflow-hidden",
+          "md:flex md:relative md:translate-x-0 transition-[width] duration-200 ease-out",
+          collapsed ? "md:w-0 md:border-r-0" : "md:w-64",
+          "fixed top-0 bottom-0 left-0 flex w-64 transition-transform duration-200",
           sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         )}
       >
-        <div className="p-3">
-          <button
-            onClick={onNewChat}
-            className="w-full flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/70 hover:border-zinc-600 text-zinc-100 text-sm font-medium rounded-xl px-3 py-2.5 transition"
-          >
-            <MessageSquarePlus size={16} />
-            Nuevo chat
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-2 pb-3">
-          <p className="text-[11px] uppercase tracking-wider text-zinc-600 font-medium px-3 pt-2 pb-1.5">
-            GPTs
-          </p>
-          <div className="space-y-0.5 mb-3">
-            {gpts.map((g) => (
-              <button
-                key={g.id}
-                onClick={() => onSelectGpt(g.id)}
-                className={cn(
-                  "w-full flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition text-left",
-                  activeGptId === g.id && !activeThreadId
-                    ? "bg-violet-600/15 text-white border border-violet-500/20"
-                    : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200 border border-transparent"
-                )}
-              >
-                <GptGlyph gpt={g} />
-                <span className="truncate">{g.name}</span>
-              </button>
-            ))}
+        <div className="w-64 h-full flex flex-col flex-shrink-0">
+          <div className="flex items-center justify-between px-2 pt-2 pb-1">
+            <button
+              onClick={onToggleCollapse}
+              className="hidden md:flex items-center justify-center w-8 h-8 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-900 transition"
+              title="Contraer panel"
+              aria-label="Contraer panel"
+            >
+              <PanelLeftClose size={16} />
+            </button>
+            <button
+              onClick={onNewChat}
+              className="flex items-center justify-center w-8 h-8 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-900 transition"
+              title="Nuevo chat"
+              aria-label="Nuevo chat"
+            >
+              <SquarePen size={16} />
+            </button>
           </div>
 
-          {threadList.length > 0 && (
-            <>
-              <p className="text-[11px] uppercase tracking-wider text-zinc-600 font-medium px-3 pt-2 pb-1.5">
-                Chats
-              </p>
-              {threadList.length > 6 && (
-                <input
-                  value={chatSearch}
-                  onChange={(e) => onSearchChange(e.target.value)}
-                  placeholder="Buscar conversación o GPT..."
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-violet-500/40 mb-1.5"
-                />
-              )}
-              {groups.map((group) => (
-                <div key={group.label} className="mb-2">
-                  <p className="text-[10px] uppercase tracking-wider text-zinc-700 font-medium px-3 pt-1.5 pb-1">
-                    {group.label}
-                  </p>
-                  <div className="space-y-0.5">
-                    {group.threads.map((t) => (
-                      <ThreadListItem
-                        key={t.id}
-                        thread={t}
-                        gpt={gptById.get(t.gpt_id)}
-                        isActive={t.id === activeThreadId}
-                        isRenaming={renamingId === t.id}
-                        renameValue={renameValue}
-                        onSelect={onSelectThread}
-                        onRenameValueChange={onRenameValueChange}
-                        onStartRename={onStartRename}
-                        onSubmitRename={onSubmitRename}
-                        onCancelRename={onCancelRename}
-                        onDelete={onDeleteThread}
-                      />
-                    ))}
-                  </div>
+          <div className="px-2 pb-2">
+            <div className="relative">
+              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-600" />
+              <input
+                value={chatSearch}
+                onChange={(e) => onSearchChange(e.target.value)}
+                placeholder="Buscar..."
+                className="w-full bg-zinc-900/70 border border-zinc-800 rounded-lg pl-7 pr-2.5 py-1.5 text-[13px] text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-600 transition"
+              />
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-2 pb-3">
+            <p className="text-[10px] uppercase tracking-wider text-zinc-600 font-medium px-2.5 pt-1.5 pb-1">
+              GPTs
+            </p>
+            <div className="space-y-0.5 mb-3">
+              {gpts.map((g) => (
+                <div key={g.id} className="group relative flex items-center">
+                  <button
+                    onClick={() => onSelectGpt(g.id)}
+                    className={cn(
+                      "flex-1 min-w-0 flex items-center gap-2 rounded-lg pl-2.5 pr-7 py-1.5 text-[13px] transition text-left",
+                      activeGptId === g.id && !activeThreadId
+                        ? "bg-zinc-800 text-white"
+                        : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
+                    )}
+                  >
+                    <GptGlyph gpt={g} size="xs" />
+                    <span className="truncate">{g.name}</span>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenGptChats(g.id);
+                    }}
+                    className="hidden group-hover:flex items-center justify-center absolute right-1 w-6 h-6 rounded-md text-zinc-500 hover:text-white hover:bg-zinc-800"
+                    title={`Ver conversaciones de ${g.name}`}
+                    aria-label={`Ver conversaciones de ${g.name}`}
+                  >
+                    <Search size={12} />
+                  </button>
                 </div>
               ))}
-            </>
-          )}
+            </div>
+
+            {filteredThreads.length > 0 && (
+              <>
+                <p className="text-[10px] uppercase tracking-wider text-zinc-600 font-medium px-2.5 pt-2 pb-1">
+                  Chats
+                </p>
+                <div className="space-y-0.5">
+                  {filteredThreads.map((t) => (
+                    <ThreadListItem
+                      key={t.id}
+                      thread={t}
+                      isActive={t.id === activeThreadId}
+                      isRenaming={renamingId === t.id}
+                      renameValue={renameValue}
+                      onSelect={onSelectThread}
+                      onRenameValueChange={onRenameValueChange}
+                      onStartRename={onStartRename}
+                      onSubmitRename={onSubmitRename}
+                      onCancelRename={onCancelRename}
+                      onDelete={onDeleteThread}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          <SidebarFooter fullName={profile.fullName} email={profile.email} isAdmin={profile.isAdmin} />
         </div>
       </aside>
     </>

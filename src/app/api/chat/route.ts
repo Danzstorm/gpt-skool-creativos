@@ -1,6 +1,7 @@
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
+import { checkMessageQuota } from "@/lib/quota";
 import { runStreamResponse } from "@/lib/chat-stream";
 import { buildUserInput, type IncomingFile } from "@/lib/chat-content";
 import { estimateCost } from "@/lib/pricing";
@@ -27,7 +28,21 @@ export async function POST(request: NextRequest) {
   const rl = await checkRateLimit(`chat:${user.id}`, 30, 60_000);
   if (!rl.ok) return rateLimitResponse(rl);
 
-  const { gptId, threadId, message, files, replaceLast } = await request.json();
+  // Cuota mensual (config del admin): corta antes de gastar en OpenAI.
+  const quota = await checkMessageQuota(user.id, user.email!);
+  if (!quota.ok) {
+    return NextResponse.json(
+      { error: `Alcanzaste tu límite de ${quota.limit} mensajes este mes. Se reinicia el día 1.` },
+      { status: 403 }
+    );
+  }
+
+  let gptId: string, threadId: string, message: string, files: unknown, replaceLast: boolean | undefined;
+  try {
+    ({ gptId, threadId, message, files, replaceLast } = await request.json());
+  } catch {
+    return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
+  }
 
   if (!gptId || !message || !threadId) {
     return NextResponse.json({ error: "Faltan parámetros" }, { status: 400 });

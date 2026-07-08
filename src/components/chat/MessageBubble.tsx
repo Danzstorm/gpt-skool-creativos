@@ -46,7 +46,7 @@ function MessageBubble({
           className={cn(
             "rounded-2xl px-4 py-3",
             msg.role === "user"
-              ? "bg-gradient-to-br from-violet-600 to-violet-700 text-white rounded-br-sm shadow-[0_1px_0_rgba(255,255,255,0.12)_inset]"
+              ? "bg-zinc-700 text-white rounded-br-sm shadow-[0_1px_0_rgba(255,255,255,0.08)_inset]"
               : "bg-zinc-800/80 text-zinc-100 rounded-bl-sm border border-zinc-700/50"
           )}
         >

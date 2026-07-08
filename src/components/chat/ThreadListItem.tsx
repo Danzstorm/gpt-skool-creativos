@@ -1,12 +1,10 @@
 import { memo } from "react";
 import { Pencil, Trash2 } from "lucide-react";
-import type { Gpt, ThreadSummary } from "@/lib/types";
+import type { ThreadSummary } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import GptGlyph from "./GptGlyph";
 
 interface Props {
   thread: ThreadSummary;
-  gpt?: Gpt;
   isActive: boolean;
   isRenaming: boolean;
   renameValue: string;
@@ -20,7 +18,6 @@ interface Props {
 
 function ThreadListItem({
   thread,
-  gpt,
   isActive,
   isRenaming,
   renameValue,
@@ -34,14 +31,11 @@ function ThreadListItem({
   return (
     <div
       className={cn(
-        "group flex items-center gap-2 rounded-xl px-3 py-2 cursor-pointer text-sm transition",
-        isActive
-          ? "bg-violet-600/15 text-white border border-violet-500/20"
-          : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200 border border-transparent"
+        "group flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 cursor-pointer text-[13px] transition",
+        isActive ? "bg-zinc-800 text-white" : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
       )}
       onClick={() => onSelect(thread)}
     >
-      <GptGlyph gpt={gpt} />
       {isRenaming ? (
         <input
           autoFocus
@@ -53,22 +47,10 @@ function ThreadListItem({
             if (e.key === "Escape") onCancelRename();
           }}
           onBlur={() => onSubmitRename(thread.id)}
-          className="flex-1 bg-zinc-800 rounded-lg px-2 py-1 text-white text-sm focus:outline-none"
+          className="flex-1 bg-zinc-800 rounded-md px-1.5 py-0.5 text-white text-[13px] focus:outline-none"
         />
       ) : (
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="truncate">{thread.title}</span>
-            {gpt && (
-              <span className="text-[10px] text-zinc-600 truncate flex-shrink-0 hidden lg:inline">
-                {gpt.name}
-              </span>
-            )}
-          </div>
-          {thread.last_message_preview && (
-            <p className="text-xs text-zinc-600 truncate">{thread.last_message_preview}</p>
-          )}
-        </div>
+        <span className="flex-1 min-w-0 truncate">{thread.title}</span>
       )}
 
       {!isRenaming && (
@@ -78,18 +60,18 @@ function ThreadListItem({
               e.stopPropagation();
               onStartRename(thread);
             }}
-            className="p-1 rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-800"
+            className="p-1 rounded-md text-zinc-500 hover:text-white hover:bg-zinc-800"
           >
-            <Pencil size={12} />
+            <Pencil size={11} />
           </button>
           <button
             onClick={(e) => {
               e.stopPropagation();
               onDelete(thread.id);
             }}
-            className="p-1 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-zinc-800"
+            className="p-1 rounded-md text-zinc-500 hover:text-red-400 hover:bg-zinc-800"
           >
-            <Trash2 size={12} />
+            <Trash2 size={11} />
           </button>
         </div>
       )}

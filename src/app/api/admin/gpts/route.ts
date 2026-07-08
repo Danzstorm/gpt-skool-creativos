@@ -33,7 +33,14 @@ export async function POST(request: NextRequest) {
   const user = await requireAdmin();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
-  const { name, description, category, system_prompt, model, conversation_starters, sort_order, icon_url } = await request.json();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- body de forma libre, validado campo a campo abajo
+  let body: any;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
+  }
+  const { name, description, category, system_prompt, model, conversation_starters, sort_order, icon_url, author } = body;
 
   if (!name || !system_prompt) {
     return NextResponse.json({ error: "Nombre y system prompt requeridos" }, { status: 400 });
@@ -47,6 +54,7 @@ export async function POST(request: NextRequest) {
       description,
       category: category || "General",
       icon_url: icon_url || null,
+      author: author || null,
       system_prompt,
       model: model || "gpt-4.1-mini",
       // Todos los GPTs tienen todas las capacidades (archivos, código, visión). No es configurable.

@@ -95,13 +95,22 @@ export async function POST(request: NextRequest) {
   const sync = body.sync === undefined ? true : Boolean(body.sync);
 
   const service = createServiceClient();
+  const logEvent = (success: boolean, error?: string) =>
+    service
+      .from("webhook_events")
+      .insert({ source: "skool_bulk", email: null, action: sync ? "bulk_sync" : "bulk_import", success, error })
+      .then(
+        () => {},
+        () => {}
+      );
+
   try {
     const result = await syncMembers(service, members, sync);
+    logEvent(true, result.warning);
     return NextResponse.json({ ...result, received: body.members.length, valid: members.length });
   } catch (e) {
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Error de importación" },
-      { status: 500 }
-    );
+    const message = e instanceof Error ? e.message : "Error de importación";
+    logEvent(false, message);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

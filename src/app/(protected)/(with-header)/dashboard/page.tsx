@@ -17,10 +17,10 @@ export default async function DashboardPage() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-10">
       <div className="mb-8">
-        <h1 className="font-display text-4xl font-medium tracking-tight text-stone-50">
+        <h1 className="font-display text-4xl font-medium tracking-tight text-zinc-50">
           GPTs Creativos
         </h1>
-        <p className="mt-2 text-stone-400">
+        <p className="mt-2 text-zinc-400">
           Herramientas de IA exclusivas para la comunidad
         </p>
       </div>

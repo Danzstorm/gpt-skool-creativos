@@ -19,11 +19,14 @@ export async function POST(request: NextRequest) {
   const user = await requireAdmin();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
+  const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/webp"];
+
   const formData = await request.formData();
   const file = formData.get("file") as File | null;
   if (!file) return NextResponse.json({ error: "No se recibió imagen" }, { status: 400 });
-  if (!file.type.startsWith("image/")) {
-    return NextResponse.json({ error: "Debe ser una imagen" }, { status: 400 });
+  // Solo raster (png/jpeg/webp): SVG puede llevar scripts y el bucket es público.
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    return NextResponse.json({ error: "Formato no permitido. Usa PNG, JPEG o WEBP." }, { status: 400 });
   }
   if (file.size > 5 * 1024 * 1024) {
     return NextResponse.json({ error: "La imagen supera 5MB" }, { status: 400 });

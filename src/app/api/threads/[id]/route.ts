@@ -15,7 +15,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
 
   const { id } = await params;
-  const { title } = await request.json();
+  let title: string | undefined;
+  try {
+    ({ title } = await request.json());
+  } catch {
+    return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
+  }
 
   if (!title || !title.trim()) {
     return NextResponse.json({ error: "Falta title" }, { status: 400 });

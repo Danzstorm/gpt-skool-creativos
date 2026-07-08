@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import type { GptWithAssistantId } from "@/lib/types";
-import { Plus, Pencil, Trash2, Eye, EyeOff, X, GripVertical } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, EyeOff, X, GripVertical, Copy, FlaskConical } from "lucide-react";
 import { getGptVisual } from "@/lib/gpt-visual";
+import GptTestModal from "@/components/admin/GptTestModal";
 
 const CATEGORIES = ["General", "Imágenes", "Marketing", "Copywriting", "Diseño", "Ventas", "Productividad", "Educación"];
 // Ordenados de más económico a más caro. mini/nano = mucho más baratos, buenos para prompts.
@@ -20,6 +21,7 @@ const DEFAULT_FORM = {
   vision_enabled: true,
   conversation_starters: [] as string[],
   icon_url: "" as string,
+  author: "" as string,
   sort_order: 0,
 };
 
@@ -46,6 +48,8 @@ export default function AdminGptsPage() {
   const [saving, setSaving] = useState(false);
   const [uploadingIcon, setUploadingIcon] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [testingGpt, setTestingGpt] = useState<GptWithAssistantId | null>(null);
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadGpts();
@@ -77,6 +81,7 @@ export default function AdminGptsPage() {
       vision_enabled: gpt.vision_enabled,
       conversation_starters: gpt.conversation_starters ?? [],
       icon_url: gpt.icon_url ?? "",
+      author: gpt.author ?? "",
       sort_order: gpt.sort_order,
     });
     setEditingId(gpt.id);
@@ -168,6 +173,16 @@ export default function AdminGptsPage() {
     loadGpts();
   }
 
+  async function duplicateGpt(gpt: GptWithAssistantId) {
+    setDuplicatingId(gpt.id);
+    try {
+      await fetch(`/api/admin/gpts/${gpt.id}/duplicate`, { method: "POST" });
+      await loadGpts();
+    } finally {
+      setDuplicatingId(null);
+    }
+  }
+
   // Reordenar por drag & drop: mueve el arrastrado a la posición soltada y
   // persiste el nuevo sort_order de todos (best-effort, en paralelo).
   function handleDrop(targetIndex: number) {
@@ -196,7 +211,7 @@ export default function AdminGptsPage() {
         <h1 className="text-2xl font-bold text-white">GPTs</h1>
         <button
           onClick={openCreate}
-          className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white font-semibold rounded-xl px-4 py-2.5 text-sm transition"
+          className="flex items-center gap-2 bg-zinc-100 hover:bg-white text-zinc-900 font-semibold rounded-xl px-4 py-2.5 text-sm transition"
         >
           <Plus size={16} /> Nuevo GPT
         </button>
@@ -251,7 +266,7 @@ export default function AdminGptsPage() {
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     required
-                    className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm"
+                    className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500 text-sm"
                   />
                 </div>
 
@@ -261,7 +276,19 @@ export default function AdminGptsPage() {
                     value={form.description}
                     onChange={(e) => setForm({ ...form, description: e.target.value })}
                     rows={2}
-                    className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm resize-none"
+                    className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500 text-sm resize-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-zinc-300 mb-1.5">
+                    Autor <span className="text-zinc-500">(opcional, se muestra como &ldquo;By {"{autor}"}&rdquo;)</span>
+                  </label>
+                  <input
+                    value={form.author}
+                    onChange={(e) => setForm({ ...form, author: e.target.value })}
+                    placeholder="Ej: Martín Velarde"
+                    className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500 text-sm"
                   />
                 </div>
 
@@ -273,7 +300,7 @@ export default function AdminGptsPage() {
                       value={form.category}
                       onChange={(e) => setForm({ ...form, category: e.target.value })}
                       placeholder="General"
-                      className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm"
+                      className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500 text-sm"
                     />
                     <datalist id="categorias">
                       {CATEGORIES.map((c) => (
@@ -286,7 +313,7 @@ export default function AdminGptsPage() {
                     <select
                       value={form.model}
                       onChange={(e) => setForm({ ...form, model: e.target.value })}
-                      className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm"
+                      className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500 text-sm"
                     >
                       {MODELS.map((m) => (
                         <option key={m} value={m}>{m}</option>
@@ -299,7 +326,7 @@ export default function AdminGptsPage() {
                       type="number"
                       value={form.sort_order}
                       onChange={(e) => setForm({ ...form, sort_order: Number(e.target.value) })}
-                      className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm"
+                      className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500 text-sm"
                     />
                   </div>
                 </div>
@@ -315,7 +342,7 @@ export default function AdminGptsPage() {
                     required={!editingId}
                     rows={6}
                     placeholder="Eres un asistente de marketing experto en..."
-                    className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm resize-none font-mono"
+                    className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500 text-sm resize-none font-mono"
                   />
                 </div>
 
@@ -336,7 +363,7 @@ export default function AdminGptsPage() {
                           value={s}
                           onChange={(e) => updateStarter(i, e.target.value)}
                           placeholder="Ej: Crea el character sheet de una mujer de 30 años..."
-                          className="flex-1 bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm"
+                          className="flex-1 bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500 text-sm"
                         />
                         <button
                           type="button"
@@ -351,7 +378,7 @@ export default function AdminGptsPage() {
                       <button
                         type="button"
                         onClick={addStarter}
-                        className="flex items-center gap-1.5 text-sm text-violet-400 hover:text-violet-300 transition"
+                        className="flex items-center gap-1.5 text-sm text-zinc-300 hover:text-zinc-100 transition"
                       >
                         <Plus size={14} /> Agregar sugerencia
                       </button>
@@ -363,7 +390,7 @@ export default function AdminGptsPage() {
                   <button
                     type="submit"
                     disabled={saving}
-                    className="bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white font-semibold rounded-xl px-5 py-2.5 text-sm transition"
+                    className="bg-zinc-100 hover:bg-white disabled:opacity-50 text-zinc-900 font-semibold rounded-xl px-5 py-2.5 text-sm transition"
                   >
                     {saving ? "Guardando..." : editingId ? "Guardar cambios" : "Crear GPT"}
                   </button>
@@ -423,7 +450,9 @@ export default function AdminGptsPage() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <h3 className="text-white font-semibold truncate">{gpt.name}</h3>
-                  <span className="text-xs text-violet-400 bg-violet-400/10 px-2 py-0.5 rounded-full">
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full border bg-gradient-to-br ${getGptVisual(gpt.category).accentClasses}`}
+                  >
                     {gpt.category}
                   </span>
                   {!gpt.is_active && (
@@ -437,6 +466,21 @@ export default function AdminGptsPage() {
                 )}
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={() => setTestingGpt(gpt)}
+                  className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
+                  title="Probar GPT"
+                >
+                  <FlaskConical size={16} />
+                </button>
+                <button
+                  onClick={() => duplicateGpt(gpt)}
+                  disabled={duplicatingId === gpt.id}
+                  className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition disabled:opacity-50"
+                  title="Duplicar"
+                >
+                  <Copy size={16} />
+                </button>
                 <button
                   onClick={() => toggleActive(gpt)}
                   className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
@@ -460,6 +504,14 @@ export default function AdminGptsPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {testingGpt && (
+        <GptTestModal
+          gptId={testingGpt.id}
+          gptName={testingGpt.name}
+          onClose={() => setTestingGpt(null)}
+        />
       )}
     </div>
   );

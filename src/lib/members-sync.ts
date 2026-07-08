@@ -15,6 +15,7 @@ export type IncomingMember = {
 export type SyncResult = {
   imported: number;
   revoked: number;
+  revokedEmails: string[];
   warning?: string;
 };
 
@@ -54,6 +55,7 @@ export async function syncMembers(
   if (error) throw new Error(error.message);
 
   let revoked = 0;
+  let revokedEmails: string[] = [];
   let warning: string | undefined;
 
   if (sync) {
@@ -76,8 +78,9 @@ export async function syncMembers(
         await service.from("allowed_members").update({ is_active: false }).in("email", chunk);
       }
       revoked = toRevoke.length;
+      revokedEmails = toRevoke;
     }
   }
 
-  return { imported: data?.length ?? 0, revoked, ...(warning && { warning }) };
+  return { imported: data?.length ?? 0, revoked, revokedEmails, ...(warning && { warning }) };
 }

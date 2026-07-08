@@ -31,7 +31,12 @@ export async function POST(request: NextRequest) {
   // sync=true (import CSV): el CSV es fuente de verdad. Se marcan como 'skool_csv'
   // y se revocan las filas 'skool_csv' que ya no aparecen (dejaron Skool).
   // Los miembros 'manual' (admin, altas a mano) NUNCA se tocan por sync.
-  const { members, sync } = await request.json();
+  let members: unknown, sync: unknown;
+  try {
+    ({ members, sync } = await request.json());
+  } catch {
+    return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
+  }
   if (!Array.isArray(members) || members.length === 0) {
     return NextResponse.json({ error: "Lista de miembros requerida" }, { status: 400 });
   }
