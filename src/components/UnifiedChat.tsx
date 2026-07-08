@@ -504,11 +504,31 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
           )}
 
           {!activeGpt && !isLoadingHistory && (
-            <div className="flex flex-col items-center justify-center h-full text-center text-zinc-500">
-              <div className="w-14 h-14 rounded-2xl border border-zinc-800 flex items-center justify-center mb-4">
-                <Sparkle className="w-6 h-6 text-zinc-600" />
+            <div className="flex flex-col items-center justify-center h-full py-12 max-w-2xl mx-auto w-full">
+              <div className="w-12 h-12 rounded-2xl border border-zinc-800 flex items-center justify-center mb-4">
+                <Sparkle className="w-5 h-5 text-zinc-600" />
               </div>
-              <p className="text-sm">Elige un GPT en el panel para comenzar una conversación.</p>
+              <h3 className="font-display text-xl font-medium tracking-tight text-stone-50 mb-1">
+                ¿Con qué GPT quieres trabajar?
+              </h3>
+              <p className="text-sm text-zinc-500 mb-7">Elige uno para empezar una conversación nueva.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full">
+                {gpts.map((g) => (
+                  <button
+                    key={g.id}
+                    onClick={() => selectGpt(g.id)}
+                    className="flex items-center gap-3 text-left border border-zinc-800 hover:border-zinc-600 bg-zinc-900/50 hover:bg-zinc-900 rounded-2xl px-4 py-3 transition-all hover:-translate-y-0.5"
+                  >
+                    <GptGlyph gpt={g} size="lg" />
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium text-zinc-100 truncate">{g.name}</div>
+                      {g.description && (
+                        <div className="text-xs text-zinc-500 truncate">{g.description}</div>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -541,7 +561,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
           )}
 
           {messages.length > 0 && (
-            <div className="max-w-3xl mx-auto w-full space-y-6">
+            <div className="max-w-3xl mx-auto w-full space-y-5">
               {messages.map((msg, i) => {
                 const isLast = i === messages.length - 1;
                 const streaming = isLoading && isLast && msg.role === "assistant";

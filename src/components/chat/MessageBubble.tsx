@@ -3,7 +3,6 @@ import { Copy, Check, RotateCcw, Pencil } from "lucide-react";
 import type { Gpt, Message } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import MessageContent from "../MessageContent";
-import GptGlyph from "./GptGlyph";
 
 interface Props {
   message: Message;
@@ -19,12 +18,13 @@ interface Props {
   onEdit: (index: number) => void;
 }
 
-// Callbacks son referencias estables del padre (useCallback) + `index` primitivo:
-// así memo() evita re-renderizar los bubbles que no cambiaron durante el streaming.
+// Patrón ChatGPT: el usuario va en una burbuja alineada a la derecha; el
+// asistente NO lleva burbuja ni avatar por mensaje — su contenido fluye como
+// texto en la columna (el único "recuadro" es el bloque de código que arma
+// MessageContent). Así se gana altura y se quita el ruido del glyph repetido.
 function MessageBubble({
   message: msg,
   index,
-  activeGpt,
   isLast,
   streaming,
   canRegenerate,
@@ -34,97 +34,96 @@ function MessageBubble({
   onRegenerate,
   onEdit,
 }: Props) {
-  return (
-    <div className={cn("group flex", msg.role === "user" ? "justify-end" : "justify-start")}>
-      {msg.role === "assistant" && (
-        <div className="mr-2 mt-0.5">
-          <GptGlyph gpt={activeGpt} />
-        </div>
-      )}
-      <div className="flex flex-col gap-1 max-w-[80%]">
-        <div
-          className={cn(
-            "rounded-2xl px-4 py-3",
-            msg.role === "user"
-              ? "bg-zinc-700 text-white rounded-br-sm shadow-[0_1px_0_rgba(255,255,255,0.08)_inset]"
-              : "bg-zinc-800/80 text-zinc-100 rounded-bl-sm border border-zinc-700/50"
-          )}
-        >
-          {msg.files && msg.files.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              {msg.files.map((f, fi) =>
-                f.type === "image" && f.previewUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    key={fi}
-                    src={f.previewUrl}
-                    alt={f.name}
-                    className="w-24 h-24 object-cover rounded-lg border border-white/20"
-                  />
-                ) : (
-                  <span key={fi} className="text-xs bg-white/10 rounded-lg px-2 py-1">
-                    📎 {f.name}
-                  </span>
-                )
-              )}
-            </div>
-          )}
-          {msg.content ? (
-            msg.role === "assistant" ? (
-              <div className="flex items-end">
-                <MessageContent content={msg.content} />
-                {streaming && (
-                  <span className="inline-block w-1.5 h-4 bg-zinc-400 ml-0.5 mb-1 rounded-sm animate-pulse" />
-                )}
-              </div>
-            ) : (
-              <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
-            )
-          ) : (
-            msg.role === "assistant" && (
-              <span className="inline-flex gap-1">
-                <span className="animate-bounce delay-0">·</span>
-                <span className="animate-bounce delay-100">·</span>
-                <span className="animate-bounce delay-200">·</span>
-              </span>
-            )
-          )}
-        </div>
+  const isUser = msg.role === "user";
 
-        {msg.content && !streaming && (
-          <div
-            className={cn(
-              "flex gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition",
-              msg.role === "user" ? "justify-end" : "justify-start"
-            )}
-          >
-            <button
-              onClick={() => onCopy(index, msg.content)}
-              className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition"
-              title="Copiar"
-            >
-              {isCopied ? <Check size={14} /> : <Copy size={14} />}
-            </button>
-            {msg.role === "assistant" && isLast && canRegenerate && (
-              <button
-                onClick={onRegenerate}
-                className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition"
-                title="Regenerar"
-              >
-                <RotateCcw size={14} />
-              </button>
-            )}
-            {msg.role === "user" && canEdit && (
-              <button
-                onClick={() => onEdit(index)}
-                className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition"
-                title="Editar"
-              >
-                <Pencil size={14} />
-              </button>
+  const files = msg.files && msg.files.length > 0 && (
+    <div className="flex flex-wrap gap-1.5 mb-2">
+      {msg.files.map((f, fi) =>
+        f.type === "image" && f.previewUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            key={fi}
+            src={f.previewUrl}
+            alt={f.name}
+            className="w-24 h-24 object-cover rounded-lg border border-white/20"
+          />
+        ) : (
+          <span key={fi} className="text-xs bg-white/10 rounded-lg px-2 py-1">
+            📎 {f.name}
+          </span>
+        )
+      )}
+    </div>
+  );
+
+  const actions = msg.content && !streaming && (
+    <div
+      className={cn(
+        "flex gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition",
+        isUser ? "justify-end" : "justify-start"
+      )}
+    >
+      <button
+        onClick={() => onCopy(index, msg.content)}
+        className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition"
+        title="Copiar"
+      >
+        {isCopied ? <Check size={14} /> : <Copy size={14} />}
+      </button>
+      {!isUser && isLast && canRegenerate && (
+        <button
+          onClick={onRegenerate}
+          className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition"
+          title="Regenerar"
+        >
+          <RotateCcw size={14} />
+        </button>
+      )}
+      {isUser && canEdit && (
+        <button
+          onClick={() => onEdit(index)}
+          className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition"
+          title="Editar"
+        >
+          <Pencil size={14} />
+        </button>
+      )}
+    </div>
+  );
+
+  // Asistente: ancho completo de la columna, sin burbuja ni avatar.
+  if (!isUser) {
+    return (
+      <div className="group">
+        {files}
+        {msg.content ? (
+          <div className="flex items-end text-zinc-100">
+            <MessageContent content={msg.content} />
+            {streaming && (
+              <span className="inline-block w-1.5 h-4 bg-zinc-400 ml-0.5 mb-1 rounded-sm animate-pulse" />
             )}
           </div>
+        ) : (
+          <span className="inline-flex gap-1 text-zinc-400">
+            <span className="animate-bounce delay-0">·</span>
+            <span className="animate-bounce delay-100">·</span>
+            <span className="animate-bounce delay-200">·</span>
+          </span>
         )}
+        <div className="mt-1">{actions}</div>
+      </div>
+    );
+  }
+
+  // Usuario: burbuja compacta alineada a la derecha.
+  return (
+    <div className="group flex justify-end">
+      <div className="flex flex-col gap-1 max-w-[80%]">
+        <div className="rounded-2xl rounded-br-sm bg-zinc-800 text-white px-4 py-2.5">
+          {files}
+          <p className="text-sm whitespace-pre-wrap leading-normal">{msg.content}</p>
+        </div>
+        {actions}
       </div>
     </div>
   );
