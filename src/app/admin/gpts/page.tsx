@@ -218,8 +218,8 @@ export default function AdminGptsPage() {
       </div>
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="modal-backdrop fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="modal-panel bg-zinc-900 border border-zinc-700 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <h2 className="text-xl font-bold text-white mb-5">
                 {editingId ? "Editar GPT" : "Nuevo GPT"}

@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Copy, Check, RotateCcw, Pencil } from "lucide-react";
+import { Copy, Check, RotateCcw, Pencil, Paperclip } from "lucide-react";
 import type { Gpt, Message } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import MessageContent from "../MessageContent";
@@ -48,8 +48,9 @@ function MessageBubble({
             className="w-24 h-24 object-cover rounded-lg border border-white/20"
           />
         ) : (
-          <span key={fi} className="text-xs bg-white/10 rounded-lg px-2 py-1">
-            📎 {f.name}
+          <span key={fi} className="inline-flex items-center gap-1 text-xs bg-zinc-700/40 rounded-lg px-2 py-1">
+            <Paperclip size={12} className="flex-shrink-0" />
+            {f.name}
           </span>
         )
       )}
@@ -59,7 +60,9 @@ function MessageBubble({
   const actions = msg.content && !streaming && (
     <div
       className={cn(
-        "flex gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition",
+        // En desktop se ocultan con `hidden` (no `opacity-0`) para NO ocupar
+        // altura entre mensajes; aparecen al hover. En móvil siempre visibles.
+        "flex md:hidden md:group-hover:flex gap-0.5",
         isUser ? "justify-end" : "justify-start"
       )}
     >
@@ -119,9 +122,9 @@ function MessageBubble({
   return (
     <div className="group flex justify-end">
       <div className="flex flex-col gap-1 max-w-[80%]">
-        <div className="rounded-2xl rounded-br-sm bg-zinc-800 text-white px-4 py-2.5">
+        <div className="rounded-2xl rounded-br-sm bg-zinc-800 text-ink px-4 py-2.5">
           {files}
-          <p className="text-sm whitespace-pre-wrap leading-normal">{msg.content}</p>
+          <p className="text-[15px] whitespace-pre-wrap leading-relaxed">{msg.content}</p>
         </div>
         {actions}
       </div>

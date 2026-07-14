@@ -32,7 +32,7 @@ function ThreadListItem({
     <div
       className={cn(
         "group flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 cursor-pointer text-[13px] transition",
-        isActive ? "bg-zinc-800 text-white" : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
+        isActive ? "bg-active text-ink" : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
       )}
       onClick={() => onSelect(thread)}
     >
@@ -47,7 +47,7 @@ function ThreadListItem({
             if (e.key === "Escape") onCancelRename();
           }}
           onBlur={() => onSubmitRename(thread.id)}
-          className="flex-1 bg-zinc-800 rounded-md px-1.5 py-0.5 text-white text-[13px] focus:outline-none"
+          className="flex-1 bg-zinc-800 rounded-md px-1.5 py-0.5 text-ink text-[13px] focus:outline-none"
         />
       ) : (
         <span className="flex-1 min-w-0 truncate">{thread.title}</span>
@@ -60,7 +60,7 @@ function ThreadListItem({
               e.stopPropagation();
               onStartRename(thread);
             }}
-            className="p-1 rounded-md text-zinc-500 hover:text-white hover:bg-zinc-800"
+            className="p-1 rounded-md text-zinc-500 hover:text-ink hover:bg-zinc-800"
           >
             <Pencil size={11} />
           </button>

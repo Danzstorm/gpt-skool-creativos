@@ -52,17 +52,17 @@ export default function GptChatsModal({
   }, [onNewChat, onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+    <div className="modal-backdrop fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
       <div
         ref={panelRef}
-        className="w-full max-w-md max-h-[80vh] bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl flex flex-col"
+        className="modal-panel w-full max-w-md max-h-[80vh] bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl flex flex-col"
       >
         <div className="flex items-center gap-2.5 px-4 py-3 border-b border-zinc-800/80">
           <GptGlyph gpt={gpt} size="lg" />
           <h2 className="flex-1 min-w-0 truncate text-sm font-semibold text-zinc-100">{gpt.name}</h2>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-800 transition"
+            className="p-1.5 rounded-lg text-zinc-500 hover:text-ink hover:bg-zinc-800 transition"
             aria-label="Cerrar"
           >
             <X size={16} />

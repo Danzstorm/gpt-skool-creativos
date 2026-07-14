@@ -23,7 +23,7 @@ export default async function ChatPage({ searchParams }: Props) {
       .select("id, title, gpt_id, created_at, updated_at")
       .order("updated_at", { ascending: false }),
     user
-      ? supabase.from("profiles").select("full_name, is_admin").eq("id", user.id).single()
+      ? supabase.from("profiles").select("full_name, is_admin, theme").eq("id", user.id).single()
       : Promise.resolve({ data: null }),
   ]);
 
@@ -38,6 +38,7 @@ export default async function ChatPage({ searchParams }: Props) {
         fullName: profile?.full_name ?? null,
         email: user?.email ?? null,
         isAdmin: profile?.is_admin ?? false,
+        theme: profile?.theme ?? "violeta",
       }}
     />
   );

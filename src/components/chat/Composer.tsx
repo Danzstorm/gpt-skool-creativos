@@ -143,7 +143,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   }
 
   return (
-    <div className="border-t border-zinc-800/80 bg-zinc-950 px-4 py-3">
+    <div className="border-t border-zinc-800/80 bg-zinc-950 px-4 pt-2.5 pb-2">
       {attachedFiles.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-3 max-w-3xl mx-auto">
           {attachedFiles.map((f, i) => {
@@ -161,7 +161,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
                 </span>
                 <button
                   onClick={() => onRemoveFile(i)}
-                  className="absolute -top-1.5 -right-1.5 bg-zinc-800 border border-zinc-600 rounded-full p-0.5 text-zinc-300 hover:text-white opacity-0 group-hover/thumb:opacity-100 transition"
+                  className="absolute -top-1.5 -right-1.5 bg-zinc-800 border border-zinc-600 rounded-full p-0.5 text-zinc-300 hover:text-ink opacity-0 group-hover/thumb:opacity-100 transition"
                 >
                   <X size={12} />
                 </button>
@@ -171,9 +171,9 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
                 key={i}
                 className="flex items-center gap-1.5 bg-zinc-800 rounded-xl px-3 py-1.5 text-xs text-zinc-300 h-16"
               >
-                <span>📎</span>
+                <Paperclip size={13} className="text-zinc-400 flex-shrink-0" />
                 <span className="max-w-[120px] truncate">{f.name}</span>
-                <button onClick={() => onRemoveFile(i)} className="text-zinc-500 hover:text-white ml-1">
+                <button onClick={() => onRemoveFile(i)} className="text-zinc-500 hover:text-ink ml-1">
                   <X size={12} />
                 </button>
               </div>
@@ -190,7 +190,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
               onCancelEdit();
               setInput("");
             }}
-            className="text-zinc-400 hover:text-white"
+            className="text-zinc-400 hover:text-ink"
           >
             Cancelar
           </button>
@@ -200,17 +200,20 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
       {(micError || isRecording) && (
         <div
           className={cn(
-            "max-w-3xl mx-auto mb-2 text-xs rounded-lg px-3 py-1.5 border",
+            "max-w-3xl mx-auto mb-2 text-xs rounded-lg px-3 py-1.5 border flex items-center gap-2",
             micError
               ? "text-amber-300 bg-amber-500/10 border-amber-500/20"
               : "text-red-300 bg-red-500/10 border-red-500/20"
           )}
         >
-          {micError || "🎙️ Grabando... toca el micrófono para detener y transcribir."}
+          {!micError && (
+            <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
+          )}
+          {micError || "Grabando... toca el micrófono para detener y transcribir."}
         </div>
       )}
 
-      <div className="flex items-end gap-2 bg-zinc-900/80 border border-zinc-700/70 focus-within:border-zinc-500 rounded-2xl px-3 py-1.5 transition-colors shadow-[0_1px_0_rgba(255,255,255,0.03)_inset] max-w-3xl mx-auto">
+      <div className="flex items-end gap-2 bg-zinc-900/80 border border-zinc-700/70 focus-within:border-zinc-500 rounded-2xl px-3.5 py-2 transition-colors shadow-[0_1px_0_rgba(255,255,255,0.03)_inset] max-w-3xl mx-auto">
         <input
           ref={fileInputRef}
           type="file"
@@ -226,7 +229,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
               <button
                 type="button"
                 onClick={() => openFilePicker("image/*")}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition text-left"
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-ink transition text-left"
               >
                 <ImageIcon size={15} />
                 Imágenes
@@ -236,7 +239,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
                 onClick={() =>
                   openFilePicker("application/pdf,.txt,.md,.py,.js,.ts,.csv,.xlsx,.docx")
                 }
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition text-left"
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-ink transition text-left"
               >
                 <Paperclip size={15} />
                 Archivos
@@ -265,7 +268,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           placeholder={isTranscribing ? "Transcribiendo audio..." : "Escribe un mensaje... (Enter para enviar)"}
           disabled={isLoading || isTranscribing}
           rows={1}
-          className="flex-1 bg-transparent text-white placeholder-zinc-500 resize-none focus:outline-none text-sm py-0.5 max-h-[180px] leading-relaxed"
+          className="flex-1 bg-transparent text-ink placeholder-zinc-500 resize-none focus:outline-none text-[15px] py-1.5 max-h-[180px] leading-normal"
         />
 
         <button
@@ -283,23 +286,23 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
         {isLoading ? (
           <button
             onClick={onStop}
-            className="bg-zinc-700 hover:bg-zinc-600 text-white rounded-full p-1.5 flex-shrink-0 transition"
+            className="bg-zinc-700 hover:bg-zinc-600 text-ink rounded-full p-2 flex-shrink-0 transition"
             title="Detener respuesta"
           >
-            <Square size={13} className="fill-current" />
+            <Square size={14} className="fill-current" />
           </button>
         ) : (
           <button
             onClick={submit}
             disabled={!input.trim() && attachedFiles.length === 0}
-            className="bg-zinc-100 hover:bg-white disabled:bg-zinc-700 disabled:text-zinc-500 text-zinc-900 disabled:cursor-not-allowed rounded-full p-1.5 flex-shrink-0 transition active:scale-95"
+            className="bg-cta hover:bg-cta-active disabled:bg-zinc-700 disabled:text-zinc-500 text-cta-fg disabled:cursor-not-allowed rounded-full p-2 flex-shrink-0 transition active:scale-95"
             aria-label="Enviar"
           >
-            <ArrowUp size={15} strokeWidth={2.5} />
+            <ArrowUp size={16} strokeWidth={2.5} />
           </button>
         )}
       </div>
-      <p className="text-center text-xs text-zinc-600 mt-1.5">
+      <p className="text-center text-[11px] text-zinc-600 mt-1.5">
         Los GPTs pueden cometer errores. Verifica información importante.
       </p>
     </div>

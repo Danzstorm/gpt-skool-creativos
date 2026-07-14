@@ -149,7 +149,7 @@ Esta plataforma es **single-tenant por diseño**: cada cliente corre su propia c
 | **Google Cloud Console** (OAuth Client) | Solo si quiere login con Google | El cliente — **solo necesario si usa Google login**; el magic link por email no lo requiere |
 | **Zapier** (o Make) | Automatizar altas/bajas desde Skool | El cliente (ya lo tienen, según mencionaste) |
 | **Upstash** (Redis, capa gratis alcanza) | Rate limiting compartido en producción | Recomendado, no bloqueante para lanzar |
-| **Resend / Postmark** (SMTP) | Que el magic link no caiga en spam | Recomendado antes de tráfico real — el SMTP default de Supabase es rate-limited |
+| **Resend** (SMTP) | Que el magic link llegue de verdad — ver §7, **bloqueante para lanzar** | El cliente (dominio propio necesario) |
 
 ### Pasos de setup (Supabase)
 1. Crear proyecto en Supabase (elegir región cercana a los usuarios).
@@ -199,3 +199,38 @@ Esta plataforma es **single-tenant por diseño**: cada cliente corre su propia c
 5. Para el CSV diario en vez de manual: un Zap con trigger de calendario (diario) → busca/exporta el CSV de Skool → **Webhooks by Zapier POST** a `/api/webhooks/skool/bulk` con `{"members":[...]}` armado desde el CSV parseado (Zapier tiene un paso "Formatter"/"CSV" para esto, o Storage by Zapier si el CSV se sube a otro lado primero).
 
 > Al entregar al cliente: dales el valor de `SKOOL_WEBHOOK_SECRET` por un canal seguro (no por email plano) y muéstrales la sección de actividad en `/admin/members` como su forma de verificar que todo sigue funcionando sin tener que preguntarte a ti.
+
+---
+
+## 7. Conectar Resend (SMTP) — bloqueante para lanzar
+
+**Por qué es obligatorio, no "recomendado":** el login es 100% magic link (sin contraseña). El SMTP default de Supabase está limitado a **2 correos/hora y solo a direcciones pre-autorizadas** (miembros del proyecto Supabase) — está pensado únicamente para pruebas internas, no para usuarios reales. Sin SMTP propio, un miembro de Skool que no seas tú literalmente no puede recibir el enlace de acceso.
+
+### Qué se le pide al cliente (mínimo, sin compartir credenciales sensibles)
+
+El cliente **no necesita darte acceso a su cuenta de Resend ni a su dominio** — solo:
+
+1. Que él (o su equipo técnico) cree una cuenta gratis en [resend.com](https://resend.com) — capa gratis: 3.000 correos/mes, 100/día, 1 dominio. Alcanza sobrado para esta escala.
+2. Que agregue su dominio en Resend → copia los 3 registros DNS que Resend le da (SPF, DKIM, DMARC) → los pega en el proveedor donde tiene el DNS de su dominio (Namecheap, GoDaddy, Cloudflare, el registrador de Skool, etc.). Verificación suele tardar minutos, a veces hasta 24-48h por propagación DNS.
+3. Que te pase **solo el API key** (Resend → API Keys → Create). Eso es lo único que toca nuestra configuración — no necesita su contraseña de cuenta ni acceso al dominio en sí.
+
+### Qué hacemos nosotros con ese API key
+
+1. Supabase → **Authentication → Emails → SMTP Settings** → activar "Enable Custom SMTP":
+   ```
+   Host:     smtp.resend.com
+   Port:     465
+   Username: resend
+   Password: <el API key del cliente>
+   Sender email: soporte@<dominio-del-cliente>   (o el que definan en Ajustes → Correo de soporte)
+   Sender name:  <nombre de la comunidad>
+   ```
+2. Guardar. Supabase pasa automáticamente de 2/hora a 30/hora de base (ajustable después en Auth → Rate Limits si hace falta más).
+3. Probar con un login real (magic link) a un correo fuera del proyecto Supabase — antes de esto ni siquiera se puede probar con un correo ajeno.
+4. Cargar las mismas env vars en Vercel si se referencian ahí (no aplica si el SMTP se configura solo del lado de Supabase — no requiere env var propia del proyecto).
+
+### Se puede dejar todo listo sin esperar al cliente
+
+Todo lo de arriba (dónde se pega qué, qué formato) ya está fijo y no depende de qué dominio use el cliente — lo único pendiente al llegar a este punto es pegar un API key y un correo remitente. Si se quiere validar el cableado end-to-end antes de tener el dominio del cliente, se puede usar temporalmente el dominio sandbox de Resend (`onboarding@resend.dev`, sin verificar dominio) contra el proyecto de Supabase de test — mismo procedimiento, cero cambios de código.
+
+> Al entregar: pide el API key por un canal seguro (no email plano), y bórralo de tu gestor de contraseñas una vez confirmado que quedó guardado en las env vars/config del cliente — no hace falta que quede duplicado en dos lados.

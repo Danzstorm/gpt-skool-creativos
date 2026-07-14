@@ -1,6 +1,6 @@
 import { memo, useMemo } from "react";
 import { PanelLeftClose, Search, SquarePen } from "lucide-react";
-import type { Gpt, ThreadSummary } from "@/lib/types";
+import type { Gpt, ThreadSummary, Theme } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import GptGlyph from "./GptGlyph";
 import ThreadListItem from "./ThreadListItem";
@@ -15,6 +15,8 @@ interface Props {
   collapsed: boolean;
   onToggleCollapse: () => void;
   profile: { fullName: string | null; email: string | null; isAdmin: boolean };
+  theme: Theme;
+  onThemeChange: (theme: Theme) => void;
   chatSearch: string;
   onSearchChange: (value: string) => void;
   onSelectGpt: (gptId: string) => void;
@@ -40,6 +42,8 @@ function ChatSidebar({
   collapsed,
   onToggleCollapse,
   profile,
+  theme,
+  onThemeChange,
   chatSearch,
   onSearchChange,
   onSelectGpt,
@@ -84,7 +88,7 @@ function ChatSidebar({
           <div className="flex items-center justify-between px-2 pt-2 pb-1">
             <button
               onClick={onToggleCollapse}
-              className="hidden md:flex items-center justify-center w-8 h-8 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-900 transition"
+              className="hidden md:flex items-center justify-center w-8 h-8 rounded-lg text-zinc-400 hover:text-ink hover:bg-zinc-900 transition"
               title="Contraer panel"
               aria-label="Contraer panel"
             >
@@ -92,7 +96,7 @@ function ChatSidebar({
             </button>
             <button
               onClick={onNewChat}
-              className="flex items-center justify-center w-8 h-8 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-900 transition"
+              className="flex items-center justify-center w-8 h-8 rounded-lg text-zinc-400 hover:text-ink hover:bg-zinc-900 transition"
               title="Nuevo chat"
               aria-label="Nuevo chat"
             >
@@ -113,7 +117,7 @@ function ChatSidebar({
           </div>
 
           <div className="flex-1 overflow-y-auto px-2 pb-3">
-            <p className="text-[10px] uppercase tracking-wider text-zinc-600 font-medium px-2.5 pt-1.5 pb-1">
+            <p className="text-[11px] uppercase tracking-wider text-zinc-600 font-medium px-2.5 pt-1.5 pb-1">
               GPTs
             </p>
             <div className="space-y-0.5 mb-3">
@@ -122,9 +126,9 @@ function ChatSidebar({
                   <button
                     onClick={() => onSelectGpt(g.id)}
                     className={cn(
-                      "flex-1 min-w-0 flex items-center gap-2 rounded-lg pl-2.5 pr-7 py-1.5 text-[13px] transition text-left",
+                      "flex-1 min-w-0 flex items-center gap-2 rounded-lg pl-2.5 pr-7 py-1.5 text-[13px] transition text-left cursor-pointer active:scale-[0.99]",
                       activeGptId === g.id && !activeThreadId
-                        ? "bg-zinc-800 text-white"
+                        ? "bg-active text-ink"
                         : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
                     )}
                   >
@@ -136,7 +140,7 @@ function ChatSidebar({
                       e.stopPropagation();
                       onOpenGptChats(g.id);
                     }}
-                    className="hidden group-hover:flex items-center justify-center absolute right-1 w-6 h-6 rounded-md text-zinc-500 hover:text-white hover:bg-zinc-800"
+                    className="hidden group-hover:flex items-center justify-center absolute right-1 w-6 h-6 rounded-md text-zinc-500 hover:text-ink hover:bg-zinc-800"
                     title={`Ver conversaciones de ${g.name}`}
                     aria-label={`Ver conversaciones de ${g.name}`}
                   >
@@ -148,7 +152,7 @@ function ChatSidebar({
 
             {filteredThreads.length > 0 && (
               <>
-                <p className="text-[10px] uppercase tracking-wider text-zinc-600 font-medium px-2.5 pt-2 pb-1">
+                <p className="text-[11px] uppercase tracking-wider text-zinc-600 font-medium px-2.5 pt-2 pb-1">
                   Chats
                 </p>
                 <div className="space-y-0.5">
@@ -172,7 +176,13 @@ function ChatSidebar({
             )}
           </div>
 
-          <SidebarFooter fullName={profile.fullName} email={profile.email} isAdmin={profile.isAdmin} />
+          <SidebarFooter
+            fullName={profile.fullName}
+            email={profile.email}
+            isAdmin={profile.isAdmin}
+            theme={theme}
+            onThemeChange={onThemeChange}
+          />
         </div>
       </aside>
     </>

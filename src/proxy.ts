@@ -2,10 +2,23 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 
-// Consulta de membresía apta para el runtime de proxy: usa supabase-js directo
-// (service role, salta RLS) sin importar `next/headers`, que no existe aquí.
+// El gate de membresía corre en CADA request (páginas, API y prefetches). Sin
+// caché eso es un viaje a Supabase por request — el cuello de botella de latencia.
+// Caché en memoria (por instancia) de 60s: la revocación tarda como máximo 60s
+// en propagarse en vez de ser instantánea, a cambio de quitar ese viaje de la
+// gran mayoría de requests. Es memoria del servidor, no una cookie → no se puede
+// falsificar para saltarse la revocación.
+const MEMBERSHIP_TTL_MS = 60_000;
+const membershipCache = new Map<string, { active: boolean; exp: number }>();
+
 async function isActiveMember(email: string | null | undefined): Promise<boolean> {
   if (!email) return false;
+  const key = email.toLowerCase().trim();
+
+  const cached = membershipCache.get(key);
+  const now = Date.now();
+  if (cached && cached.exp > now) return cached.active;
+
   const service = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -13,9 +26,12 @@ async function isActiveMember(email: string | null | undefined): Promise<boolean
   const { data } = await service
     .from("allowed_members")
     .select("is_active")
-    .eq("email", email.toLowerCase().trim())
+    .eq("email", key)
     .single();
-  return !!data?.is_active;
+
+  const active = !!data?.is_active;
+  membershipCache.set(key, { active, exp: now + MEMBERSHIP_TTL_MS });
+  return active;
 }
 
 export async function proxy(request: NextRequest) {

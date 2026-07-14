@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import type { Gpt, Message, UploadedFile, ThreadSummary } from "@/lib/types";
+import type { Gpt, Message, UploadedFile, ThreadSummary, Theme } from "@/lib/types";
 import { Menu, ArrowDown, ChevronDown, PanelLeftOpen, SquarePen } from "lucide-react";
 import Sparkle from "./Sparkle";
 import GptGlyph from "./chat/GptGlyph";
@@ -18,7 +18,7 @@ interface Props {
   threads: ThreadSummary[];
   initialThreadId?: string | null;
   initialGptId?: string | null;
-  profile: { fullName: string | null; email: string | null; isAdmin: boolean };
+  profile: { fullName: string | null; email: string | null; isAdmin: boolean; theme: Theme };
 }
 
 export default function UnifiedChat({ gpts, threads, initialThreadId, initialGptId, profile }: Props) {
@@ -43,6 +43,19 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [chatSearch, setChatSearch] = useState("");
   const [gptChatsModalId, setGptChatsModalId] = useState<string | null>(null);
+  const [theme, setTheme] = useState<Theme>(profile.theme);
+
+  // Optimista: cambia al instante en pantalla, guarda en la cuenta en paralelo.
+  // Si el PATCH falla, no revertimos — es una preferencia visual, no algo
+  // crítico; el próximo cambio exitoso corrige el estado guardado igual.
+  const changeTheme = useCallback((next: Theme) => {
+    setTheme(next);
+    fetch("/api/me/theme", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ theme: next }),
+    }).catch(() => {});
+  }, []);
 
   // Aplicado post-montaje (no en el estado inicial) para que el SSR/primer
   // render coincida siempre con "expandido" y no genere hydration mismatch;
@@ -393,7 +406,11 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
   );
 
   return (
-    <div className="flex h-dvh relative">
+    // bg-zinc-950 en el root: el área principal (mensajes, empty-state) no fija
+    // fondo propio y antes dejaba pasar el `--background` oscuro del <body> —
+    // invisible en temas oscuros, pero en Papel el sidebar se volvía crema y el
+    // centro seguía negro (split roto). Tematizar el root cubre toda la superficie.
+    <div className="flex h-dvh relative bg-zinc-950 text-zinc-100" data-theme={theme}>
       <ChatSidebar
         gpts={gpts}
         threadList={threadList}
@@ -403,6 +420,8 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
         collapsed={sidebarCollapsed}
         onToggleCollapse={toggleSidebarCollapsed}
         profile={profile}
+        theme={theme}
+        onThemeChange={changeTheme}
         chatSearch={chatSearch}
         onSearchChange={setChatSearch}
         onSelectGpt={selectGpt}
@@ -442,10 +461,10 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
           </div>
         )}
         {/* Header */}
-        <div className="border-b border-zinc-800/80 px-4 py-3 bg-zinc-950/80 backdrop-blur-xl flex items-center gap-3">
+        <div className="border-b border-zinc-800/80 px-4 py-2.5 bg-zinc-950/80 backdrop-blur-xl flex items-center gap-3">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="text-zinc-400 hover:text-white transition md:hidden"
+            className="text-zinc-400 hover:text-ink transition md:hidden"
             aria-label="Abrir panel"
           >
             <Menu size={20} />
@@ -454,7 +473,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
             <div className="hidden md:flex items-center gap-1 -ml-1">
               <button
                 onClick={toggleSidebarCollapsed}
-                className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800/60 transition"
+                className="p-1.5 rounded-lg text-zinc-400 hover:text-ink hover:bg-zinc-800/60 transition"
                 title="Expandir panel"
                 aria-label="Expandir panel"
               >
@@ -462,7 +481,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
               </button>
               <button
                 onClick={newChat}
-                className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800/60 transition"
+                className="p-1.5 rounded-lg text-zinc-400 hover:text-ink hover:bg-zinc-800/60 transition"
                 title="Nuevo chat"
                 aria-label="Nuevo chat"
               >
@@ -477,7 +496,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
               title="Ver conversaciones de este GPT"
             >
               <GptGlyph gpt={activeGpt} size="sm" />
-              <h2 className="text-zinc-100 font-medium text-[13px] truncate">{activeGpt.name}</h2>
+              <h2 className="text-zinc-100 font-medium text-sm truncate">{activeGpt.name}</h2>
               <ChevronDown size={14} className="text-zinc-600 flex-shrink-0" />
             </button>
           ) : (
@@ -489,7 +508,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
         <div
           ref={scrollRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto px-4 py-6"
+          className="flex-1 overflow-y-auto px-4 py-4"
         >
           {isLoadingHistory && (
             <div className="space-y-4 animate-pulse max-w-2xl mx-auto w-full">
@@ -508,7 +527,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
               <div className="w-12 h-12 rounded-2xl border border-zinc-800 flex items-center justify-center mb-4">
                 <Sparkle className="w-5 h-5 text-zinc-600" />
               </div>
-              <h3 className="font-display text-xl font-medium tracking-tight text-stone-50 mb-1">
+              <h3 className="font-display text-xl font-medium tracking-tight text-ink mb-1">
                 ¿Con qué GPT quieres trabajar?
               </h3>
               <p className="text-sm text-zinc-500 mb-7">Elige uno para empezar una conversación nueva.</p>
@@ -517,7 +536,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
                   <button
                     key={g.id}
                     onClick={() => selectGpt(g.id)}
-                    className="flex items-center gap-3 text-left border border-zinc-800 hover:border-zinc-600 bg-zinc-900/50 hover:bg-zinc-900 rounded-2xl px-4 py-3 transition-all hover:-translate-y-0.5"
+                    className="flex items-center gap-3 text-left border border-zinc-800 hover:border-zinc-600 bg-zinc-900/50 hover:bg-zinc-900 rounded-2xl px-4 py-3 transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98] active:translate-y-0 cursor-pointer"
                   >
                     <GptGlyph gpt={g} size="lg" />
                     <div className="min-w-0">
@@ -537,7 +556,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
               <div className="mb-5">
                 <GptGlyph gpt={activeGpt} size="xl" />
               </div>
-              <h3 className="font-display text-2xl font-medium tracking-tight text-stone-50 mb-2">{activeGpt.name}</h3>
+              <h3 className="font-display text-2xl font-medium tracking-tight text-ink mb-2">{activeGpt.name}</h3>
               {activeGpt.description && (
                 <p className="text-zinc-400 text-sm max-w-md">{activeGpt.description}</p>
               )}
@@ -550,7 +569,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
                     <button
                       key={i}
                       onClick={() => sendMessage(starter)}
-                      className="text-left border border-zinc-800 hover:border-zinc-600 bg-zinc-900/50 hover:bg-zinc-900 rounded-2xl px-4 py-3 text-sm text-zinc-300 hover:text-zinc-100 transition-all hover:-translate-y-0.5"
+                      className="text-left border border-zinc-800 hover:border-zinc-600 bg-zinc-900/50 hover:bg-zinc-900 rounded-2xl px-4 py-3 text-sm text-zinc-300 hover:text-zinc-100 transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98] active:translate-y-0 cursor-pointer"
                     >
                       {starter}
                     </button>

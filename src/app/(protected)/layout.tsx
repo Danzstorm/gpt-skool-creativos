@@ -1,10 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
-import { isAllowedMember } from "@/lib/membership";
 import { redirect } from "next/navigation";
 
-// Solo guarda de acceso (sesión + whitelist). Sin header: cada grupo de rutas
-// decide su propio shell — (with-header) para catálogo/admin-like, chat es
-// fullscreen sin header (ver AGENTS.md sobre route groups de este Next.js).
+// Guarda de acceso ligera. El middleware (proxy.ts) ya valida sesión Y membresía
+// en cada request de estas rutas y redirige antes de llegar aquí, así que NO se
+// repite el chequeo de `allowed_members` (era un viaje a Supabase redundante por
+// navegación). Se conserva solo un getUser como defensa-en-profundidad ante un
+// eventual bypass del middleware; la membresía queda centralizada en el proxy.
 export default async function ProtectedLayout({
   children,
 }: {
@@ -16,12 +17,6 @@ export default async function ProtectedLayout({
   } = await supabase.auth.getUser();
 
   if (!user) redirect("/login");
-
-  // Defensa: si el usuario fue removido de la lista, cerrar sesión.
-  if (!(await isAllowedMember(user.email))) {
-    await supabase.auth.signOut();
-    redirect("/unauthorized");
-  }
 
   return children;
 }

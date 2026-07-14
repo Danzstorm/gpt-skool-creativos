@@ -20,6 +20,95 @@
   --font-display: var(--font-fraunces);
 }
 
+/* Registra los tokens nuevos (ink/cta/cta-active/cta-fg) como colores reales
+   de Tailwind — solo así genera utilities como text-ink / bg-cta. Los
+   valores acá son los del tema "Creativo" (default); los otros temas los
+   pisan más abajo con selectores [data-theme=...]. */
+@theme {
+  --color-ink: #ffffff;
+  --color-cta: #f4f4f5;
+  --color-cta-active: #ffffff;
+  --color-cta-fg: #18181b;
+  /* Fondo del item activo (GPT/chat seleccionado en el sidebar). Separado de
+     zinc-800 —que comparten las burbujas— para poder tintarlo de acento en
+     Papel sin teñir también las burbujas. En los temas oscuros vale lo mismo
+     que su zinc-800, así el look no cambia. */
+  --color-active: #27272a;
+}
+
+/* ============================================================
+   Temas del chat (elegibles por el usuario, guardados en su cuenta:
+   Creativo / Dark / Light). Tailwind v4 compila bg-zinc-800 /
+   text-violet-400 / etc. como `var(--color-zinc-800)` — redefinir esos
+   tokens alcanza para retemar todo el chat sin tocar cada componente.
+   `creativo` es el look actual y no necesita override (usa los valores
+   reales de Tailwind). El atributo data-theme solo se aplica dentro de
+   /chat — login, landing y admin quedan siempre en el look creativo.
+
+   NOTA: es `[data-theme=...]` sin `:root` a propósito — el atributo vive
+   en el div raíz de UnifiedChat, no en <html>, así que un selector con
+   `:root` (que SIEMPRE apunta a <html>) nunca matchearía.
+
+   --color-ink / --color-cta*: Light es un tema realmente claro (no solo
+   un retinte), así que los `text-white` / `bg-zinc-100 ...  text-zinc-900`
+   escritos a mano en los componentes se volverían invisibles ahí. Estos
+   tokens reemplazan esos literales: `ink` es "el texto más contrastado
+   sobre una superficie de zinc" (blanco en temas oscuros, casi negro en
+   Light); `cta`/`cta-fg` son el botón de acción primaria (enviar), que
+   se invierte completo en vez de solo cambiar de tono.
+   ============================================================ */
+[data-theme="dark"] {
+  --color-zinc-950: #212121;
+  --color-zinc-900: #2a2a2a;
+  --color-zinc-800: #343434;
+  --color-zinc-700: #444444;
+  --color-zinc-600: #5a5a5a;
+  --color-zinc-500: #8e8e8e;
+  --color-zinc-400: #b4b4b4;
+  --color-zinc-300: #c9c9c9;
+  --color-zinc-200: #dddddd;
+  --color-zinc-100: #ececec;
+
+  --color-violet-600: #2f8a6c;
+  --color-violet-500: #3fa080;
+  --color-violet-400: #5fb89a;
+  --color-violet-300: #7fcab0;
+
+  --color-ink: #ececec;
+  --color-cta: #ececec;
+  --color-cta-active: #ffffff;
+  --color-cta-fg: #212121;
+  --color-active: #343434;
+}
+
+/* "Papel" — estética de estudio artesanal: papel TOSTADO (no blanco) con el
+   acento arcilla/coral presente de verdad (botón enviar, item activo, links),
+   no solo insinuado. Fondos de la escala zinc INVERTIDOS respecto a los temas
+   oscuros (zinc-950 = fondo más claro, zinc-100 = texto más oscuro). */
+[data-theme="light"] {
+  --color-zinc-950: #efe7d3; /* fondo principal — papel tostado, no blanco */
+  --color-zinc-900: #e8ddc6; /* sidebar / superficies elevadas */
+  --color-zinc-800: #ddd1b4; /* burbuja de usuario, hover */
+  --color-zinc-700: #cdbf9d; /* bordes */
+  --color-zinc-600: #b3a480; /* bordes más marcados */
+  --color-zinc-500: #897c5d; /* placeholder / texto muy tenue */
+  --color-zinc-400: #675c43; /* texto secundario */
+  --color-zinc-300: #4e4632; /* texto */
+  --color-zinc-200: #352f21; /* texto fuerte */
+  --color-zinc-100: #241f15; /* texto más fuerte */
+
+  --color-violet-600: #a34e2a; /* arcilla oscura */
+  --color-violet-500: #c15f3c; /* arcilla — bordes/acento */
+  --color-violet-400: #b0562f; /* arcilla legible — links en markdown */
+  --color-violet-300: #9c4d2a;
+
+  --color-ink: #241f15;       /* casi-negro cálido — texto de máximo contraste */
+  --color-cta: #c15f3c;       /* botón enviar = ARCILLA (personalidad) */
+  --color-cta-active: #a94f30;
+  --color-cta-fg: #fbf6ea;    /* flecha crema sobre botón arcilla */
+  --color-active: #e7ceac;    /* item activo — crema con tinte arcilla cálido */
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
@@ -187,5 +276,26 @@ body {
   .fade-up {
     opacity: 0;
     animation: fade-up 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  /* Entrada de modales: backdrop con fade, panel con fade+scale desde su centro.
+     Fuera de este bloque (reduce-motion) las clases no hacen nada → aparecen al
+     instante, sin quedar invisibles. */
+  @keyframes modal-fade {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes modal-pop {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+  }
+  .modal-backdrop {
+    animation: modal-fade 140ms ease-out;
+  }
+  .modal-panel {
+    animation: modal-pop 180ms cubic-bezier(0.16, 1, 0.3, 1);
   }
 }
