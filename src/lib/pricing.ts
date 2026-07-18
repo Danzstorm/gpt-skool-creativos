@@ -6,12 +6,34 @@ const PRICING: Record<string, { in: number; out: number }> = {
   "gpt-4.1-nano": { in: 0.1, out: 0.4 },
   "gpt-4o": { in: 2.5, out: 10.0 },
   "gpt-4o-mini": { in: 0.15, out: 0.6 },
+  // Familia GPT-5 (Responses API)
+  "gpt-5.4": { in: 2.5, out: 15.0 },
+  "gpt-5.4-mini": { in: 0.75, out: 4.5 },
+  "gpt-5.4-nano": { in: 0.2, out: 1.25 },
+  "gpt-5-mini": { in: 0.25, out: 2.0 },
+  "gpt-5-nano": { in: 0.05, out: 0.4 },
 };
 
-const DEFAULT = PRICING["gpt-4.1"];
+// Default conservador (mini, no el más caro): si un modelo no se reconoce, no
+// infla la métrica 5x como pasaba antes con gpt-4.1.
+const DEFAULT = PRICING["gpt-4.1-mini"];
+
+// OpenAI devuelve el modelo con fecha (p.ej. "gpt-4.1-mini-2025-04-14"), que NO
+// matchea la clave exacta "gpt-4.1-mini". Se resuelve por el prefijo más largo
+// que coincida (así "gpt-4.1-mini-2025-04-14" → "gpt-4.1-mini", no "gpt-4.1").
+function resolveModelKey(model: string | null): string | null {
+  if (!model) return null;
+  if (PRICING[model]) return model;
+  let best: string | null = null;
+  for (const key of Object.keys(PRICING)) {
+    if (model.startsWith(key) && (best === null || key.length > best.length)) best = key;
+  }
+  return best;
+}
 
 /** Costo estimado en USD de una respuesta dado el modelo y los tokens. */
 export function estimateCost(model: string | null, tokensIn: number, tokensOut: number): number {
-  const p = (model && PRICING[model]) || DEFAULT;
+  const key = resolveModelKey(model);
+  const p = (key && PRICING[key]) || DEFAULT;
   return (tokensIn / 1_000_000) * p.in + (tokensOut / 1_000_000) * p.out;
 }

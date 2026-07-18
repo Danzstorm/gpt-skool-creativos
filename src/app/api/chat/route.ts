@@ -28,15 +28,6 @@ export async function POST(request: NextRequest) {
   const rl = await checkRateLimit(`chat:${user.id}`, 30, 60_000);
   if (!rl.ok) return rateLimitResponse(rl);
 
-  // Cuota mensual (config del admin): corta antes de gastar en OpenAI.
-  const quota = await checkMessageQuota(user.id, user.email!);
-  if (!quota.ok) {
-    return NextResponse.json(
-      { error: `Alcanzaste tu límite de ${quota.limit} mensajes este mes. Se reinicia el día 1.` },
-      { status: 403 }
-    );
-  }
-
   let gptId: string, threadId: string, message: string, files: unknown, replaceLast: boolean | undefined;
   try {
     ({ gptId, threadId, message, files, replaceLast } = await request.json());
@@ -50,25 +41,39 @@ export async function POST(request: NextRequest) {
 
   const serviceClient = createServiceClient();
 
-  const { data: gpt, error: gptError } = await serviceClient
-    .from("gpts")
-    .select("system_prompt, model")
-    .eq("id", gptId)
-    .eq("is_active", true)
-    .single();
+  // Cuota + GPT + thread son independientes → en paralelo se paga UN solo viaje de
+  // latencia en vez de tres en fila (baja el tiempo hasta el primer token).
+  const [quota, gptRes, threadRes] = await Promise.all([
+    // Cuota mensual (config del admin): corta antes de gastar en OpenAI.
+    checkMessageQuota(user.id, user.email!),
+    serviceClient
+      .from("gpts")
+      .select("system_prompt, model")
+      .eq("id", gptId)
+      .eq("is_active", true)
+      .single(),
+    // La fila de threads pertenece al usuario (RLS: user_id = auth.uid())
+    supabase
+      .from("threads")
+      .select("openai_conversation_id, title")
+      .eq("id", threadId)
+      .single(),
+  ]);
 
-  if (gptError || !gpt) {
+  if (!quota.ok) {
+    return NextResponse.json(
+      { error: `Alcanzaste tu límite de ${quota.limit} mensajes este mes. Se reinicia el día 1.` },
+      { status: 403 }
+    );
+  }
+
+  const gpt = gptRes.data;
+  if (gptRes.error || !gpt) {
     return NextResponse.json({ error: "GPT no encontrado" }, { status: 404 });
   }
 
-  // La fila de threads pertenece al usuario (RLS: user_id = auth.uid())
-  const { data: thread, error: threadError } = await supabase
-    .from("threads")
-    .select("openai_conversation_id, title")
-    .eq("id", threadId)
-    .single();
-
-  if (threadError || !thread) {
+  const thread = threadRes.data;
+  if (threadRes.error || !thread) {
     return NextResponse.json({ error: "Conversación no encontrada" }, { status: 404 });
   }
 
