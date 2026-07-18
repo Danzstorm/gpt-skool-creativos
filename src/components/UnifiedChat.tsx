@@ -410,7 +410,14 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
     // fondo propio y antes dejaba pasar el `--background` oscuro del <body> —
     // invisible en temas oscuros, pero en Papel el sidebar se volvía crema y el
     // centro seguía negro (split roto). Tematizar el root cubre toda la superficie.
-    <div className="flex h-dvh relative bg-zinc-950 text-zinc-100" data-theme={theme}>
+    // zoom 1.15 = interfaz de chat 15% más grande (pedido del cliente). Se compensa
+    // width/height (÷1.15) para que el shell siga llenando EXACTO el viewport y no
+    // desborde con scroll de página; el scroll real vive en el área de mensajes.
+    <div
+      className="flex relative bg-zinc-950 text-zinc-100"
+      data-theme={theme}
+      style={{ zoom: 1.15, width: "calc(100vw / 1.15)", height: "calc(100dvh / 1.15)" }}
+    >
       <ChatSidebar
         gpts={gpts}
         threadList={threadList}
