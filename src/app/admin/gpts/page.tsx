@@ -8,8 +8,12 @@ import { getGptVisual } from "@/lib/gpt-visual";
 import GptTestModal from "@/components/admin/GptTestModal";
 
 const CATEGORIES = ["General", "Imágenes", "Marketing", "Copywriting", "Diseño", "Ventas", "Productividad", "Educación"];
-// Ordenados de más económico a más caro. mini/nano = mucho más baratos, buenos para prompts.
-const MODELS = ["gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o-mini", "gpt-4.1", "gpt-4o"];
+// Ordenados de más económico a más caro por mensaje real (medido, no por precio
+// de lista). gpt-5.4-nano cuesta casi lo mismo que gpt-4.1-mini pero es un modelo
+// mucho más nuevo; gpt-5.4-mini es el salto de calidad a ~2.5x el costo.
+// El reasoning de la familia 5.4 se apaga en chat-stream.ts — sin eso son 10x
+// más lentos y caros. Ver `reasoningFor`.
+const MODELS = ["gpt-5.4-nano", "gpt-4.1-mini", "gpt-5.4-mini"];
 
 const DEFAULT_FORM = {
   name: "",
@@ -76,7 +80,7 @@ export default function AdminGptsPage() {
       description: gpt.description || "",
       category: gpt.category,
       system_prompt: "",
-      model: "gpt-4.1",
+      model: "gpt-4.1-mini",
       tools_enabled: gpt.tools_enabled,
       vision_enabled: gpt.vision_enabled,
       conversation_starters: gpt.conversation_starters ?? [],
@@ -93,7 +97,7 @@ export default function AdminGptsPage() {
       setForm((prev) => ({
         ...prev,
         system_prompt: full.system_prompt ?? "",
-        model: full.model ?? "gpt-4.1",
+        model: full.model ?? "gpt-4.1-mini",
         conversation_starters: full.conversation_starters ?? [],
       }));
     }

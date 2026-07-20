@@ -28,6 +28,25 @@ export interface RunStreamParams {
   onSettled?: () => Promise<void>;
 }
 
+// Los modelos gpt-5 son de razonamiento: sin `reasoning.effort` explícito usan
+// "medium" y queman miles de tokens de reasoning (facturados como output) antes
+// de responder. Medido contra un system prompt real de la plataforma:
+//   gpt-5.4-nano  default → 37.5s (5120 tokens de reasoning)
+//   gpt-5.4-nano  sin reasoning →  3.8s
+// Estos GPTs generan prompts a partir de instrucciones ya muy detalladas: no
+// necesitan cadena de razonamiento.
+//
+// El nombre del nivel cambió entre familias (verificado contra la API):
+//   gpt-5 / -mini / -nano  → aceptan "minimal", rechazan "none"
+//   gpt-5.1 en adelante    → aceptan "none", rechazan "minimal"
+// Mandar el valor equivocado es un 400, así que se elige por familia.
+// Los modelos no-razonadores (gpt-4.1-*) no aceptan `reasoning` en absoluto.
+function reasoningFor(model: string) {
+  if (/^gpt-5(-|$)/.test(model)) return { reasoning: { effort: "minimal" as const } };
+  if (/^gpt-5\.\d/.test(model)) return { reasoning: { effort: "none" as const } };
+  return {};
+}
+
 export function runStreamResponse(params: RunStreamParams): Response {
   const { conversationId, model, instructions, input, tools, onAssistantText, onComplete, onSettled } = params;
   const encoder = new TextEncoder();
@@ -41,6 +60,7 @@ export function runStreamResponse(params: RunStreamParams): Response {
           conversation: conversationId,
           input,
           ...(tools && tools.length > 0 ? { tools } : {}),
+          ...reasoningFor(model),
           stream: true,
         });
 
