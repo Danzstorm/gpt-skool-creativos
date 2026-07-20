@@ -210,7 +210,9 @@ Esta plataforma es **single-tenant por diseño**: cada cliente corre su propia c
 
 El cliente **no necesita darte acceso a su cuenta de Resend ni a su dominio** — solo:
 
-1. Que él (o su equipo técnico) cree una cuenta gratis en [resend.com](https://resend.com) — capa gratis: 3.000 correos/mes, 100/día, 1 dominio. Alcanza sobrado para esta escala.
+1. Que él (o su equipo técnico) cree una cuenta gratis en [resend.com](https://resend.com) — capa gratis: 3.000 correos/mes, **100/día**, 1 dominio.
+
+   > ⚠️ **El tope de 100/día NO alcanza para el día del anuncio.** Cada login manda un correo (el acceso es magic link), así que una comunidad de ~600 miembros supera las 100 en las primeras horas: del correo 101 en adelante Resend rechaza y esos miembros no pueden entrar. Contratar **Pro (US$20/mes, 50.000 correos)** antes de anunciar. El límite mensual de 3.000 no es el problema; el diario sí.
 2. Que agregue su dominio en Resend → copia los 3 registros DNS que Resend le da (SPF, DKIM, DMARC) → los pega en el proveedor donde tiene el DNS de su dominio (Namecheap, GoDaddy, Cloudflare, el registrador de Skool, etc.). Verificación suele tardar minutos, a veces hasta 24-48h por propagación DNS.
 3. Que te pase **solo el API key** (Resend → API Keys → Create). Eso es lo único que toca nuestra configuración — no necesita su contraseña de cuenta ni acceso al dominio en sí.
 
