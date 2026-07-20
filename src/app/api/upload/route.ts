@@ -5,7 +5,15 @@ import OpenAI from "openai";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-const MAX_SIZE_MB = 20;
+// Sube a OpenAI y después copia a Storage, en serie: con el default de Vercel
+// un archivo grande en conexión móvil cortaba a mitad de camino.
+export const maxDuration = 60;
+
+// Vercel rechaza con 413 cualquier body > 4.5MB antes de que la request llegue
+// hasta acá, así que anunciar 20MB era mentira: el archivo nunca entraba y el
+// usuario no veía motivo. Las imágenes se achican en el cliente antes de subir
+// (src/lib/image-resize.ts); esto es el tope para todo lo demás.
+const MAX_SIZE_MB = 4;
 const ALLOWED_TYPES = [
   "image/jpeg", "image/png", "image/webp", "image/gif",
   "application/pdf",

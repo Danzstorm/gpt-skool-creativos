@@ -10,6 +10,7 @@ import MessageBubble from "./chat/MessageBubble";
 import Composer, { type ComposerHandle } from "./chat/Composer";
 import GptChatsModal from "./chat/GptChatsModal";
 import { consumeSSE } from "@/lib/stream-client";
+import { downscaleImage } from "@/lib/image-resize";
 
 const SIDEBAR_COLLAPSED_KEY = "chat_sidebar_collapsed";
 
@@ -35,6 +36,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
   const [renameValue, setRenameValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>([]);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -193,23 +195,51 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
   const closeGptChats = useCallback(() => setGptChatsModalId(null), []);
 
   const uploadFiles = useCallback(async (files: File[]) => {
-    for (const file of files) {
-      const isImage = file.type.startsWith("image/");
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
-      if (!res.ok) continue;
-      const data = await res.json();
-      setAttachedFiles((prev) => [
-        ...prev,
-        {
-          name: file.name,
-          openai_file_id: data.file_id,
-          type: isImage ? "image" : "document",
-          previewUrl: isImage ? URL.createObjectURL(file) : undefined,
-        },
-      ]);
-    }
+    setUploadError(null);
+
+    // En paralelo: antes iban de a uno y adjuntar 3 imágenes tardaba el triple.
+    const results = await Promise.all(
+      files.map(async (original) => {
+        try {
+          // Achicar antes de subir: Vercel rechaza bodies > 4.5MB.
+          const file = await downscaleImage(original);
+          const isImage = file.type.startsWith("image/");
+          const formData = new FormData();
+          formData.append("file", file);
+
+          const res = await fetch("/api/upload", { method: "POST", body: formData });
+          if (!res.ok) {
+            // 413 lo corta la plataforma antes de llegar a la ruta, así que no
+            // trae JSON propio y hay que redactar el mensaje acá.
+            const msg =
+              res.status === 413
+                ? "es demasiado pesado"
+                : ((await res.json().catch(() => null))?.error ?? "no se pudo subir");
+            return { error: `${original.name}: ${msg}` };
+          }
+
+          const data = await res.json();
+          return {
+            file: {
+              name: original.name,
+              openai_file_id: data.file_id,
+              type: (isImage ? "image" : "document") as UploadedFile["type"],
+              previewUrl: isImage ? URL.createObjectURL(file) : undefined,
+            },
+          };
+        } catch {
+          return { error: `${original.name}: no se pudo subir` };
+        }
+      })
+    );
+
+    const ok = results.flatMap((r) => ("file" in r && r.file ? [r.file] : []));
+    if (ok.length > 0) setAttachedFiles((prev) => [...prev, ...ok]);
+
+    // Antes los fallos se descartaban en silencio y el archivo simplemente no
+    // aparecía, sin ninguna pista de por qué.
+    const errors = results.flatMap((r) => ("error" in r && r.error ? [r.error] : []));
+    if (errors.length > 0) setUploadError(errors.join(" · "));
   }, []);
 
   const removeAttached = useCallback((index: number) => {
@@ -621,6 +651,22 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
           >
             <ArrowDown size={16} />
           </button>
+        )}
+
+        {showComposer && uploadError && (
+          <div className="mx-auto w-full max-w-3xl px-4">
+            <div className="mb-2 flex items-start gap-3 rounded-xl border border-red-800/50 bg-red-950/40 px-4 py-2.5 text-sm text-red-300">
+              <span className="flex-1">{uploadError}</span>
+              <button
+                type="button"
+                onClick={() => setUploadError(null)}
+                className="shrink-0 text-red-400/70 transition hover:text-red-300"
+                aria-label="Cerrar aviso"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
         )}
 
         {showComposer && (
