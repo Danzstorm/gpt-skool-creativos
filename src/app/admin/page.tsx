@@ -1,6 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import Link from "next/link";
-import { Bot, Users, MessageSquare, Activity, DollarSign } from "lucide-react";
+import { Bot, Users, MessageSquare, Activity, DollarSign, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const RANGES = {
@@ -43,6 +43,14 @@ interface StatsSummaryRow {
 // Aislado del render: este componente de servidor corre una vez por request
 // (no hay re-render idempotente que preservar), pero el linter de pureza de
 // React no distingue eso — se calcula afuera para no marcar Date.now() como impuro.
+// Días completos transcurridos desde una fecha ISO, o null si nunca ocurrió.
+// Vive fuera del componente por la misma razón que rangeToDates: leer el reloj
+// en el cuerpo del render es una llamada impura.
+function daysSince(iso: string | null): number | null {
+  if (!iso) return null;
+  return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+}
+
 function rangeToDates(rangeKey: RangeKey): { since: string; until: string } {
   const days = RANGES[rangeKey].days;
   const now = Date.now();
@@ -74,6 +82,24 @@ export default async function AdminDashboard({ searchParams }: Props) {
     supabase.rpc("admin_top_users", { since, until, result_limit: 15 }),
     supabase.rpc("admin_stats_summary", { since, until }),
   ]);
+
+  // Las altas llegan solas por Zapier, pero las BAJAS solo se aplican cuando
+  // alguien sube el CSV completo de Skool. Si eso se deja de hacer nada falla de
+  // forma visible: quien cancela simplemente sigue entrando, y el consumo de la
+  // API se sigue pagando. Este dato convierte ese olvido en algo que se ve.
+  const { data: lastSyncRow } = await supabase
+    .from("webhook_events")
+    .select("created_at")
+    .eq("action", "bulk_sync")
+    .eq("success", true)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const daysSinceSync = daysSince(lastSyncRow?.created_at ?? null);
+  // Con export diario, 2 días ya es atraso. Sin registro previo se avisa igual:
+  // puede ser que nunca se haya sincronizado.
+  const syncIsStale = daysSinceSync === null || daysSinceSync >= 2;
 
   const topGpts = ((gptSummary as GptSummaryRow[] | null) ?? []).map((g) => ({
     name: g.gpt_name ?? "GPT eliminado",
@@ -125,6 +151,35 @@ export default async function AdminDashboard({ searchParams }: Props) {
           ))}
         </div>
       </div>
+
+      <Link
+        href="/admin/members"
+        className={cn(
+          "mb-6 flex items-center gap-3 rounded-2xl border px-5 py-4 transition hover:opacity-90",
+          syncIsStale
+            ? "border-amber-800/60 bg-amber-950/30"
+            : "border-zinc-800 bg-zinc-900"
+        )}
+      >
+        <RefreshCw
+          size={20}
+          className={syncIsStale ? "text-amber-400" : "text-violet-400"}
+        />
+        <div className="min-w-0">
+          <div className={cn("text-sm font-medium", syncIsStale ? "text-amber-200" : "text-white")}>
+            {daysSinceSync === null
+              ? "Nunca se sincronizó la lista de miembros"
+              : daysSinceSync === 0
+                ? "Miembros sincronizados hoy"
+                : `Última sincronización de miembros: hace ${daysSinceSync} ${daysSinceSync === 1 ? "día" : "días"}`}
+          </div>
+          <div className="mt-0.5 text-xs text-zinc-400">
+            {syncIsStale
+              ? "Las bajas de Skool solo se aplican al subir el CSV completo. Hasta entonces, quien canceló sigue teniendo acceso."
+              : "Las altas entran solas por Zapier; el CSV es lo que aplica las bajas."}
+          </div>
+        </div>
+      </Link>
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         {stats.map(({ icon: Icon, label, value, href }) => {
