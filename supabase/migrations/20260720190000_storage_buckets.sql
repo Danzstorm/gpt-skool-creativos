@@ -25,6 +25,12 @@ on conflict (id) do update
 
 -- Privado: copias de los adjuntos del chat, se sirven con URL firmada para
 -- reconstruir las miniaturas al recargar el historial.
-insert into storage.buckets (id, name, public)
-values ('chat-uploads', 'chat-uploads', false)
-on conflict (id) do nothing;
+--
+-- El navegador sube acá DIRECTO con URL firmada (ver /api/upload/sign), así que
+-- el tamaño que declara el cliente al pedir la firma no es confiable: este
+-- límite del bucket es el que de verdad lo hace cumplir. Tiene que coincidir
+-- con MAX_SIZE_MB de src/lib/upload-limits.ts.
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('chat-uploads', 'chat-uploads', false, 26214400) -- 25MB
+on conflict (id) do update
+  set file_size_limit = excluded.file_size_limit;

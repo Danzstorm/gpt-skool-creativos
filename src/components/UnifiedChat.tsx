@@ -11,6 +11,11 @@ import Composer, { type ComposerHandle } from "./chat/Composer";
 import GptChatsModal from "./chat/GptChatsModal";
 import { consumeSSE } from "@/lib/stream-client";
 import { downscaleImage } from "@/lib/image-resize";
+import { createClient } from "@/lib/supabase/client";
+
+// Solo se usa para subir adjuntos a Storage con URL firmada; el resto de los
+// datos del chat viaja por las rutas de /api.
+const supabase = createClient();
 
 const SIDEBAR_COLLAPSED_KEY = "chat_sidebar_collapsed";
 
@@ -200,25 +205,41 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
     // En paralelo: antes iban de a uno y adjuntar 3 imágenes tardaba el triple.
     const results = await Promise.all(
       files.map(async (original) => {
+        const fail = (msg: string) => ({ error: `${original.name}: ${msg}` });
         try {
-          // Achicar antes de subir: Vercel rechaza bodies > 4.5MB.
+          // Las imágenes se achican igual: no por el límite (ya no aplica) sino
+          // porque subir 8MB de foto no mejora la respuesta y se siente lento.
           const file = await downscaleImage(original);
           const isImage = file.type.startsWith("image/");
-          const formData = new FormData();
-          formData.append("file", file);
 
-          const res = await fetch("/api/upload", { method: "POST", body: formData });
-          if (!res.ok) {
-            // 413 lo corta la plataforma antes de llegar a la ruta, así que no
-            // trae JSON propio y hay que redactar el mensaje acá.
-            const msg =
-              res.status === 413
-                ? "es demasiado pesado"
-                : ((await res.json().catch(() => null))?.error ?? "no se pudo subir");
-            return { error: `${original.name}: ${msg}` };
+          // Subida en dos pasos para saltar el techo de 4.5MB que Vercel impone
+          // al body de sus funciones: el archivo va del navegador directo a
+          // Supabase Storage, y el servidor solo lo copia a OpenAI después.
+          const signRes = await fetch("/api/upload/sign", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: file.name, type: file.type, size: file.size }),
+          });
+          if (!signRes.ok) {
+            return fail((await signRes.json().catch(() => null))?.error ?? "no se pudo subir");
+          }
+          const { path, token } = await signRes.json();
+
+          const { error: upErr } = await supabase.storage
+            .from("chat-uploads")
+            .uploadToSignedUrl(path, token, file);
+          if (upErr) return fail("falló la subida, revisa tu conexión");
+
+          const regRes = await fetch("/api/upload/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ path, name: original.name, type: file.type }),
+          });
+          if (!regRes.ok) {
+            return fail((await regRes.json().catch(() => null))?.error ?? "no se pudo procesar");
           }
 
-          const data = await res.json();
+          const data = await regRes.json();
           return {
             file: {
               name: original.name,
@@ -228,7 +249,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
             },
           };
         } catch {
-          return { error: `${original.name}: no se pudo subir` };
+          return fail("no se pudo subir");
         }
       })
     );
