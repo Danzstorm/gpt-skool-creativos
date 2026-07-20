@@ -12,6 +12,10 @@ export type IncomingMember = {
   invited_by?: string | null;
 };
 
+// Margen para las altas por webhook frente a un CSV exportado antes que ellas.
+// 48h cubre que el export se suba con un día de atraso sin dejar a nadie fuera.
+const WEBHOOK_GRACE_HOURS = 48;
+
 export type SyncResult = {
   imported: number;
   revoked: number;
@@ -22,10 +26,20 @@ export type SyncResult = {
 // Lógica única de importación/reconciliación de miembros, compartida entre el
 // import de CSV del admin y el endpoint bulk auth-por-secreto (Zapier).
 //
-// sync=true → el lote es fuente de verdad: filas marcadas 'skool_csv' y se
-// revocan las 'skool_csv' activas ausentes del lote (dejaron Skool). Los
-// miembros 'manual' NUNCA se tocan. Guardarraíl: si el lote trae <60% de los
-// activos actuales (export parcial/corrupto), NO revoca masivamente y avisa.
+// sync=true → el lote MANDA sobre todos: se revoca a cualquier activo ausente
+// del lote, sin importar cómo entró (CSV o webhook de Zapier). Antes solo se
+// consideraban las filas 'skool_csv', así que quien entraba por Zapier quedaba
+// fuera del alcance de la revocación y conservaba acceso para siempre si
+// cancelaba sin llegar a aparecer en ningún export.
+//
+// Excepciones, las únicas: los admins y las altas manuales. El panel admin es
+// la vía para dar de alta a un admin, y todo el resto debe existir en Skool.
+// Se protege por `profiles.is_admin` Y por `source='manual'` porque un admin
+// recién dado de alta todavía no tiene perfil (se crea en su primer login) y
+// en esa ventana `is_admin` aún no existe para protegerlo.
+//
+// Guardarraíl: si el lote trae <60% de los revocables activos (export parcial o
+// corrupto), NO revoca masivamente y avisa.
 export async function syncMembers(
   service: SupabaseClient,
   members: IncomingMember[],
@@ -59,19 +73,46 @@ export async function syncMembers(
   let warning: string | undefined;
 
   if (sync) {
+    // Admins por bandera real, no por `source`: si un admin llega a aparecer en
+    // el CSV, el upsert de arriba le reescribe `source` a 'skool_csv' y perdería
+    // cualquier protección basada en ese campo, revocándose el acceso a su
+    // propio panel al primer export donde no figure.
+    const { data: adminRows } = await service
+      .from("profiles")
+      .select("email")
+      .eq("is_admin", true);
+    const adminEmails = new Set(
+      (adminRows ?? [])
+        .map((a) => (a.email ?? "").toLowerCase().trim())
+        .filter(Boolean)
+    );
+
     const { data: existing } = await service
       .from("allowed_members")
-      .select("email")
-      .eq("source", "skool_csv")
+      .select("email, source, added_at")
       .eq("is_active", true);
 
-    const existingCount = existing?.length ?? 0;
+    // Los exports de Skool se descargan a mano y se suben más tarde, mientras
+    // Zapier sigue dando de alta cada pocos minutos. Quien entra DESPUÉS de que
+    // se generó el CSV no figura en él, y sin esta ventana se lo revocaría de
+    // inmediato: tendría acceso, lo perdería, y solo volvería en la carga
+    // siguiente. Se les da margen a las altas recientes por webhook.
+    const graceCutoff = Date.now() - WEBHOOK_GRACE_HOURS * 3600_000;
+    const inGracePeriod = (r: { source: string | null; added_at: string | null }) =>
+      r.source === "skool_webhook" &&
+      r.added_at != null &&
+      new Date(r.added_at).getTime() > graceCutoff;
+
+    const revocable = (existing ?? []).filter(
+      (r) => r.source !== "manual" && !adminEmails.has(r.email) && !inGracePeriod(r)
+    );
+    const existingCount = revocable.length;
 
     if (existingCount > 20 && emails.length < existingCount * 0.6) {
       warning = `Import parcial detectado (${emails.length} filas vs ${existingCount} activos). No se revocó a nadie por seguridad. Sube el export completo de Skool.`;
     } else {
       const importedSet = new Set(emails);
-      const toRevoke = (existing ?? []).map((r) => r.email).filter((e) => !importedSet.has(e));
+      const toRevoke = revocable.map((r) => r.email).filter((e) => !importedSet.has(e));
 
       for (let i = 0; i < toRevoke.length; i += 200) {
         const chunk = toRevoke.slice(i, i + 200);
