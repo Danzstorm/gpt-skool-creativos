@@ -1,0 +1,68 @@
+<!-- Plantilla "Confirm signup" de Supabase Auth.
+     La recibe quien entra POR PRIMERA VEZ (signInWithOtp crea el usuario), así que
+     para la mayoría de los miembros este es el primer contacto con la plataforma.
+     Variables disponibles: {{ .ConfirmationURL }} {{ .Email }} {{ .SiteURL }} {{ .Token }}
+     Estilos SIEMPRE inline: Gmail y Outlook descartan <style> en <head>.
+     Aplicar con: scripts/apply-email-templates.mjs -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#0b0a09" style="background-color:#0b0a09;margin:0;padding:32px 12px;">
+  <tr>
+    <td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background-color:#16130f;border:1px solid #292524;border-radius:16px;">
+        <tr>
+          <td style="padding:40px 40px 0 40px;">
+            <p style="margin:0 0 32px 0;font-family:Georgia,'Times New Roman',serif;font-size:22px;font-weight:600;color:#fafaf9;letter-spacing:-0.3px;">
+              Creativos<span style="font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:600;color:#78716c;letter-spacing:2px;">&nbsp;&nbsp;GPT</span>
+            </p>
+
+            <h1 style="margin:0 0 16px 0;font-family:Georgia,'Times New Roman',serif;font-size:30px;line-height:1.2;font-weight:600;color:#fafaf9;letter-spacing:-0.5px;">
+              Ya tienes acceso
+            </h1>
+
+            <p style="margin:0 0 28px 0;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;color:#a8a29e;">
+              Bienvenido a la plataforma de GPTs de la comunidad. Son asistentes entrenados para ayudarte a crear prompts, guiones y piezas de video sin partir de cero.
+            </p>
+
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+              <tr>
+                <td align="center" bgcolor="#7c3aed" style="background-color:#7c3aed;border-radius:12px;">
+                  <a href="{{ .ConfirmationURL }}" style="display:block;padding:16px 24px;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;color:#ffffff;text-decoration:none;">
+                    Entrar a la plataforma
+                  </a>
+                </td>
+              </tr>
+            </table>
+
+            <p style="margin:24px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#78716c;">
+              No necesitas crear contraseña. Este botón te deja dentro directamente.
+            </p>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:28px 40px 0 40px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr><td style="border-top:1px solid #292524;font-size:0;line-height:0;">&nbsp;</td></tr>
+            </table>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:24px 40px 40px 40px;">
+            <p style="margin:0 0 12px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:#78716c;">
+              El enlace vence en 1 hora y sirve una sola vez. Si vence, pide uno nuevo desde la pantalla de acceso.
+            </p>
+            <p style="margin:0 0 12px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:#78716c;">
+              ¿El botón no funciona? Copia y pega esta dirección en tu navegador:
+            </p>
+            <p style="margin:0 0 20px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;word-break:break-all;">
+              <a href="{{ .ConfirmationURL }}" style="color:#a78bfa;text-decoration:underline;">{{ .ConfirmationURL }}</a>
+            </p>
+            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#57534e;">
+              Recibes este correo porque tu cuenta está en la lista de miembros de la comunidad. Si no pediste entrar, ignóralo y no pasa nada.
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>

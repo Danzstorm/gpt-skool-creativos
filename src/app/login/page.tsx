@@ -108,7 +108,7 @@ export default function LoginPage() {
             <p className="text-sm leading-relaxed text-stone-400">
               Te enviamos un enlace de acceso a{" "}
               <span className="text-violet-300">{email}</span>. El enlace expira
-              en 10 minutos.
+              en 1 hora y sirve una sola vez.
             </p>
           </div>
         ) : (
