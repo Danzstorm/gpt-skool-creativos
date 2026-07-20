@@ -53,13 +53,24 @@ export async function POST(request: NextRequest) {
 
   const service = createServiceClient();
 
-  // Best-effort: auditoría para que el admin vea en /admin/members que Zapier
-  // realmente está llegando (y con qué resultado), sin condicionar la respuesta.
-  const logEvent = (success: boolean, error?: string) =>
-    service.from("webhook_events").insert({ source: "skool_webhook", email, action, success, error }).then(
-      () => {},
-      () => {}
-    );
+  // Auditoría para que el admin vea en /admin/members que Zapier realmente está
+  // llegando (y con qué resultado).
+  //
+  // Se AWAITEA aunque sea best-effort: sin await, la función serverless responde
+  // y el runtime la congela antes de que el insert salga, así que el evento se
+  // perdía de forma intermitente (comprobado: una baja se ejecutó y no quedó
+  // registrada). Es justo la tabla que se mira para depurar Zapier, así que un
+  // log que miente es peor que no tenerlo. El catch mantiene el best-effort:
+  // si la auditoría falla, el alta/baja igual responde OK.
+  const logEvent = async (success: boolean, error?: string) => {
+    try {
+      await service
+        .from("webhook_events")
+        .insert({ source: "skool_webhook", email, action, success, error });
+    } catch {
+      // no bloquear la respuesta por un fallo de auditoría
+    }
+  };
 
   if (action === "remove") {
     const { error } = await service
@@ -67,10 +78,10 @@ export async function POST(request: NextRequest) {
       .update({ is_active: false })
       .eq("email", email);
     if (error) {
-      logEvent(false, error.message);
+      await logEvent(false, error.message);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
-    logEvent(true);
+    await logEvent(true);
     return NextResponse.json({ ok: true, email, action: "revoked" });
   }
 
@@ -113,9 +124,9 @@ export async function POST(request: NextRequest) {
     { onConflict: "email" }
   );
   if (error) {
-    logEvent(false, error.message);
+    await logEvent(false, error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  logEvent(true);
+  await logEvent(true);
   return NextResponse.json({ ok: true, email, action: "activated" });
 }

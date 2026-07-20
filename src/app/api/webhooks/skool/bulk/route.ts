@@ -95,22 +95,26 @@ export async function POST(request: NextRequest) {
   const sync = body.sync === undefined ? true : Boolean(body.sync);
 
   const service = createServiceClient();
-  const logEvent = (success: boolean, error?: string) =>
-    service
-      .from("webhook_events")
-      .insert({ source: "skool_bulk", email: null, action: sync ? "bulk_sync" : "bulk_import", success, error })
-      .then(
-        () => {},
-        () => {}
-      );
+  // Se awaitea: sin await la función serverless responde y el runtime la congela
+  // antes de que el insert salga, perdiendo el evento de forma intermitente.
+  // El catch mantiene el best-effort — un fallo de auditoría no tumba el import.
+  const logEvent = async (success: boolean, error?: string) => {
+    try {
+      await service
+        .from("webhook_events")
+        .insert({ source: "skool_bulk", email: null, action: sync ? "bulk_sync" : "bulk_import", success, error });
+    } catch {
+      // no bloquear la respuesta por un fallo de auditoría
+    }
+  };
 
   try {
     const result = await syncMembers(service, members, sync);
-    logEvent(true, result.warning);
+    await logEvent(true, result.warning);
     return NextResponse.json({ ...result, received: body.members.length, valid: members.length });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Error de importación";
-    logEvent(false, message);
+    await logEvent(false, message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
