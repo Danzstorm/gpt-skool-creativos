@@ -181,5 +181,10 @@ export async function POST(request: NextRequest) {
     onSettled: async () => {
       await supabase.rpc("release_thread_lock", { p_thread_id: threadId });
     },
+    // Se propaga al SDK de OpenAI: cuando el cliente pulsa "Detener" o pierde
+    // la conexión, request.signal se cancela y la petición a OpenAI se corta
+    // de verdad, en vez de seguir generando (y facturando) tokens que nadie
+    // va a leer.
+    signal: request.signal,
   });
 }

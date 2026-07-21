@@ -57,7 +57,10 @@ function MessageBubble({
     </div>
   );
 
-  const actions = msg.content && !streaming && (
+  // Antes exigía msg.content, así que un mensaje que falló sin llegar a
+  // generar nada quedaba sin ninguna acción posible — ni siquiera regenerar.
+  // El usuario tenía que recargar la página para reintentar.
+  const actions = !streaming && (msg.content || msg.error) && (
     <div
       className={cn(
         // En desktop se ocultan con `hidden` (no `opacity-0`) para NO ocupar
@@ -66,13 +69,15 @@ function MessageBubble({
         isUser ? "justify-end" : "justify-start"
       )}
     >
-      <button
-        onClick={() => onCopy(index, msg.content)}
-        className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition"
-        title="Copiar"
-      >
-        {isCopied ? <Check size={14} /> : <Copy size={14} />}
-      </button>
+      {msg.content && (
+        <button
+          onClick={() => onCopy(index, msg.content)}
+          className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition"
+          title="Copiar"
+        >
+          {isCopied ? <Check size={14} /> : <Copy size={14} />}
+        </button>
+      )}
       {!isUser && isLast && canRegenerate && (
         <button
           onClick={onRegenerate}
@@ -106,12 +111,21 @@ function MessageBubble({
               <span className="inline-block w-1.5 h-4 bg-zinc-400 ml-0.5 mb-1 rounded-sm animate-pulse" />
             )}
           </div>
-        ) : (
+        ) : streaming ? (
+          // Solo mientras hay streaming activo de verdad. Antes se mostraban
+          // sin mirar `streaming`, así que un fallo con contenido vacío dejaba
+          // los puntos rebotando para siempre — sin spinner, sin botón de
+          // detener y sin ninguna acción disponible más que recargar la página.
           <span className="inline-flex gap-1 text-zinc-400">
             <span className="animate-bounce delay-0">·</span>
             <span className="animate-bounce delay-100">·</span>
             <span className="animate-bounce delay-200">·</span>
           </span>
+        ) : (
+          msg.error && <p className="text-sm text-red-400">{msg.error}</p>
+        )}
+        {msg.content && msg.error && (
+          <p className="mt-1.5 text-sm text-red-400">{msg.error}</p>
         )}
         <div className="mt-1">{actions}</div>
       </div>

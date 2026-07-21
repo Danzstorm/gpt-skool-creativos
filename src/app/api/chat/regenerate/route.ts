@@ -144,5 +144,6 @@ export async function POST(request: NextRequest) {
     onSettled: async () => {
       await supabase.rpc("release_thread_lock", { p_thread_id: threadId });
     },
+    signal: request.signal,
   });
 }

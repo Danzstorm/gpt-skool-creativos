@@ -26,7 +26,23 @@ export async function GET() {
     .order("sort_order", { ascending: true });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+
+  // threads.gpt_id tiene ON DELETE CASCADE (arrastra threads y messages), así
+  // que el admin necesita ver cuántas conversaciones de miembros hay antes de
+  // decidir borrar un GPT — no solo un `confirm()` genérico. Un COUNT por GPT
+  // en paralelo (hay 8 hoy) es más barato que traer todos los threads a JS
+  // para contarlos a mano, y usa el índice idx_threads_gpt.
+  const withCounts = await Promise.all(
+    (data ?? []).map(async (gpt) => {
+      const { count } = await serviceClient
+        .from("threads")
+        .select("id", { count: "exact", head: true })
+        .eq("gpt_id", gpt.id);
+      return { ...gpt, thread_count: count ?? 0 };
+    })
+  );
+
+  return NextResponse.json(withCounts);
 }
 
 export async function POST(request: NextRequest) {

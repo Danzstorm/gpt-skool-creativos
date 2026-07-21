@@ -54,6 +54,18 @@ export default function AdminGptsPage() {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [testingGpt, setTestingGpt] = useState<GptWithAssistantId | null>(null);
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+  // Distingue "no se pudo cargar" de "no hay GPTs todavía": antes un 500 caía
+  // en el mismo estado vacío ("Crea el primero.") que el catálogo realmente
+  // vacío, sin ninguna pista de que el catálogo real seguía intacto.
+  const [loadError, setLoadError] = useState(false);
+  // Errores de mutaciones fuera del modal (activar/desactivar, borrar,
+  // duplicar, subir icono, reordenar): antes fallaban en silencio y la UI
+  // quedaba mostrando el estado anterior a la acción sin ninguna explicación.
+  const [actionError, setActionError] = useState("");
+  // Error del modal de crear/editar: si el guardado falla, el modal se queda
+  // abierto con lo que el admin ya escribió (system prompts largos) en vez de
+  // cerrarse "con éxito" mientras el cambio en realidad no se guardó.
+  const [formError, setFormError] = useState("");
 
   useEffect(() => {
     loadGpts();
@@ -61,10 +73,17 @@ export default function AdminGptsPage() {
 
   async function loadGpts() {
     setLoading(true);
-    const res = await fetch("/api/admin/gpts");
-    const data = await res.json();
-    setGpts(Array.isArray(data) ? data : []);
-    setLoading(false);
+    try {
+      const res = await fetch("/api/admin/gpts");
+      if (!res.ok) throw new Error("load failed");
+      const data = await res.json();
+      setGpts(Array.isArray(data) ? data : []);
+      setLoadError(false);
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   }
 
   function openCreate() {
@@ -125,15 +144,20 @@ export default function AdminGptsPage() {
   async function handleIconUpload(file: File | undefined) {
     if (!file) return;
     setUploadingIcon(true);
+    setFormError("");
     try {
       const blob = await resizeSquare(file);
       const fd = new FormData();
       fd.append("file", blob, "icon.png");
       const res = await fetch("/api/admin/gpts/icon", { method: "POST", body: fd });
-      if (res.ok) {
-        const { url } = await res.json();
-        setForm((prev) => ({ ...prev, icon_url: url }));
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "No se pudo subir el icono");
       }
+      const { url } = await res.json();
+      setForm((prev) => ({ ...prev, icon_url: url }));
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "No se pudo subir el icono");
     } finally {
       setUploadingIcon(false);
     }
@@ -142,6 +166,7 @@ export default function AdminGptsPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
+    setFormError("");
 
     const url = editingId ? `/api/admin/gpts/${editingId}` : "/api/admin/gpts";
     const method = editingId ? "PATCH" : "POST";
@@ -151,36 +176,73 @@ export default function AdminGptsPage() {
       conversation_starters: form.conversation_starters.map((s) => s.trim()).filter(Boolean),
     };
 
-    await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    setSaving(false);
-    setShowForm(false);
-    loadGpts();
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "No se pudo guardar el GPT");
+      }
+      // El modal solo se cierra si el guardado realmente ocurrió. Antes se
+      // cerraba siempre, así que un 500 se veía idéntico a un guardado
+      // exitoso — el admin perdía el system prompt que acababa de escribir
+      // sin ninguna señal de que algo había fallado.
+      setShowForm(false);
+      await loadGpts();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "No se pudo guardar el GPT");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function toggleActive(gpt: GptWithAssistantId) {
-    await fetch(`/api/admin/gpts/${gpt.id}`, {
+    setActionError("");
+    const res = await fetch(`/api/admin/gpts/${gpt.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ is_active: !gpt.is_active }),
     });
+    if (!res.ok) {
+      setActionError(`No se pudo ${gpt.is_active ? "desactivar" : "activar"} "${gpt.name}".`);
+      return;
+    }
     loadGpts();
   }
 
   async function deleteGpt(gpt: GptWithAssistantId) {
-    if (!confirm(`¿Eliminar "${gpt.name}"? Esta acción no se puede deshacer.`)) return;
-    await fetch(`/api/admin/gpts/${gpt.id}`, { method: "DELETE" });
+    // threads.gpt_id borra en cascada (threads Y sus messages): eliminar un
+    // GPT con conversaciones reales borra esas conversaciones para siempre,
+    // sin backup (Supabase está en plan free). El confirm() genérico no lo
+    // decía. Si hay algo que perder, se avisa la cifra real y se sugiere
+    // Duplicar/desactivar como alternativa no destructiva.
+    const n = gpt.thread_count ?? 0;
+    const warning =
+      n > 0
+        ? `¿Eliminar "${gpt.name}"? Esto borra PERMANENTEMENTE ${n} ${n === 1 ? "conversación" : "conversaciones"} de miembros con este GPT — sin forma de recuperarlas.\n\nSi solo quieres ocultarlo del catálogo sin perder esas conversaciones, cancela y usa "Desactivar" en vez de eliminar.`
+        : `¿Eliminar "${gpt.name}"? Esta acción no se puede deshacer.`;
+    if (!confirm(warning)) return;
+    setActionError("");
+    const res = await fetch(`/api/admin/gpts/${gpt.id}`, { method: "DELETE" });
+    if (!res.ok) {
+      setActionError(`No se pudo eliminar "${gpt.name}".`);
+      return;
+    }
     loadGpts();
   }
 
   async function duplicateGpt(gpt: GptWithAssistantId) {
     setDuplicatingId(gpt.id);
+    setActionError("");
     try {
-      await fetch(`/api/admin/gpts/${gpt.id}/duplicate`, { method: "POST" });
+      const res = await fetch(`/api/admin/gpts/${gpt.id}/duplicate`, { method: "POST" });
+      if (!res.ok) {
+        setActionError(`No se pudo duplicar "${gpt.name}".`);
+        return;
+      }
       await loadGpts();
     } finally {
       setDuplicatingId(null);
@@ -188,7 +250,10 @@ export default function AdminGptsPage() {
   }
 
   // Reordenar por drag & drop: mueve el arrastrado a la posición soltada y
-  // persiste el nuevo sort_order de todos (best-effort, en paralelo).
+  // persiste el nuevo sort_order de todos (best-effort, en paralelo). Si un
+  // PATCH falla, el orden mostrado queda divergido del guardado hasta el
+  // próximo `loadGpts()` — se avisa para que el admin sepa que puede no haber
+  // quedado como lo dejó.
   function handleDrop(targetIndex: number) {
     if (dragIndex === null || dragIndex === targetIndex) {
       setDragIndex(null);
@@ -200,12 +265,19 @@ export default function AdminGptsPage() {
     const reordered = next.map((g, i) => ({ ...g, sort_order: i }));
     setGpts(reordered);
     setDragIndex(null);
-    reordered.forEach((g, i) => {
-      fetch(`/api/admin/gpts/${g.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sort_order: i }),
-      });
+    setActionError("");
+    Promise.all(
+      reordered.map((g, i) =>
+        fetch(`/api/admin/gpts/${g.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sort_order: i }),
+        })
+      )
+    ).then((results) => {
+      if (results.some((r) => !r.ok)) {
+        setActionError("El nuevo orden no se guardó del todo. Recarga para ver el orden real.");
+      }
     });
   }
 
@@ -390,6 +462,12 @@ export default function AdminGptsPage() {
                   </div>
                 </div>
 
+                {formError && (
+                  <div className="bg-red-950/40 border border-red-800/50 rounded-xl px-4 py-2.5 text-red-300 text-sm">
+                    {formError}
+                  </div>
+                )}
+
                 <div className="flex gap-3 pt-2">
                   <button
                     type="submit"
@@ -412,8 +490,25 @@ export default function AdminGptsPage() {
         </div>
       )}
 
+      {actionError && (
+        <div className="mb-4 flex items-start gap-3 bg-red-950/40 border border-red-800/50 rounded-xl px-4 py-2.5 text-red-300 text-sm">
+          <span className="flex-1">{actionError}</span>
+          <button onClick={() => setActionError("")} className="text-red-400/70 hover:text-red-300">
+            ✕
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <div className="text-zinc-400 text-center py-12">Cargando...</div>
+      ) : loadError ? (
+        <div className="text-center py-16 text-amber-400">
+          <div className="text-4xl mb-3">⚠️</div>
+          <p>No se pudieron cargar los GPTs. El catálogo real sigue intacto.</p>
+          <button onClick={loadGpts} className="mt-4 text-sm text-amber-300 underline hover:text-amber-200">
+            Reintentar
+          </button>
+        </div>
       ) : gpts.length === 0 ? (
         <div className="text-center py-16 text-zinc-500">
           <div className="text-4xl mb-3">🤖</div>

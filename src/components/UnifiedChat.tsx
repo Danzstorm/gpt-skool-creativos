@@ -282,6 +282,24 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
     abortRef.current?.abort();
   }, []);
 
+  // consumeStream ya traduce 429/409/403 a mensajes en español (líneas arriba)
+  // y el frame `error` que manda chat-stream.ts también viene en español —
+  // esos casos llegan aquí como Error con mensaje ya listo para mostrar. Lo
+  // único que queda crudo es un fallo del propio fetch (red caída, DNS, CORS):
+  // el navegador nunca los traduce y el texto varía por navegador
+  // ("Failed to fetch" en Chrome, "NetworkError..." en Firefox, "Load failed"
+  // en Safari). Esos se detectan y se reemplazan por un mensaje genérico.
+  function friendlyStreamError(err: unknown): string {
+    if (err instanceof Error) {
+      const raw = err.message.toLowerCase();
+      const isRawNetworkError =
+        raw.includes("fetch") || raw.includes("network") || raw.includes("load failed");
+      if (isRawNetworkError) return "Se perdió la conexión. Intenta de nuevo.";
+      return err.message;
+    }
+    return "No se pudo completar la respuesta. Intenta de nuevo.";
+  }
+
   // Consume el SSE y va agregando texto al último mensaje (asistente) del estado
   async function consumeStream(res: Response) {
     if (res.status === 429) {
@@ -333,13 +351,17 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
       await consumeStream(res);
     } catch (err) {
       const aborted = err instanceof DOMException && err.name === "AbortError";
-      const errMsg = err instanceof Error ? err.message : "Error al obtener respuesta. Intenta de nuevo.";
       setMessages((prev) => {
         const updated = [...prev];
         const last = updated[updated.length - 1];
+        // Nunca se pisa `content`: si el stream ya había escrito 3 párrafos
+        // antes de cortarse, esos párrafos se conservan y el aviso va aparte.
+        // Antes `content: errMsg` reemplazaba todo lo generado por un mensaje
+        // de error crudo (a veces en inglés, "Failed to fetch") con el mismo
+        // estilo visual que una respuesta real del GPT.
         updated[updated.length - 1] = aborted
           ? { ...last, content: last.content || "_(respuesta detenida)_" }
-          : { ...last, content: errMsg };
+          : { ...last, error: friendlyStreamError(err) };
         return updated;
       });
     } finally {
