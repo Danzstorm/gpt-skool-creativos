@@ -96,10 +96,22 @@ Body:    { "members": [ {fila...}, ... ], "sync"?: true }
 ```
 Acepta filas normalizadas o los encabezados crudos de Skool. Ver §6 (Zapier) para el paso a paso de cómo conectarlo.
 
-Para designar un admin (una sola vez, manual en la base de datos):
-```sql
-UPDATE profiles SET is_admin = true WHERE email = 'tu@email.com';
+### Designar admins
+
+Desde **Ajustes → Administradores** en el propio panel: se agrega por correo. Si la
+persona ya entró alguna vez, queda admin al instante; si nunca entró, se le habilita
+el acceso y queda admin sola la primera vez que entre. No hay que volver a hacer nada.
+
+Para el **primer** admin de una instancia (todavía no hay panel al que entrar):
+
+```bash
+node --env-file=.env.local scripts/bootstrap-admin.mjs admin@cliente.com
 ```
+
+> No uses `UPDATE profiles SET is_admin = true` a mano. Marca el perfil pero **no**
+> crea la fila en `allowed_members`, así que el gate de membresía expulsa a esa
+> persona a `/unauthorized` en su primer request: queda "admin" en la base y sin
+> poder entrar. El script hace las dos cosas y es idempotente.
 
 ---
 
@@ -152,14 +164,43 @@ Esta plataforma es **single-tenant por diseño**: cada cliente corre su propia c
 | **Resend** (SMTP) | Que el magic link llegue de verdad — ver §7, **bloqueante para lanzar** | El cliente (dominio propio necesario) |
 
 ### Pasos de setup (Supabase)
+
+En este orden. Los pasos 4 y 5 son los que más fallos de login causan si se saltan.
+
 1. Crear proyecto en Supabase (elegir región cercana a los usuarios).
 2. `supabase link --project-ref <ref>` y `supabase db push` para aplicar todas las migraciones de `supabase/migrations/`.
 3. Crear los dos buckets de Storage:
    - `gpt-icons` (público) — íconos de GPT.
    - `chat-uploads` (privado) — adjuntos del chat, servidos con URLs firmadas.
-4. Auth → Providers → Email: habilitar magic link, `redirect URL` = `https://<dominio>/auth/callback`.
-5. Crear el primer admin: `UPDATE profiles SET is_admin = true WHERE email = '...';` (tras su primer login, porque `profiles` se llena vía trigger al crear el usuario en `auth.users`).
-6. Copiar URL + anon key + service role key a las env vars de Vercel.
+4. **SMTP propio antes de abrir el acceso** (Auth → SMTP Settings). El default de
+   Supabase manda 2 correos/hora y solo a direcciones pre-autorizadas — con el
+   acceso por magic link, cada login es un correo, así que una comunidad de
+   varios cientos lo revienta en la primera hora del anuncio. Ver §7.
+5. **Auth → URL Configuration** con el dominio real:
+   - Site URL: `https://<dominio>`
+   - Redirect URLs: `https://<dominio>/auth/callback`
+
+   Si no coinciden, Supabase rechaza el redirect y el login falla con
+   `?error=auth_failed` sin más pistas.
+6. Auth → Providers → Email: habilitar magic link.
+7. Crear el primer admin (ver §3):
+   `node --env-file=.env.local scripts/bootstrap-admin.mjs admin@cliente.com`
+8. Copiar URL + anon key + service role key a las env vars de Vercel.
+
+### Verificar que el login quedó bien
+
+Antes de invitar a nadie, comprobar los tres caminos desde el dominio real:
+
+| Prueba | Esperado |
+|---|---|
+| Magic link con un correo **que está** en `allowed_members` | Llega el correo, el enlace entra a `/chat` |
+| Magic link con un correo **que no está** | Mensaje de "no tienes acceso" + link a Skool, sin enviar correo |
+| Abrir un enlace ya usado | `/login` con el aviso de enlace vencido (no una pantalla muda) |
+
+Después, en **Miembros → Accesos** del panel deben aparecer esos intentos con su
+motivo. Si esa lista está vacía tras las pruebas, la auditoría no está llegando y
+conviene revisarlo antes de lanzar: es lo único que permite depurar un "no puedo
+entrar" en producción.
 
 ### Pasos de setup (Google OAuth) — solo si lo quieren
 1. En Google Cloud Console: crear proyecto → APIs & Services → Credentials → **OAuth 2.0 Client ID** (tipo *Web application*).

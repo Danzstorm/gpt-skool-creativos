@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import AuthWatcher from "@/components/AuthWatcher";
 
 // Guarda de acceso ligera. El middleware (proxy.ts) ya valida sesión Y membresía
 // en cada request de estas rutas y redirige antes de llegar aquí, así que NO se
@@ -18,5 +19,10 @@ export default async function ProtectedLayout({
 
   if (!user) redirect("/login");
 
-  return children;
+  return (
+    <>
+      <AuthWatcher />
+      {children}
+    </>
+  );
 }

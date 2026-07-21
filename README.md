@@ -85,10 +85,12 @@ Cada `git push` a la rama conectada dispara un redeploy automático.
 
 ## Post-deploy
 
-1. **Primer admin** (tras su primer login, una vez):
-   ```sql
-   UPDATE profiles SET is_admin = true WHERE email = 'admin@ejemplo.com';
+1. **Primer admin** (una vez, no hace falta que haya entrado antes):
+   ```bash
+   node --env-file=.env.local scripts/bootstrap-admin.mjs admin@ejemplo.com
    ```
+   Habilita el acceso y marca el admin. Hacerlo con `UPDATE profiles SET is_admin = true`
+   a mano deja a esa persona sin fila en `allowed_members` y el gate la expulsa.
 2. Entrar a `/admin/settings` → white-label (nombre de comunidad, logo, URL de Skool, email de soporte).
 3. Crear los GPTs en `/admin/gpts` (nombre, system prompt, modelo, sugerencias, icono).
 4. Cargar los miembros en `/admin/members` (import CSV de Skool) y conectar el webhook de Zapier.

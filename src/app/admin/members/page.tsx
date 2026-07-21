@@ -1,15 +1,36 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import type { AllowedMember, WebhookEvent } from "@/lib/types";
-import { Upload, UserX, UserCheck, Trash2, Plus, Download } from "lucide-react";
+import type { AllowedMember, WebhookEvent, AuthEvent } from "@/lib/types";
+// `History` se importa con alias: el nombre choca con el tipo global History del DOM.
+import { Upload, UserX, UserCheck, Trash2, Plus, Download, History as HistoryIcon } from "lucide-react";
 import Papa from "papaparse";
+
+// Los valores crudos de auth_events son para grep; acá se leen de un vistazo.
+const AUTH_EVENT_LABELS: Record<string, { text: string; tone: string }> = {
+  login_ok: { text: "Entró", tone: "bg-green-900/30 text-green-400" },
+  login_rejected_not_member: { text: "No está en la lista", tone: "bg-amber-900/30 text-amber-400" },
+  login_rejected_revoked: { text: "Revocado", tone: "bg-red-900/30 text-red-400" },
+  login_rejected_email_mismatch: { text: "Otro correo", tone: "bg-amber-900/30 text-amber-400" },
+  callback_error: { text: "Error de enlace", tone: "bg-red-900/30 text-red-400" },
+  signout_user: { text: "Cerró sesión", tone: "bg-zinc-800 text-zinc-400" },
+  signout_gate_revoked: { text: "Expulsado", tone: "bg-red-900/30 text-red-400" },
+  session_expired: { text: "Sesión caducada", tone: "bg-zinc-800 text-zinc-400" },
+};
 
 export default function AdminMembersPage() {
   const [members, setMembers] = useState<AllowedMember[]>([]);
   const [loading, setLoading] = useState(false);
+  // Antes un 500 del backend caía en el mismo estado vacío que "no hay
+  // miembros todavía", cuyo texto invita a re-importar el CSV — sobre una
+  // base que en realidad tenía los 597 miembros intactos. Se distingue para
+  // no invitar a una reimportación innecesaria (o destructiva) por un error
+  // transitorio de carga.
+  const [loadError, setLoadError] = useState(false);
   const [importMsg, setImportMsg] = useState("");
   const [webhookEvents, setWebhookEvents] = useState<WebhookEvent[]>([]);
+  const [authEvents, setAuthEvents] = useState<AuthEvent[]>([]);
+  const [authFilter, setAuthFilter] = useState("");
   type ParsedMember = {
     email: string;
     full_name: string;
@@ -32,20 +53,35 @@ export default function AdminMembersPage() {
   useEffect(() => {
     loadMembers();
     loadWebhookEvents();
+    loadAuthEvents();
   }, []);
 
   async function loadMembers() {
     setLoading(true);
-    const res = await fetch("/api/admin/members");
-    const data = await res.json();
-    setMembers(Array.isArray(data) ? data : []);
-    setLoading(false);
+    try {
+      const res = await fetch("/api/admin/members");
+      if (!res.ok) throw new Error("load failed");
+      const data = await res.json();
+      setMembers(Array.isArray(data) ? data : []);
+      setLoadError(false);
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function loadWebhookEvents() {
     const res = await fetch("/api/admin/webhook-events");
     const data = await res.json();
     setWebhookEvents(Array.isArray(data) ? data : []);
+  }
+
+  async function loadAuthEvents(email?: string) {
+    const qs = email ? `?email=${encodeURIComponent(email)}` : "";
+    const res = await fetch(`/api/admin/auth-events${qs}`);
+    const data = await res.json();
+    setAuthEvents(Array.isArray(data) ? data : []);
   }
 
   function exportCsv() {
@@ -459,6 +495,17 @@ export default function AdminMembersPage() {
       {/* Lista */}
       {loading ? (
         <div className="text-zinc-400 text-center py-12">Cargando...</div>
+      ) : loadError ? (
+        <div className="text-center py-16 text-amber-400">
+          <div className="text-4xl mb-3">⚠️</div>
+          <p>No se pudieron cargar los miembros. Los datos siguen intactos.</p>
+          <button
+            onClick={loadMembers}
+            className="mt-4 text-sm text-amber-300 underline hover:text-amber-200"
+          >
+            Reintentar
+          </button>
+        </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-zinc-500">
           <div className="text-4xl mb-3">👥</div>
@@ -498,6 +545,17 @@ export default function AdminMembersPage() {
                 title="Límite mensual de mensajes (vacío = usa el default global de Ajustes)"
                 className="hidden md:block w-16 bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-zinc-200 text-center focus:outline-none focus:ring-1 focus:ring-zinc-500"
               />
+              {/* Distingue "invitado pero nunca entró" de "entra normal". Sin
+                  esto, ante un "no puedo entrar" no había forma de saber si la
+                  persona nunca llegó a autenticarse o si el gate la expulsa. */}
+              {member.is_active && !member.has_logged_in && (
+                <span
+                  className="text-xs px-2.5 py-1 rounded-full font-medium bg-amber-900/30 text-amber-400 hidden sm:inline"
+                  title="Tiene acceso habilitado pero todavía no ha iniciado sesión ninguna vez"
+                >
+                  Nunca entró
+                </span>
+              )}
               <span
                 className={`text-xs px-2.5 py-1 rounded-full font-medium ${
                   member.is_active
@@ -507,6 +565,16 @@ export default function AdminMembersPage() {
               >
                 {member.is_active ? "Activo" : "Revocado"}
               </span>
+              <button
+                onClick={() => {
+                  setAuthFilter(member.email);
+                  loadAuthEvents(member.email);
+                }}
+                title="Ver su historial de accesos"
+                className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition hidden sm:block"
+              >
+                <HistoryIcon size={15} />
+              </button>
               <div className="flex items-center gap-1 flex-shrink-0">
                 <button
                   onClick={() => toggleActive(member)}
@@ -526,6 +594,59 @@ export default function AdminMembersPage() {
           ))}
         </div>
       )}
+
+      {/* Historial de accesos: responde "¿por qué se salió X?" sin tener que
+          leer los logs crudos de GoTrue. Cada entrada, rechazo y cierre de
+          sesión queda registrado con su motivo. */}
+      <div className="mt-8">
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold text-zinc-300">
+            Accesos {authFilter && <span className="text-zinc-500">— {authFilter}</span>}
+          </h2>
+          {authFilter && (
+            <button
+              onClick={() => {
+                setAuthFilter("");
+                loadAuthEvents();
+              }}
+              className="text-xs text-zinc-400 hover:text-white transition"
+            >
+              Ver todos
+            </button>
+          )}
+        </div>
+        {authEvents.length === 0 ? (
+          <p className="text-xs text-zinc-600">Sin eventos registrados todavía.</p>
+        ) : (
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl divide-y divide-zinc-800/80 max-h-80 overflow-y-auto">
+            {authEvents.map((ev) => {
+              const label = AUTH_EVENT_LABELS[ev.event] ?? {
+                text: ev.event,
+                tone: "bg-zinc-800 text-zinc-400",
+              };
+              return (
+                <div key={ev.id} className="flex items-center gap-3 px-4 py-2.5 text-xs">
+                  <span className={`px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${label.tone}`}>
+                    {label.text}
+                  </span>
+                  <span className="text-zinc-300 truncate flex-1">{ev.email ?? "—"}</span>
+                  {ev.provider && (
+                    <span className="text-zinc-500 flex-shrink-0 hidden sm:inline">{ev.provider}</span>
+                  )}
+                  {ev.reason && (
+                    <span className="text-zinc-500 truncate max-w-[220px] hidden md:inline" title={ev.reason}>
+                      {ev.reason}
+                    </span>
+                  )}
+                  <span className="text-zinc-600 flex-shrink-0">
+                    {new Date(ev.created_at).toLocaleString("es", { dateStyle: "short", timeStyle: "short" })}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Auditoría de integración: confirma que Zapier/Skool realmente está
           llegando al webhook, y con qué resultado. */}

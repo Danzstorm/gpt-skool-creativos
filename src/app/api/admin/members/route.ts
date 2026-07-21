@@ -21,7 +21,19 @@ export async function GET() {
     .order("added_at", { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+
+  // `profiles` solo existe tras el primer login, así que su presencia es la
+  // señal de "esta persona ya logró entrar". Sin esto el admin no puede
+  // distinguir a quien nunca entró de quien entra a diario — y esa ambigüedad
+  // es justo la que hace imposible depurar un reporte de "no puedo entrar".
+  const { data: profiles } = await serviceClient.from("profiles").select("email");
+  const entered = new Set(
+    (profiles ?? []).map((p) => (p.email ?? "").toLowerCase().trim()).filter(Boolean)
+  );
+
+  return NextResponse.json(
+    (data ?? []).map((m) => ({ ...m, has_logged_in: entered.has(m.email) }))
+  );
 }
 
 export async function POST(request: NextRequest) {

@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { logAuthEvent } from "@/lib/auth-events";
 import { NextResponse, type NextRequest } from "next/server";
 
 // El gate de membresía corre en CADA request (páginas, API y prefetches). Sin
@@ -23,15 +24,35 @@ async function isActiveMember(email: string | null | undefined): Promise<boolean
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
-  const { data } = await service
-    .from("allowed_members")
-    .select("is_active")
-    .eq("email", key)
-    .single();
 
-  const active = !!data?.is_active;
-  membershipCache.set(key, { active, exp: now + MEMBERSHIP_TTL_MS });
-  return active;
+  // Fail-open ante cualquier fallo de la consulta (timeout, 500 de PostgREST,
+  // proyecto pausado — el free tier de Supabase se pausa por inactividad).
+  // Sin esto, un blip de infra cerraba la sesión de miembros reales y el
+  // resultado se cacheaba 60s, así que el efecto persistía. Solo se revoca
+  // cuando la consulta responde con éxito y confirma is_active=false — nunca
+  // porque no se pudo comprobar. El try/catch además cubre el caso de que el
+  // fetch mismo lance (red caída), que antes tumbaba el proxy entero con 500.
+  try {
+    const { data, error } = await service
+      .from("allowed_members")
+      .select("is_active")
+      .eq("email", key)
+      .maybeSingle();
+
+    if (error) {
+      console.error("isActiveMember: fallo de consulta, fail-open", error.message);
+      return true;
+    }
+
+    // maybeSingle() da data=null si el email no está en allowed_members: es un
+    // "no" confirmado (nunca fue miembro o su fila no existe), no un fallo.
+    const active = !!data?.is_active;
+    membershipCache.set(key, { active, exp: now + MEMBERSHIP_TTL_MS });
+    return active;
+  } catch (err) {
+    console.error("isActiveMember: excepción de red, fail-open", err);
+    return true;
+  }
 }
 
 export async function proxy(request: NextRequest) {
@@ -95,15 +116,34 @@ export async function proxy(request: NextRequest) {
   if (user && !isPublic && !publicApi) {
     const isMember = await isActiveMember(user.email);
     if (!isMember) {
-      await supabase.auth.signOut();
+      // Auditar ANTES de cerrar: sin este registro, un cierre de sesión es
+      // indistinguible de un bug y solo se puede reconstruir leyendo logs
+      // crudos de GoTrue (y ni así del todo).
+      await logAuthEvent({
+        event: "signout_gate_revoked",
+        email: user.email,
+        userId: user.id,
+        reason: "allowed_members.is_active = false",
+        request,
+      });
+      // Scope global explícito: esto es una baja real de la comunidad, debe
+      // cortar en todos los dispositivos. Es lo contrario del botón "Salir",
+      // que solo cierra el dispositivo desde el que se pulsa.
+      await supabase.auth.signOut({ scope: "global" });
       if (isApi) {
         return withCookies(
-          NextResponse.json({ error: "Acceso revocado" }, { status: 403 }),
+          NextResponse.json(
+            // `code` para que el cliente distinga esto de un 403 por cuota; sin
+            // él, el chat pintaba "Alcanzaste tu límite de mensajes de este mes".
+            { error: "Acceso revocado", code: "membership_revoked" },
+            { status: 403 }
+          ),
           supabaseResponse
         );
       }
       const url = request.nextUrl.clone();
       url.pathname = "/unauthorized";
+      url.searchParams.set("reason", "revoked");
       return withCookies(NextResponse.redirect(url), supabaseResponse);
     }
   }

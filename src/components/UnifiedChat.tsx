@@ -292,6 +292,15 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
     }
     if (res.status === 403) {
       const data = await res.json().catch(() => null);
+      // El proxy y el límite de cuota comparten el 403. Sin distinguirlos, a un
+      // miembro dado de baja se le decía que había agotado sus mensajes del mes
+      // y se quedaba en el chat con una sesión ya cerrada.
+      if (data?.code === "membership_revoked") {
+        // Navegación completa a propósito: fuerza pasar por el proxy en vez de
+        // quedarse con el árbol de React de una sesión que ya no existe.
+        window.location.assign("/unauthorized?reason=revoked");
+        return;
+      }
       throw new Error(data?.error || "Alcanzaste tu límite de mensajes de este mes.");
     }
     if (!res.ok) throw new Error("Error al enviar mensaje");

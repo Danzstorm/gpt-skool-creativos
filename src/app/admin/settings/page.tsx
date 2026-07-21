@@ -51,9 +51,10 @@ function AdminsSection() {
     }
     if (data.status === "pending") {
       setMsg({
-        text: `${email.trim()} aún no ha iniciado sesión. Ya tiene acceso habilitado — en cuanto entre una vez a la plataforma, vuelve aquí y agrégalo de nuevo para completar el admin.`,
+        text: `${email.trim()} aún no ha iniciado sesión. Ya tiene acceso habilitado y queda admin automáticamente la primera vez que entre — no hace falta que vuelvas aquí.`,
         kind: "warn",
       });
+      setEmail("");
     } else {
       setMsg({ text: `${email.trim()} ahora es admin.`, kind: "ok" });
       setEmail("");
@@ -139,11 +140,20 @@ export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  // Si la carga inicial falla, el formulario quedaba en blanco — indistinguible
+  // de "aún no se configuró nada". El admin podía rellenar un solo campo,
+  // guardar, y el PATCH salía con community_name/skool_url/support_email
+  // vacíos, borrando la marca de la plataforma para los 600 miembros. Ahora el
+  // formulario no se muestra (ni se puede guardar) hasta que la carga real
+  // haya funcionado.
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     (async () => {
-      const res = await fetch("/api/admin/settings");
-      if (res.ok) {
+      try {
+        const res = await fetch("/api/admin/settings");
+        if (!res.ok) throw new Error("load failed");
         const data = await res.json();
         setForm({
           community_name: data.community_name ?? "",
@@ -152,8 +162,12 @@ export default function AdminSettingsPage() {
           support_email: data.support_email ?? "",
           default_monthly_message_limit: data.default_monthly_message_limit,
         });
+        setLoadError(false);
+      } catch {
+        setLoadError(true);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     })();
   }, []);
 
@@ -161,18 +175,43 @@ export default function AdminSettingsPage() {
     e.preventDefault();
     setSaving(true);
     setSaved(false);
-    await fetch("/api/admin/settings", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    setSaveError("");
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "No se pudieron guardar los ajustes");
+      }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "No se pudieron guardar los ajustes");
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (loading) {
     return <div className="text-zinc-400 text-center py-12">Cargando...</div>;
+  }
+
+  if (loadError) {
+    return (
+      <div className="text-center py-16 text-amber-400">
+        <div className="text-4xl mb-3">⚠️</div>
+        <p>No se pudieron cargar los ajustes. La configuración actual no se perdió.</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 text-sm text-amber-300 underline hover:text-amber-200"
+        >
+          Reintentar
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -264,6 +303,7 @@ export default function AdminSettingsPage() {
             {saving ? "Guardando..." : "Guardar cambios"}
           </button>
           {saved && <span className="text-emerald-400 text-sm">Guardado.</span>}
+          {saveError && <span className="text-red-400 text-sm">{saveError}</span>}
         </div>
       </form>
 

@@ -14,13 +14,18 @@ export default async function AdminLayout({
 
   if (!user) redirect("/login");
 
+  // maybeSingle y no single: si el perfil todavía no existe, `single()` devuelve
+  // un error PGRST116 que aquí se descartaba en silencio, colapsando dos casos
+  // distintos —"no eres admin" y "tu perfil aún no se creó"— en el mismo
+  // redirect mudo a /dashboard.
   const { data: profile } = await supabase
     .from("profiles")
     .select("is_admin")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
 
-  if (!profile?.is_admin) redirect("/dashboard");
+  if (!profile) redirect("/dashboard?notice=profile_pending");
+  if (!profile.is_admin) redirect("/dashboard?notice=not_admin");
 
   const settings = await getAppSettings();
 

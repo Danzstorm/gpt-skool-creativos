@@ -156,6 +156,14 @@ max_indexes = 5
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
+#
+# OJO: estos valores son los del stack LOCAL. La allow-list real de producción
+# vive en el dashboard hosted (Authentication → URL Configuration) y NO está
+# versionada. Al montar una instancia para un cliente nuevo hay que fijar ahí:
+#   Site URL:      https://<dominio-del-cliente>
+#   Redirect URLs: https://<dominio-del-cliente>/auth/callback
+# Si no coinciden, el magic link redirige mal y el login falla sin motivo visible
+# — el callback recibe un error de "redirect_to no permitido".
 site_url = "http://127.0.0.1:3000"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
@@ -319,6 +327,23 @@ max_frequency = "5s"
 # Use an external OAuth provider. The full list of providers are: `apple`, `azure`, `bitbucket`,
 # `discord`, `facebook`, `github`, `gitlab`, `google`, `keycloak`, `linkedin_oidc`, `notion`, `twitch`,
 # `twitter`, `x`, `slack`, `spotify`, `workos`, `zoom`.
+# Google es el segundo camino de entrada (el primero es el magic link). El flag
+# NEXT_PUBLIC_GOOGLE_AUTH_ENABLED de la app controla si se muestra el botón; este
+# bloque es lo que lo hace funcionar de verdad.
+#
+# En el proyecto hosted se configura en el dashboard, y el redirect URI que hay
+# que registrar en Google Cloud es el de SUPABASE, no el dominio propio:
+#   https://<project-ref>.supabase.co/auth/v1/callback
+[auth.external.google]
+enabled = false
+client_id = ""
+# DO NOT commit your OAuth provider secret to git. Use environment variable substitution instead:
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+redirect_uri = ""
+url = ""
+# Required for local sign in with Google auth.
+skip_nonce_check = true
+
 [auth.external.apple]
 enabled = false
 client_id = ""

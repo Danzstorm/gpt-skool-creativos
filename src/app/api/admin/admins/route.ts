@@ -25,10 +25,11 @@ export async function GET() {
 }
 
 // Da admin por correo. Si la persona ya inició sesión alguna vez (tiene fila
-// en `profiles`), queda admin al instante. Si nunca ha entrado, se le
-// garantiza acceso (alta/reactivación en allowed_members) y se avisa que hay
-// que esperar su primer login antes de que aparezca aquí para promoverla —
-// is_admin vive en `profiles`, que solo existe tras el primer login (trigger).
+// en `profiles`), queda admin al instante. Si nunca ha entrado, se le garantiza
+// acceso y se deja marcado `pending_admin`: el trigger handle_new_user lo
+// aplica solo en su primer login. Antes esto devolvía "pending" a secas y la UI
+// pedía volver a agregarlo a mano más tarde — un paso que se olvidaba y dejaba
+// al nuevo admin sin panel.
 export async function POST(request: NextRequest) {
   const user = await requireAdmin();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
@@ -46,17 +47,23 @@ export async function POST(request: NextRequest) {
 
   const service = createServiceClient();
 
-  // Garantiza acceso a la plataforma (gate de login) — sin esto, aunque se
-  // marque is_admin más tarde, la persona no podría ni iniciar sesión.
-  await service
-    .from("allowed_members")
-    .upsert({ email: normalized, is_active: true }, { onConflict: "email", ignoreDuplicates: false });
-
   const { data: profile } = await service
     .from("profiles")
     .select("id, email, full_name, is_admin, created_at")
     .eq("email", normalized)
-    .single();
+    .maybeSingle();
+
+  // Garantiza acceso a la plataforma (gate de login) — sin esto, aunque se
+  // marque is_admin más tarde, la persona no podría ni iniciar sesión.
+  // `pending_admin` solo se enciende si aún no hay perfil: si ya existe, se
+  // promueve abajo y dejar el flag encendido lo re-promovería tras un DELETE.
+  const { error: accessError } = await service.from("allowed_members").upsert(
+    { email: normalized, is_active: true, ...(profile ? {} : { pending_admin: true }) },
+    { onConflict: "email", ignoreDuplicates: false }
+  );
+  if (accessError) {
+    return NextResponse.json({ error: accessError.message }, { status: 500 });
+  }
 
   if (!profile) {
     return NextResponse.json({ status: "pending" as const });

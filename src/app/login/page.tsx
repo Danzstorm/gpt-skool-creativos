@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
@@ -9,12 +9,56 @@ import { createClient } from "@/lib/supabase/client";
 // usuario ve un error sin salida — mejor no ofrecer la opción.
 const GOOGLE_ENABLED = process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === "true";
 
-export default function LoginPage() {
+// Cada motivo por el que se puede acabar de vuelta acá, con su explicación y el
+// paso siguiente. Antes /login ignoraba el ?error= que le mandaba el callback,
+// así que un enlace vencido, una sesión caducada y un rechazo de acceso se veían
+// todos igual: la pantalla de login en blanco, sin una palabra.
+const ERROR_COPY: Record<string, { title: string; body: string }> = {
+  link_expired: {
+    title: "Ese enlace ya no sirve",
+    body: "Los enlaces de acceso duran 1 hora y funcionan una sola vez. Pide uno nuevo abajo.",
+  },
+  link_other_browser: {
+    title: "Abre el enlace en el mismo navegador",
+    body: "Pediste el acceso desde otro navegador o dispositivo. Pide uno nuevo desde aquí y ábrelo en esta misma ventana.",
+  },
+  session_expired: {
+    title: "Tu sesión caducó",
+    body: "Por seguridad cerramos las sesiones inactivas. Vuelve a entrar y sigues donde estabas.",
+  },
+  temporary: {
+    title: "No pudimos verificar tu acceso",
+    body: "Fue un problema nuestro, no tuyo — tu membresía está intacta. Intenta de nuevo en un minuto.",
+  },
+  auth_failed: {
+    title: "No pudimos completar el acceso",
+    body: "Algo se interrumpió en el camino. Intenta de nuevo con tu correo.",
+  },
+};
+
+const FALLBACK_ERROR = {
+  title: "No pudimos completar el acceso",
+  body: "Intenta de nuevo. Si vuelve a pasar, escríbenos.",
+};
+
+export default function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const params = use(searchParams);
+  const errorCode = typeof params.error === "string" ? params.error : null;
+
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "sent" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [communityName, setCommunityName] = useState("Creativos");
   const [skoolUrl, setSkoolUrl] = useState(process.env.NEXT_PUBLIC_SKOOL_URL || "https://www.skool.com/");
+
+  // El aviso del ?error= se descarta en cuanto la persona vuelve a intentar, para
+  // no dejar dos mensajes contradictorios en pantalla a la vez.
+  const [showUrlError, setShowUrlError] = useState(true);
+  const urlError = showUrlError && errorCode ? ERROR_COPY[errorCode] ?? FALLBACK_ERROR : null;
 
   // Marca (white-label) vía RLS pública de app_settings — sin esto cada cliente
   // nuevo requeriría tocar código para su nombre/comunidad.
@@ -31,10 +75,11 @@ export default function LoginPage() {
     })();
   }, []);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setStatus("loading");
     setErrorMsg("");
+    setShowUrlError(false);
 
     const res = await fetch("/api/auth/check-email", {
       method: "POST",
@@ -68,6 +113,7 @@ export default function LoginPage() {
 
   async function handleGoogle() {
     setErrorMsg("");
+    setShowUrlError(false);
     const supabase = createClient();
     // El gate (auth/callback) valida contra allowed_members tras el login.
     const { error } = await supabase.auth.signInWithOAuth({
@@ -110,9 +156,19 @@ export default function LoginPage() {
               <span className="text-violet-300">{email}</span>. El enlace expira
               en 1 hora y sirve una sola vez.
             </p>
+            <p className="mt-3 text-xs leading-relaxed text-stone-500">
+              Ábrelo en este mismo navegador. Si no llega en unos minutos, revisa spam.
+            </p>
           </div>
         ) : (
           <div className="space-y-4">
+            {urlError && (
+              <div className="rounded-xl border border-amber-800/50 bg-amber-950/30 px-4 py-3 text-sm">
+                <p className="font-medium text-amber-200">{urlError.title}</p>
+                <p className="mt-1 leading-relaxed text-amber-200/70">{urlError.body}</p>
+              </div>
+            )}
+
             {GOOGLE_ENABLED && (
               <>
                 <button
@@ -128,6 +184,12 @@ export default function LoginPage() {
                   </svg>
                   Continuar con Google
                 </button>
+
+                {/* Ataca en la fuente el rechazo por email distinto: mucha gente
+                    tiene su Google personal y su Skool a otro nombre. */}
+                <p className="text-center text-xs text-stone-500">
+                  Usa la cuenta con el mismo correo que tienes en {communityName}.
+                </p>
 
                 <div className="flex items-center gap-3 text-xs text-stone-600">
                   <div className="flex-1 h-px bg-stone-800" />

@@ -17,6 +17,10 @@ export interface GptWithAssistantId extends Gpt {
   openai_assistant_id: string | null; // legacy (Assistants API)
   system_prompt?: string;
   model?: string;
+  // Cuántas conversaciones de miembros tiene este GPT. Solo lo llena el listado
+  // de admin (GET /api/admin/gpts) — se usa para advertir antes de borrar, ya
+  // que threads.gpt_id tiene ON DELETE CASCADE y se llevaría todas por delante.
+  thread_count?: number;
 }
 
 export interface AllowedMember {
@@ -33,6 +37,22 @@ export interface AllowedMember {
   source: "manual" | "skool_csv" | "skool_webhook";
   added_at: string;
   monthly_message_limit: number | null;
+  // Promoción a admin diferida: se aplica sola en el primer login (trigger
+  // handle_new_user), porque `profiles.is_admin` no existe hasta entonces.
+  pending_admin?: boolean;
+  // Derivado en GET /api/admin/members, no es columna: ¿ya tiene fila en
+  // `profiles`? Es la señal de que logró entrar al menos una vez.
+  has_logged_in?: boolean;
+}
+
+export interface AuthEvent {
+  id: string;
+  email: string | null;
+  event: string;
+  provider: string | null;
+  reason: string | null;
+  ip: string | null;
+  created_at: string;
 }
 
 export interface AppSettings {
@@ -96,4 +116,8 @@ export interface Message {
   role: "user" | "assistant";
   content: string;
   files?: UploadedFile[];
+  // Presente cuando el streaming se cortó (red, fallo de OpenAI) antes de
+  // terminar. `content` conserva lo que ya se alcanzó a generar — nunca se
+  // reemplaza por el error, para no perder texto que el usuario ya leyó.
+  error?: string;
 }
