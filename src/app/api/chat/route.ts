@@ -11,8 +11,11 @@ import type { Tool } from "openai/resources/responses/responses";
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // Vercel corta funciones serverless por tiempo. Las respuestas del modelo
-// pueden tardar; sin esto el stream se corta a mitad. (El plan debe permitir >60s.)
-export const maxDuration = 60;
+// pueden tardar; sin esto el stream se corta a mitad. A 60s los turnos con
+// varias imágenes sobre threads largos (OpenAI recarga toda la Conversation
+// cada turno) rebasaban el límite: Vercel mataba la función antes del primer
+// token y el turno se perdía en silencio. 300s es el techo de Vercel Pro.
+export const maxDuration = 300;
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();

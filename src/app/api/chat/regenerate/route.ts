@@ -9,7 +9,8 @@ import OpenAI from "openai";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-export const maxDuration = 60;
+// Ver nota en chat/route.ts: 60s cortaba turnos con imágenes en threads largos.
+export const maxDuration = 300;
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();

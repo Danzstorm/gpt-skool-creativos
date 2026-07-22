@@ -47,7 +47,7 @@ Si la sección Accesos está **vacía pese a haber logins reales**, la auditorí
 |---|---|---|
 | **Supabase** | Auth, base de datos, storage | Sí |
 | **OpenAI** | Chat (se factura a esta cuenta) | Sí |
-| **Vercel** | Hosting | Sí (plan **Pro** — las rutas de chat usan `maxDuration = 60`) |
+| **Vercel** | Hosting | Sí (plan **Pro** — las rutas de chat usan `maxDuration = 300`; Hobby topa en 60s y corta respuestas largas) |
 | **Resend** (u otro SMTP) | Que el magic link llegue de verdad | Sí para lanzar — ver guía §7 |
 | **Google Cloud** (OAuth) | Login con Google | Solo si se quiere; el magic link no lo necesita |
 | **Zapier / Make** | Automatizar altas/bajas desde Skool | Recomendado |
@@ -122,7 +122,7 @@ Si prefieres deploy automático por push, hay que conectar el repositorio en el 
 Configuración de la primera vez:
 
 1. Cargar **todas las env vars** en Vercel (Production, y Preview si se prueba Zapier ahí).
-2. Plan **Pro** (por `maxDuration = 60` en streaming — Hobby puede cortar respuestas).
+2. Plan **Pro** (por `maxDuration = 300` en las rutas de chat y subida — en Hobby el techo real es 60s, que cortaba turnos con varias imágenes sobre threads largos y perdía la respuesta).
 3. Dominio propio → en Supabase **Auth → URL Configuration**: `Site URL` y `Redirect URLs` (`https://<dominio>/auth/callback`) apuntando al dominio real. Si no coinciden, el login falla sin más pista que un error genérico.
 4. **SMTP propio** (Resend) en Supabase Auth → Email. Bloqueante: el SMTP por defecto manda 2 correos/hora, y como cada login es un correo, una comunidad de varios cientos lo agota en la primera hora.
 5. Activar **Upstash Redis** (integración nativa de Vercel) y cargar sus dos vars.
@@ -174,10 +174,19 @@ Todos leen las credenciales de `.env.local`.
 
 ## Repositorios
 
-El proyecto tiene dos remotos configurados. Antes de empujar, confirma cuál corresponde:
+Dos remotos configurados:
+
+| Remoto | Repositorio | Uso |
+|---|---|---|
+| `origin` | [`Danzstorm/gpt-skool-creativos`](https://github.com/Danzstorm/gpt-skool-creativos) | Repo principal (desarrollo) |
+| `cliente` | [`martinvelardep/gpt-creativos`](https://github.com/martinvelardep/gpt-creativos) | Entrega al cliente |
+
+Antes de empujar, confirma el destino:
 
 ```bash
 git remote -v
+git push origin master     # repo principal (Danzstorm)
+git push cliente master    # entrega al cliente
 ```
 
 ---

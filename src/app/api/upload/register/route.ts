@@ -6,8 +6,8 @@ import { MAX_SIZE_BYTES, rejectReason } from "@/lib/upload-limits";
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // Descargar de Storage y volver a subir a OpenAI toma su tiempo con archivos
-// grandes; el default de Vercel se queda corto.
-export const maxDuration = 60;
+// grandes; el default de Vercel se queda corto. 300s = techo de Vercel Pro.
+export const maxDuration = 300;
 
 // Paso 2 de 2 de la subida de adjuntos (ver /api/upload/sign).
 //

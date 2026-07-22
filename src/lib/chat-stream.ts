@@ -64,6 +64,17 @@ export function runStreamResponse(params: RunStreamParams): Response {
       // Se acumula fuera del try para que el catch de abajo también pueda
       // persistir lo generado hasta el momento del fallo, no solo el camino feliz.
       let fullText = "";
+      // Marca si ya se guardó ALGO para este turno (texto real o aviso de error).
+      // Sin esto, un fallo antes del primer token (p.ej. Vercel mata la función
+      // por timeout en turnos con varias imágenes) dejaba el turno del usuario
+      // sin ninguna fila de asistente: se perdía en silencio, sin rastro para el
+      // usuario ni para el admin. persistOnce garantiza exactamente una escritura.
+      let persisted = false;
+      const persistOnce = async (text: string) => {
+        if (persisted || !onAssistantText) return;
+        persisted = true;
+        await onAssistantText(text);
+      };
       try {
         const events = await openai.responses.create(
           {
@@ -96,7 +107,7 @@ export function runStreamResponse(params: RunStreamParams): Response {
               tokensIn: usage?.input_tokens ?? 0,
               tokensOut: usage?.output_tokens ?? 0,
             };
-            if (onAssistantText) await onAssistantText(fullText);
+            await persistOnce(fullText);
             if (onComplete) await onComplete(meta);
             controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           }
@@ -106,8 +117,12 @@ export function runStreamResponse(params: RunStreamParams): Response {
             // Responses API puede fallar (por ejemplo, un filtro de contenido)
             // después de haber emitido varios deltas de texto, y ese texto ya
             // se le mostró al usuario y ya se pagó — perderlo del historial no
-            // tiene sentido solo porque el turno no cerró "limpio".
-            if (fullText && onAssistantText) await onAssistantText(fullText);
+            // tiene sentido solo porque el turno no cerró "limpio". Si no alcanzó
+            // a emitir texto, se guarda igual un aviso para que el turno no quede
+            // en blanco (visible al usuario, detectable por el admin).
+            await persistOnce(
+              fullText || "⚠️ El asistente no pudo completar la respuesta. Vuelve a intentarlo."
+            );
             controller.enqueue(
               encoder.encode(`data: ${JSON.stringify({ error: "Error en el asistente" })}\n\n`)
             );
@@ -115,11 +130,18 @@ export function runStreamResponse(params: RunStreamParams): Response {
         }
       } catch (err) {
         // Mismo criterio que arriba: si el catch llegó porque el cliente
-        // abortó (pulsó "Detener", `signal` ya cancelado) o por un fallo de
-        // red a mitad de generación, lo que ya se alcanzó a generar se guarda
-        // igual. Antes esta rama solo emitía el frame de error y el texto
-        // parcial se perdía sin dejar rastro en `messages`.
-        if (fullText && onAssistantText) await onAssistantText(fullText);
+        // abortó (pulsó "Detener", `signal` ya cancelado), porque Vercel mató
+        // la función por timeout, o por un fallo de red a mitad de generación,
+        // lo que ya se alcanzó a generar se guarda igual. Y si no se generó
+        // nada, se guarda un aviso para que el turno del usuario no quede sin
+        // respuesta y sin rastro (antes se perdía en silencio).
+        const aborted = signal?.aborted;
+        await persistOnce(
+          fullText ||
+            (aborted
+              ? "⚠️ La respuesta se interrumpió (tiempo de espera agotado o cancelada). Vuelve a intentarlo."
+              : "⚠️ Error al generar la respuesta. Vuelve a intentarlo.")
+        );
         console.error("runStreamResponse error:", err);
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: "Error interno" })}\n\n`));
       } finally {
