@@ -100,6 +100,17 @@ export function runStreamResponse(params: RunStreamParams): Response {
             );
           }
 
+          // Un rechazo del modelo (p.ej. imagen con una persona real que la
+          // moderación no deja describir) no sale por output_text.delta sino
+          // por su propio canal de eventos. Sin esto, fullText quedaba vacío
+          // y el turno se veía como si el modelo no hubiera dicho nada.
+          if (event.type === "response.refusal.delta") {
+            fullText += event.delta;
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ text: event.delta })}\n\n`)
+            );
+          }
+
           if (event.type === "response.completed") {
             const usage = event.response.usage;
             const meta: RunMeta = {
@@ -107,6 +118,45 @@ export function runStreamResponse(params: RunStreamParams): Response {
               tokensIn: usage?.input_tokens ?? 0,
               tokensOut: usage?.output_tokens ?? 0,
             };
+            await persistOnce(fullText);
+            if (onComplete) await onComplete(meta);
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          }
+
+          // GAP encontrado 2026-07-24: una Response puede terminar "incompleta"
+          // (status ni completed ni failed) por dos motivos reales:
+          // incomplete_details.reason = "content_filter" (moderación bloqueó la
+          // salida — el caso típico es analizar la foto de una persona real) o
+          // "max_output_tokens" (se cortó por longitud). Antes de este fix NINGÚN
+          // handler cubría este evento: el for-await lo consumía en silencio, el
+          // stream terminaba, `persisted` seguía en false, y el turno del usuario
+          // quedaba sin ninguna fila de asistente — ni siquiera el aviso ⚠️ (a
+          // diferencia de response.failed, que sí tenía red de seguridad). Así
+          // fallaron "Characters" y "CinePrompt" el 2026-07-24: threads nuevos,
+          // 1 imagen, nada de espera — no tenía nada que ver con el timeout de
+          // Vercel (ese bug ya estaba resuelto), era este evento sin cubrir.
+          if (event.type === "response.incomplete") {
+            const usage = event.response.usage;
+            const meta: RunMeta = {
+              model: event.response.model ?? null,
+              tokensIn: usage?.input_tokens ?? 0,
+              tokensOut: usage?.output_tokens ?? 0,
+            };
+            const reason = event.response.incomplete_details?.reason;
+            const note =
+              reason === "content_filter"
+                ? "El filtro de contenido de OpenAI bloqueó la respuesta (puede deberse a la imagen enviada). Prueba con otra imagen o reformula el pedido."
+                : reason === "max_output_tokens"
+                  ? "La respuesta se cortó por exceder el límite de longitud."
+                  : "La respuesta quedó incompleta.";
+            if (fullText) {
+              const suffix = `\n\n_(⚠️ ${note})_`;
+              fullText += suffix;
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: suffix })}\n\n`));
+            } else {
+              fullText = `⚠️ ${note}`;
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: fullText })}\n\n`));
+            }
             await persistOnce(fullText);
             if (onComplete) await onComplete(meta);
             controller.enqueue(encoder.encode("data: [DONE]\n\n"));
@@ -125,6 +175,19 @@ export function runStreamResponse(params: RunStreamParams): Response {
             );
             controller.enqueue(
               encoder.encode(`data: ${JSON.stringify({ error: "Error en el asistente" })}\n\n`)
+            );
+          }
+
+          // Evento de error a nivel del stream (distinto de response.failed):
+          // lo manda el SDK para fallos como rate_limit_exceeded o server_error
+          // ocurridos a mitad de generación. Mismo gap que response.incomplete
+          // — sin este handler el turno se perdía sin dejar rastro.
+          if (event.type === "error") {
+            await persistOnce(
+              fullText || `⚠️ Error de OpenAI (${event.code ?? "desconocido"}). Vuelve a intentarlo.`
+            );
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ error: event.message || "Error en el asistente" })}\n\n`)
             );
           }
         }
