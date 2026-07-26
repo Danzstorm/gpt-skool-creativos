@@ -4,6 +4,12 @@ Plataforma SaaS privada para que una comunidad publique y gestione asistentes de
 
 Este repositorio es una muestra técnica y de portafolio. Incluye el código y las migraciones necesarias para reproducir la arquitectura, pero no contiene credenciales, datos de usuarios, prompts privados de producción ni identificadores de infraestructura.
 
+## Estado de producción
+
+La fase de endurecimiento del modelo de datos está aplicada en producción y fue diseñada para no interrumpir usuarios ni administradores existentes. La migración conserva campos y RPC heredados durante la transición, añade relaciones normalizadas y mantiene fallbacks compatibles.
+
+La verificación confirmó 9 configuraciones privadas para 9 GPTs, 446 adjuntos normalizados, 7 constraints validados, cero relaciones huérfanas y bloqueo de prompts para acceso anónimo. El despliegue se valida con lint, build, pruebas HTTP y logs antes de publicarse.
+
 ## Qué problema resuelve
 
 Una comunidad puede tener varios asistentes útiles, pero distribuir enlaces individuales de ChatGPT dificulta:
@@ -156,7 +162,7 @@ sequenceDiagram
     C->>API: gptId, threadId, message, fileIds
     API->>DB: Valida sesión, cuota y ownership del thread
     API->>DB: Valida que cada archivo pertenezca al usuario
-    API->>DB: Adquiere lock del thread
+    API->>DB: Adquiere lease tokenizado de 7 minutos
     API->>O: Responses API + Conversation + herramientas
     O-->>API: Eventos de streaming
     API-->>C: Deltas SSE
@@ -181,7 +187,7 @@ Cuando existe texto parcial, se conserva. Si no llegó ningún token, se persist
 
 ### Concurrencia
 
-Cada conversación tiene un lock adquirido mediante RPC. Si el usuario envía dos veces o abre la misma conversación en otra pestaña, la segunda ejecución recibe un conflicto controlado en lugar de mezclar respuestas o duplicar consumo.
+Cada conversación tiene un lease adquirido mediante RPC. El token evita que una petición antigua libere el lock de una nueva; la segunda ejecución recibe un conflicto controlado en lugar de mezclar respuestas o duplicar consumo. Los RPC heredados permanecen disponibles durante el rollout.
 
 ## Recepción y procesamiento de imágenes
 
@@ -257,8 +263,11 @@ erDiagram
     AUTH_USERS ||--o{ USAGE_EVENTS : "consume"
     GPTS ||--o{ THREADS : "atiende"
     GPTS ||--o{ USAGE_EVENTS : "genera"
+    GPTS ||--|| GPT_PRIVATE_CONFIG : "configura"
     THREADS ||--o{ MESSAGES : "contiene"
     THREADS ||--o{ USAGE_EVENTS : "acumula"
+    MESSAGES ||--o{ MESSAGE_ATTACHMENTS : "adjunta"
+    UPLOADED_FILES ||--o{ MESSAGE_ATTACHMENTS : "referencia"
 
     ALLOWED_MEMBERS {
         uuid id PK
@@ -277,10 +286,16 @@ erDiagram
     GPTS {
         uuid id PK
         text name
-        text system_prompt
         text model
         boolean vision_enabled
         boolean is_active
+    }
+    GPT_PRIVATE_CONFIG {
+        uuid gpt_id PK, FK
+        text system_prompt
+        text model
+        jsonb tools_enabled
+        timestamptz updated_at
     }
     THREADS {
         uuid id PK
@@ -296,6 +311,13 @@ erDiagram
         text role
         text content
         jsonb files
+    }
+    MESSAGE_ATTACHMENTS {
+        uuid id PK
+        uuid message_id FK
+        text openai_file_id FK
+        smallint position
+        text kind
     }
     UPLOADED_FILES {
         uuid id PK
@@ -336,6 +358,8 @@ erDiagram
 ```
 
 `auth.users` pertenece a Supabase Auth. Las tablas públicas usan RLS y las operaciones elevadas se limitan a rutas server-side. Las migraciones son la fuente de verdad del esquema; `supabase/schema.sql` funciona como snapshot de referencia.
+
+`gpts_public` expone únicamente campos de catálogo. `gpt_private_config` contiene prompts y configuración de ejecución y solo se consulta desde el servidor. `message_attachments` refuerza con foreign keys la relación entre mensajes y archivos sin romper el JSONB heredado que utiliza la UI.
 
 ## Superficie de la aplicación
 
@@ -385,6 +409,10 @@ Todas las rutas sensibles vuelven a comprobar sesión y rol; la protección visu
 - Logs con detalles operativos controlados, sin devolver errores internos al navegador.
 - Retención acotada para eventos de autenticación.
 - Lock por conversación para prevenir carreras.
+- Lease tokenizado de conversación con expiración y fallback compatible.
+- Configuración privada de GPT separada del catálogo público.
+- `message_attachments` con foreign keys, backfill y doble escritura tolerante al rollout.
+- Grants explícitos del Data API: el catálogo público permanece disponible y prompts/configuración privada quedan fuera de `anon`.
 - `.env*`, `.vercel/` y estado temporal de Supabase fuera de Git.
 
 ### Información deliberadamente ausente
@@ -447,6 +475,12 @@ La configuración pública está documentada únicamente con placeholders en `.e
 - Guardrails en sincronizaciones masivas.
 - Scripts de limpieza en modo informativo antes de borrar.
 - Migraciones versionadas e idempotentes cuando corresponde.
+
+### Endurecimiento del modelo aplicado
+
+La fase 1 añadió `gpt_private_config` para separar la configuración sensible del catálogo público y `message_attachments` para relacionar cada archivo con su mensaje mediante claves foráneas. El campo JSONB heredado `messages.files` continúa como read model compatible durante la transición.
+
+También se validan ownership compuesto de mensajes y threads, estados de conversación, cuotas no negativas, unicidad de conversaciones OpenAI y unicidad de rutas de Storage por usuario. No se eliminaron tablas ni columnas existentes.
 
 ## Mejoras futuras
 
@@ -560,6 +594,14 @@ Los buckets esperados son:
 
 Después de aplicar migraciones, se debe revisar RLS, permisos de funciones y grants del Data API. En proyectos nuevos de Supabase, la exposición de tablas puede requerir grants explícitos además de las políticas RLS.
 
+Para auditar una instancia existente sin imprimir PII, contenido ni prompts:
+
+```bash
+npm run audit:data-model
+```
+
+El comando informa conteos agregados, ownership, duplicados, adjuntos huérfanos, valores inválidos y si las columnas privadas son accesibles anónimamente.
+
 ## Primer administrador
 
 El bootstrap concede membresía y rol administrativo de forma idempotente:
@@ -579,6 +621,7 @@ Si la persona aún no inició sesión, la promoción queda pendiente y se aplica
 | `npm run cleanup:orphan-users` | Informa cuentas huérfanas; exige confirmación para borrar |
 | `npm run backfill:gpt-config` | Migra configuraciones heredadas de asistentes |
 | `npm run backfill:messages` | Recupera mensajes de conversaciones antiguas |
+| `npm run audit:data-model` | Auditoría agregada de integridad y permisos |
 
 Los scripts que eliminan recursos están diseñados para requerir una confirmación explícita o permitir dry-run.
 
