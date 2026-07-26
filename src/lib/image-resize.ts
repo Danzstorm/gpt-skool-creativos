@@ -10,6 +10,7 @@
 
 const MAX_DIMENSION = 2048;
 const QUALITY = 0.85;
+const OPENAI_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
 export async function downscaleImage(file: File): Promise<File> {
   if (!file.type.startsWith("image/")) return file;
@@ -22,7 +23,7 @@ export async function downscaleImage(file: File): Promise<File> {
     const scale = Math.min(1, MAX_DIMENSION / Math.max(width, height));
 
     // Ya es chica y liviana: no vale la pena recomprimir (perdería calidad a cambio de nada).
-    if (scale === 1 && file.size <= 4 * 1024 * 1024) {
+    if (OPENAI_IMAGE_TYPES.has(file.type) && scale === 1 && file.size <= 4 * 1024 * 1024) {
       bitmap.close();
       return file;
     }

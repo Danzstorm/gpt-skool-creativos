@@ -10,6 +10,7 @@ export interface ComposerHandle {
 
 interface Props {
   isLoading: boolean;
+  isUploading: boolean;
   isEditing: boolean;
   onCancelEdit: () => void;
   attachedFiles: UploadedFile[];
@@ -22,7 +23,7 @@ interface Props {
 // Composer aislado: el texto y la grabación viven acá, no en el componente padre.
 // Así escribir no re-renderiza el resto del chat (sidebar, lista de mensajes).
 const Composer = forwardRef<ComposerHandle, Props>(function Composer(
-  { isLoading, isEditing, onCancelEdit, attachedFiles, onFilesSelected, onRemoveFile, onSend, onStop },
+  { isLoading, isUploading, isEditing, onCancelEdit, attachedFiles, onFilesSelected, onRemoveFile, onSend, onStop },
   ref
 ) {
   const [input, setInput] = useState("");
@@ -128,7 +129,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   }
 
   function submit() {
-    if ((!input.trim() && attachedFiles.length === 0) || isLoading) return;
+    if ((!input.trim() && attachedFiles.length === 0) || isLoading || isUploading) return;
     const text = input.trim();
     setInput("");
     if (textareaRef.current) textareaRef.current.style.height = "auto";
@@ -218,9 +219,12 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           ref={fileInputRef}
           type="file"
           multiple
-          accept="image/*,application/pdf,.txt,.md,.py,.js,.ts,.csv,.xlsx,.docx"
+          accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,.txt,.md,.py,.js,.ts,.csv,.xlsx,.docx"
           className="hidden"
-          onChange={(e) => handleFileUpload(e.target.files)}
+          onChange={(e) => {
+            handleFileUpload(e.target.files);
+            e.currentTarget.value = "";
+          }}
         />
 
         <div ref={attachMenuRef} className="relative flex-shrink-0">
@@ -228,7 +232,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             <div className="absolute bottom-full left-0 mb-2 w-48 bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl overflow-hidden py-1">
               <button
                 type="button"
-                onClick={() => openFilePicker("image/*")}
+                onClick={() => openFilePicker("image/jpeg,image/png,image/webp,image/gif")}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-ink transition text-left"
               >
                 <ImageIcon size={15} />
@@ -265,15 +269,21 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           }}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
-          placeholder={isTranscribing ? "Transcribiendo audio..." : "Escribe un mensaje... (Enter para enviar)"}
-          disabled={isLoading || isTranscribing}
+          placeholder={
+            isTranscribing
+              ? "Transcribiendo audio..."
+              : isUploading
+                ? "Procesando imágenes..."
+                : "Escribe un mensaje... (Enter para enviar)"
+          }
+          disabled={isLoading || isTranscribing || isUploading}
           rows={1}
           className="flex-1 bg-transparent text-ink placeholder-zinc-500 resize-none focus:outline-none text-[15px] py-1.5 max-h-[180px] leading-normal"
         />
 
         <button
           onClick={toggleRecording}
-          disabled={isLoading || isTranscribing}
+          disabled={isLoading || isTranscribing || isUploading}
           className={cn(
             "flex-shrink-0 mb-0.5 transition",
             isRecording ? "text-red-400 animate-pulse" : "text-zinc-500 hover:text-zinc-300"
@@ -294,7 +304,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
         ) : (
           <button
             onClick={submit}
-            disabled={!input.trim() && attachedFiles.length === 0}
+            disabled={isUploading || (!input.trim() && attachedFiles.length === 0)}
             className="bg-cta hover:bg-cta-active disabled:bg-zinc-700 disabled:text-zinc-500 text-cta-fg disabled:cursor-not-allowed rounded-full p-2 flex-shrink-0 transition active:scale-95"
             aria-label="Enviar"
           >

@@ -2,6 +2,7 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { rejectReason } from "@/lib/upload-limits";
+import { normalizeUploadFileName } from "@/lib/upload-file";
 
 // Paso 1 de 2 de la subida de adjuntos.
 //
@@ -31,7 +32,8 @@ export async function POST(request: NextRequest) {
 
   // Prefijo por usuario: /register comprueba que el path pedido empiece con el
   // id de quien llama, así nadie registra un archivo ajeno.
-  const ext = name.includes(".") ? name.slice(name.lastIndexOf(".")) : "";
+  const normalizedName = normalizeUploadFileName(name, typeof type === "string" ? type : "");
+  const ext = normalizedName.includes(".") ? normalizedName.slice(normalizedName.lastIndexOf(".")) : "";
   const path = `${user.id}/${crypto.randomUUID()}${ext}`;
 
   const service = createServiceClient();

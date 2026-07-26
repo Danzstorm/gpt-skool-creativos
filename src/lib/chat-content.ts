@@ -9,7 +9,8 @@ type ContentPart =
 
 /** Construye el `input` de una Response a partir de texto + archivos adjuntos. */
 export function buildUserInput(message: string, files: IncomingFile[]): ResponseInputItem[] {
-  const contentParts: ContentPart[] = [{ type: "input_text", text: message }];
+  const contentParts: ContentPart[] = [];
+  if (message.trim()) contentParts.push({ type: "input_text", text: message.trim() });
   for (const f of files) {
     if (f.type === "image") {
       contentParts.push({ type: "input_image", file_id: f.openai_file_id, detail: "auto" });

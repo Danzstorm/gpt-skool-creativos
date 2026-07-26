@@ -12,6 +12,8 @@ import GptChatsModal from "./chat/GptChatsModal";
 import { consumeSSE } from "@/lib/stream-client";
 import { downscaleImage } from "@/lib/image-resize";
 import { createClient } from "@/lib/supabase/client";
+import { MAX_FILES_PER_MESSAGE } from "@/lib/upload-file";
+import { MAX_SIZE_BYTES, MAX_SIZE_MB } from "@/lib/upload-limits";
 
 // Solo se usa para subir adjuntos a Storage con URL firmada; el resto de los
 // datos del chat viaja por las rutas de /api.
@@ -41,6 +43,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
   const [renameValue, setRenameValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>([]);
+  const [pendingUploads, setPendingUploads] = useState(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -68,7 +71,6 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
   // render coincida siempre con "expandido" y no genere hydration mismatch;
   // leer localStorage en el lazy initializer de useState rompería esa paridad.
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1") setSidebarCollapsed(true);
   }, []);
 
@@ -201,16 +203,31 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
 
   const uploadFiles = useCallback(async (files: File[]) => {
     setUploadError(null);
+    if (pendingUploads > 0) {
+      setUploadError("Espera a que termine la subida actual antes de adjuntar más archivos.");
+      return;
+    }
+
+    const remaining = MAX_FILES_PER_MESSAGE - attachedFiles.length;
+    if (remaining <= 0) {
+      setUploadError(`Puedes adjuntar hasta ${MAX_FILES_PER_MESSAGE} archivos por mensaje.`);
+      return;
+    }
+    const batch = files.slice(0, remaining);
+    const skippedCount = files.length - batch.length;
+    setPendingUploads(batch.length);
 
     // En paralelo: antes iban de a uno y adjuntar 3 imágenes tardaba el triple.
     const results = await Promise.all(
-      files.map(async (original) => {
+      batch.map(async (original) => {
         const fail = (msg: string) => ({ error: `${original.name}: ${msg}` });
         try {
+          if (original.size > MAX_SIZE_BYTES) {
+            return fail(`supera el límite de ${MAX_SIZE_MB}MB`);
+          }
           // Las imágenes se achican igual: no por el límite (ya no aplica) sino
           // porque subir 8MB de foto no mejora la respuesta y se siente lento.
           const file = await downscaleImage(original);
-          const isImage = file.type.startsWith("image/");
 
           // Subida en dos pasos para saltar el techo de 4.5MB que Vercel impone
           // al body de sus funciones: el archivo va del navegador directo a
@@ -233,19 +250,24 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
           const regRes = await fetch("/api/upload/register", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ path, name: original.name, type: file.type }),
+            body: JSON.stringify({ path, name: file.name, type: file.type }),
           });
           if (!regRes.ok) {
             return fail((await regRes.json().catch(() => null))?.error ?? "no se pudo procesar");
           }
 
           const data = await regRes.json();
+          const uploadedAsImage = data.kind === "image";
+          const previewBlob =
+            uploadedAsImage && !file.type && data.mime
+              ? new Blob([file], { type: data.mime })
+              : file;
           return {
             file: {
               name: original.name,
               openai_file_id: data.file_id,
-              type: (isImage ? "image" : "document") as UploadedFile["type"],
-              previewUrl: isImage ? URL.createObjectURL(file) : undefined,
+              type: (uploadedAsImage ? "image" : "document") as UploadedFile["type"],
+              previewUrl: uploadedAsImage ? URL.createObjectURL(previewBlob) : undefined,
             },
           };
         } catch {
@@ -254,14 +276,21 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
       })
     );
 
+    setPendingUploads(0);
+
     const ok = results.flatMap((r) => ("file" in r && r.file ? [r.file] : []));
     if (ok.length > 0) setAttachedFiles((prev) => [...prev, ...ok]);
 
     // Antes los fallos se descartaban en silencio y el archivo simplemente no
     // aparecía, sin ninguna pista de por qué.
-    const errors = results.flatMap((r) => ("error" in r && r.error ? [r.error] : []));
+    const errors = [
+      ...(skippedCount > 0
+        ? [`Se omitieron ${skippedCount} archivos: máximo ${MAX_FILES_PER_MESSAGE} por mensaje.`]
+        : []),
+      ...results.flatMap((r) => ("error" in r && r.error ? [r.error] : [])),
+    ];
     if (errors.length > 0) setUploadError(errors.join(" · "));
-  }, []);
+  }, [attachedFiles.length, pendingUploads]);
 
   const removeAttached = useCallback((index: number) => {
     setAttachedFiles((prev) => {
@@ -321,7 +350,10 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
       }
       throw new Error(data?.error || "Alcanzaste tu límite de mensajes de este mes.");
     }
-    if (!res.ok) throw new Error("Error al enviar mensaje");
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      throw new Error(data?.error || "Error al enviar mensaje");
+    }
 
     await consumeSSE(res, (text) => {
       setMessages((prev) => {
@@ -372,9 +404,22 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
 
   const sendMessage = useCallback(
     async (text: string) => {
-      if ((!text.trim() && attachedFiles.length === 0) || isLoading || !activeGptId) return;
+      if (
+        (!text.trim() && attachedFiles.length === 0) ||
+        isLoading ||
+        pendingUploads > 0 ||
+        !activeGptId
+      ) return;
 
       const messageText = text.trim();
+      const imageCount = attachedFiles.filter((f) => f.type === "image").length;
+      const attachmentLabel =
+        attachedFiles.length === 1
+          ? imageCount === 1 ? "Imagen adjunta" : "Archivo adjunto"
+          : imageCount === attachedFiles.length
+            ? `${attachedFiles.length} imágenes adjuntas`
+            : `${attachedFiles.length} archivos adjuntos`;
+      const messageLabel = messageText || attachmentLabel;
       const replaceLast = isEditing;
       setIsEditing(false);
       setIsLoading(true); // cerrar carrera de doble-envío antes de cualquier await
@@ -425,8 +470,8 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
           t.id === threadId
             ? {
                 ...t,
-                title: t.title === "Nueva conversación" ? messageText.slice(0, 40) || t.title : t.title,
-                last_message_preview: messageText.slice(0, 80),
+                title: t.title === "Nueva conversación" ? messageLabel.slice(0, 40) : t.title,
+                last_message_preview: messageLabel.slice(0, 80),
                 updated_at: new Date().toISOString(),
               }
             : t
@@ -446,7 +491,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
     // runAssistant es estable en comportamiento (solo cierra sobre setState/refs); omitirla
     // evita que sendMessage cambie de referencia en cada token streameado.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeGptId, activeThreadId, attachedFiles, isEditing, isLoading]
+    [activeGptId, activeThreadId, attachedFiles, isEditing, isLoading, pendingUploads]
   );
 
   const regenerate = useCallback(async () => {
@@ -463,7 +508,10 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
     const m = messagesRef.current[index];
     if (!m || m.role !== "user") return;
     composerRef.current?.setText(m.content);
-    setAttachedFiles([]);
+    // Editar debe conservar las imágenes/documentos del turno. El backend
+    // borra el turno anterior completo antes de reponerlo; enviarlo sin estos
+    // archivos cambiaba silenciosamente el contexto del modelo.
+    setAttachedFiles(m.files ? [...m.files] : []);
     setMessages((prev) => prev.slice(0, index));
     setIsEditing(true);
   }, []);
@@ -725,6 +773,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
           <Composer
             ref={composerRef}
             isLoading={isLoading}
+            isUploading={pendingUploads > 0}
             isEditing={isEditing}
             onCancelEdit={cancelEdit}
             attachedFiles={attachedFiles}

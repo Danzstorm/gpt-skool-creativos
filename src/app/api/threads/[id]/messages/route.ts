@@ -34,6 +34,7 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
     const { data: rows } = await service
       .from("uploaded_files")
       .select("openai_file_id, storage_path, name")
+      .eq("user_id", user.id)
       .in("openai_file_id", fileIds);
     const map = new Map((rows ?? []).map((r) => [r.openai_file_id, r]));
 

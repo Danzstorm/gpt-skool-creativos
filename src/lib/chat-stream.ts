@@ -55,6 +55,38 @@ function reasoningFor(model: string) {
   return {};
 }
 
+function generationErrorMessage(error: unknown, aborted: boolean | undefined): string {
+  if (aborted) {
+    return "⚠️ La respuesta se interrumpió (tiempo de espera agotado o cancelada). Vuelve a intentarlo.";
+  }
+  const raw = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  if (
+    raw.includes("expected image type") ||
+    raw.includes("unsupported image") ||
+    raw.includes("invalid image")
+  ) {
+    return "⚠️ OpenAI no pudo leer una de las imágenes. Prueba a subirla de nuevo en formato JPG, PNG o WebP.";
+  }
+  return "⚠️ Error al generar la respuesta. Vuelve a intentarlo.";
+}
+
+function safeErrorDetails(error: unknown) {
+  const value = error as {
+    name?: string;
+    message?: string;
+    status?: number;
+    code?: string | null;
+    requestID?: string;
+  };
+  return {
+    name: value?.name,
+    message: value?.message ?? String(error),
+    status: value?.status,
+    code: value?.code,
+    requestId: value?.requestID,
+  };
+}
+
 export function runStreamResponse(params: RunStreamParams): Response {
   const { conversationId, model, instructions, input, tools, onAssistantText, onComplete, onSettled, signal } = params;
   const encoder = new TextEncoder();
@@ -72,8 +104,28 @@ export function runStreamResponse(params: RunStreamParams): Response {
       let persisted = false;
       const persistOnce = async (text: string) => {
         if (persisted || !onAssistantText) return;
-        persisted = true;
-        await onAssistantText(text);
+        try {
+          await onAssistantText(text);
+          persisted = true;
+        } catch (error) {
+          console.error("runStreamResponse persistence error", {
+            conversationId,
+            model,
+            ...safeErrorDetails(error),
+          });
+        }
+      };
+      const emitTerminalWarning = async (warning: string) => {
+        if (fullText) {
+          const suffix = `\n\n_(${warning})_`;
+          fullText += suffix;
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: suffix })}\n\n`));
+        } else {
+          fullText = warning;
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: warning })}\n\n`));
+        }
+        await persistOnce(fullText);
+        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
       };
       try {
         const events = await openai.responses.create(
@@ -170,12 +222,7 @@ export function runStreamResponse(params: RunStreamParams): Response {
             // tiene sentido solo porque el turno no cerró "limpio". Si no alcanzó
             // a emitir texto, se guarda igual un aviso para que el turno no quede
             // en blanco (visible al usuario, detectable por el admin).
-            await persistOnce(
-              fullText || "⚠️ El asistente no pudo completar la respuesta. Vuelve a intentarlo."
-            );
-            controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify({ error: "Error en el asistente" })}\n\n`)
-            );
+            await emitTerminalWarning("⚠️ El asistente no pudo completar la respuesta. Vuelve a intentarlo.");
           }
 
           // Evento de error a nivel del stream (distinto de response.failed):
@@ -183,11 +230,8 @@ export function runStreamResponse(params: RunStreamParams): Response {
           // ocurridos a mitad de generación. Mismo gap que response.incomplete
           // — sin este handler el turno se perdía sin dejar rastro.
           if (event.type === "error") {
-            await persistOnce(
-              fullText || `⚠️ Error de OpenAI (${event.code ?? "desconocido"}). Vuelve a intentarlo.`
-            );
-            controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify({ error: event.message || "Error en el asistente" })}\n\n`)
+            await emitTerminalWarning(
+              `⚠️ Error de OpenAI (${event.code ?? "desconocido"}). Vuelve a intentarlo.`
             );
           }
         }
@@ -198,15 +242,12 @@ export function runStreamResponse(params: RunStreamParams): Response {
         // lo que ya se alcanzó a generar se guarda igual. Y si no se generó
         // nada, se guarda un aviso para que el turno del usuario no quede sin
         // respuesta y sin rastro (antes se perdía en silencio).
-        const aborted = signal?.aborted;
-        await persistOnce(
-          fullText ||
-            (aborted
-              ? "⚠️ La respuesta se interrumpió (tiempo de espera agotado o cancelada). Vuelve a intentarlo."
-              : "⚠️ Error al generar la respuesta. Vuelve a intentarlo.")
-        );
-        console.error("runStreamResponse error:", err);
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: "Error interno" })}\n\n`));
+        await emitTerminalWarning(generationErrorMessage(err, signal?.aborted));
+        console.error("runStreamResponse error", {
+          conversationId,
+          model,
+          ...safeErrorDetails(err),
+        });
       } finally {
         if (onSettled) await onSettled();
         controller.close();

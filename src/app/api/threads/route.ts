@@ -92,6 +92,11 @@ export async function POST(request: NextRequest) {
     .select("id, title, created_at, updated_at")
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    // La Conversation se creó primero porque threads necesita guardar su ID.
+    // Si Postgres rechaza el insert, no dejar el recurso huérfano en OpenAI.
+    await openai.conversations.delete(conversation.id).catch(() => {});
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
   return NextResponse.json(data);
 }
