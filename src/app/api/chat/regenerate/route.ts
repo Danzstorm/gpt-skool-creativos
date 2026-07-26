@@ -5,6 +5,12 @@ import { checkMessageQuota } from "@/lib/quota";
 import { runStreamResponse } from "@/lib/chat-stream";
 import { buildUserInput, type IncomingFile } from "@/lib/chat-content";
 import { estimateCost } from "@/lib/pricing";
+import { getGptRuntimeConfig } from "@/lib/gpt-runtime-config";
+import {
+  acquireThreadLease,
+  releaseThreadLease,
+  type ThreadLease,
+} from "@/lib/thread-lease";
 import OpenAI from "openai";
 import type { Tool } from "openai/resources/responses/responses";
 
@@ -62,17 +68,23 @@ export async function POST(request: NextRequest) {
   if (threadRes.error || !threadRes.data?.openai_conversation_id) {
     return NextResponse.json({ error: "Conversación no encontrada" }, { status: 404 });
   }
-  const gpt = gptRes.data;
+  const gpt = await getGptRuntimeConfig(serviceClient, gptId, gptRes.data);
   const conversationId = threadRes.data.openai_conversation_id;
 
-  const { data: locked, error: lockError } = await supabase.rpc("acquire_thread_lock", {
-    p_thread_id: threadId,
-  });
-  if (lockError) {
-    console.error("regenerate lock error", { code: lockError.code, message: lockError.message });
+  let lease: ThreadLease | null;
+  try {
+    lease = await acquireThreadLease(supabase, threadId);
+  } catch (lockError) {
+    console.error("regenerate lock error", {
+      code:
+        lockError && typeof lockError === "object" && "code" in lockError
+          ? lockError.code
+          : undefined,
+      message: lockError instanceof Error ? lockError.message : String(lockError),
+    });
     return NextResponse.json({ error: "No se pudo iniciar la respuesta" }, { status: 500 });
   }
-  if (!locked) {
+  if (!lease) {
     return NextResponse.json(
       { error: "Ya hay una respuesta en curso para esta conversación." },
       { status: 409 }
@@ -192,7 +204,7 @@ export async function POST(request: NextRequest) {
         }
       },
       onSettled: async () => {
-        await supabase.rpc("release_thread_lock", { p_thread_id: threadId });
+        await releaseThreadLease(supabase, threadId, lease);
       },
       signal: request.signal,
     });
@@ -210,7 +222,7 @@ export async function POST(request: NextRequest) {
     );
   } finally {
     if (!handedToStream) {
-      await supabase.rpc("release_thread_lock", { p_thread_id: threadId });
+      await releaseThreadLease(supabase, threadId, lease);
     }
   }
 }
