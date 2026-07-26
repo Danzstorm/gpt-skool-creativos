@@ -1,4 +1,4 @@
--- Buckets de Storage.
+-- Buckets de Storage (versión alineada con producción).
 --
 -- Estaban creados a mano en el dashboard y no en migraciones, así que al montar
 -- un proyecto nuevo desde este repo no existían: `gpt-icons` faltaba y la subida

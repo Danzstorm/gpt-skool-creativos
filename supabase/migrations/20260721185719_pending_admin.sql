@@ -1,3 +1,4 @@
+-- Historial alineado con la versión aplicada en producción.
 -- ============================================================
 -- Admin diferido: quedar admin automáticamente en el primer login
 -- ============================================================
