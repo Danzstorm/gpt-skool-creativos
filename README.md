@@ -6,6 +6,12 @@ Plataforma web privada de GPTs para una comunidad de Skool. Cada miembro tiene s
 
 > 📖 **Guía completa de operación:** [`docs/GUIA-DE-USO.md`](docs/GUIA-DE-USO.md) — uso diario, panel admin, Zapier y SMTP paso a paso. Este README es el resumen técnico.
 
+## Estado de producción
+
+El endurecimiento del modelo de datos ya está aplicado en producción. Mantiene compatibilidad con usuarios y administradores existentes: no elimina tablas ni columnas, conserva RPC heredados durante el rollout y añade fallbacks para instancias antiguas.
+
+La verificación confirmó 9 configuraciones privadas para 9 GPTs, 446 adjuntos normalizados, 7 constraints validados, cero relaciones huérfanas y prompts inaccesibles para usuarios anónimos. El despliegue se valida con lint, build, pruebas HTTP y logs.
+
 ---
 
 ## Cómo funciona el acceso (léelo antes de tocar nada)
@@ -106,18 +112,26 @@ Luego crear los buckets de Storage: `gpt-icons` (público) y `chat-uploads` (pri
 
 > ⚠️ **`handle_new_user()` es la función más delicada del esquema.** Corre dentro del alta de usuario de Supabase Auth, así que un error ahí no rompe "algo": rompe **todos los logins** con `Database error saving new user`. Ya pasó una vez (ver `20260717212222`). Si la tocas, pruébala antes contra una copia y verifica un login real justo después.
 
+La fase 1 añade `gpt_private_config` para separar prompts y configuración de ejecución del catálogo público, y `message_attachments` para relacionar archivos con mensajes mediante foreign keys. `messages.files` permanece como formato compatible para la UI. También se validan ownership compuesto, estados de thread, cuotas no negativas y unicidad de conversaciones OpenAI.
+
+Para auditar una instancia sin imprimir PII, contenido ni prompts:
+
+```bash
+npm run audit:data-model
+```
+
 ---
 
 ## Deploy
 
-**Este proyecto no despliega por `git push`.** No hay integración de git en el proyecto de Vercel; se despliega con la CLI:
+**Producción se despliega automáticamente al hacer push a `cliente/master`.** Para una publicación manual o un preview se puede usar la CLI:
 
 ```bash
 npx vercel --prod          # producción
 npx vercel                 # preview (URL temporal, para probar antes)
 ```
 
-Si prefieres deploy automático por push, hay que conectar el repositorio en el dashboard de Vercel primero. Mientras no se haga, un push **no publica nada**.
+El proyecto de Vercel está conectado al repositorio del cliente. Si se cambia la configuración del proyecto, verificar que la rama de producción siga siendo `master`.
 
 Configuración de la primera vez:
 
@@ -127,7 +141,7 @@ Configuración de la primera vez:
 4. **SMTP propio** (Resend) en Supabase Auth → Email. Bloqueante: el SMTP por defecto manda 2 correos/hora, y como cada login es un correo, una comunidad de varios cientos lo agota en la primera hora.
 5. Activar **Upstash Redis** (integración nativa de Vercel) y cargar sus dos vars.
 
-> **Verificar el deploy con `curl` no sirve.** El dominio tiene protección anti-bot y devuelve `200` con una página de desafío, no tu sitio. Compruébalo en un navegador.
+Después de cada deploy, verificar el dominio real, login, una ruta protegida sin sesión y una conversación con imagen usando una cuenta de prueba.
 
 ---
 
@@ -169,6 +183,7 @@ Todos leen las credenciales de `.env.local`.
 | `npm run cleanup:orphan-users` | Borra cuentas de quien autenticó sin ser miembro (sin conversaciones, >7 días). **Solo informa**; hay que pasar `-- --confirm` para borrar. |
 | `npm run backfill:gpt-config` | Migración puntual de configuración de GPTs. |
 | `npm run backfill:messages` | Migración puntual de mensajes de threads. |
+| `npm run audit:data-model` | Auditoría agregada de integridad y permisos. |
 
 ---
 
