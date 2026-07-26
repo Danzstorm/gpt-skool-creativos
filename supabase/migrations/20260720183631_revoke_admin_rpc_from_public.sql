@@ -1,4 +1,4 @@
--- FUGA DE DATOS: las funciones admin_* son SECURITY DEFINER, no verifican
+-- HISTORIAL ALINEADO: las funciones admin_* son SECURITY DEFINER, no verifican
 -- is_admin por dentro, y tenían EXECUTE para PUBLIC/anon/authenticated. Como
 -- PostgREST las expone en /rest/v1/rpc/ y la anon key es pública (va en el
 -- bundle del navegador), cualquiera desde internet y SIN sesión podía sacar

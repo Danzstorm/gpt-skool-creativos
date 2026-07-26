@@ -1,3 +1,4 @@
+-- Historial alineado con la versión aplicada en producción.
 -- ============================================================
 -- Garantía a nivel DB de que allowed_members.email está normalizado
 -- ============================================================

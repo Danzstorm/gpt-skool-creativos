@@ -1,4 +1,4 @@
--- Dos avisos del linter de Supabase, misma sesión de auditoría.
+-- Avisos del linter de Supabase (versión alineada con producción).
 
 -- 1) `auth.uid()` suelto en un USING se re-evalúa POR FILA. Envolverlo en un
 -- SELECT lo convierte en InitPlan: se calcula una vez por consulta. La condición

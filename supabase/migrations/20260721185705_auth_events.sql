@@ -1,3 +1,4 @@
+-- Historial alineado con la versión aplicada en producción.
 -- ============================================================
 -- Auditoría de eventos de sesión (login, rechazo, cierre de sesión)
 -- ============================================================
