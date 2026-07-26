@@ -6,6 +6,13 @@ import { runStreamResponse } from "@/lib/chat-stream";
 import { buildUserInput, type IncomingFile } from "@/lib/chat-content";
 import { estimateCost } from "@/lib/pricing";
 import { MAX_FILES_PER_MESSAGE } from "@/lib/upload-file";
+import { getGptRuntimeConfig } from "@/lib/gpt-runtime-config";
+import { recordMessageAttachments } from "@/lib/message-attachments";
+import {
+  acquireThreadLease,
+  releaseThreadLease,
+  type ThreadLease,
+} from "@/lib/thread-lease";
 import OpenAI from "openai";
 import type { Tool } from "openai/resources/responses/responses";
 
@@ -148,14 +155,20 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const { data: locked, error: lockError } = await supabase.rpc("acquire_thread_lock", {
-    p_thread_id: threadId,
-  });
-  if (lockError) {
-    console.error("chat lock error", { code: lockError.code, message: lockError.message });
+  let lease: ThreadLease | null;
+  try {
+    lease = await acquireThreadLease(supabase, threadId);
+  } catch (lockError) {
+    console.error("chat lock error", {
+      code:
+        lockError && typeof lockError === "object" && "code" in lockError
+          ? lockError.code
+          : undefined,
+      message: lockError instanceof Error ? lockError.message : String(lockError),
+    });
     return NextResponse.json({ error: "No se pudo iniciar la respuesta" }, { status: 500 });
   }
-  if (!locked) {
+  if (!lease) {
     return NextResponse.json(
       { error: "Ya hay una respuesta en curso para esta conversación." },
       { status: 409 }
@@ -224,21 +237,31 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const { error: userMessageError } = await serviceClient.from("messages").insert({
-      thread_id: threadId,
-      user_id: user.id,
-      role: "user",
-      content: message.trim(),
-      files: incoming.length > 0 ? incoming : null,
-    });
+    const { data: userMessage, error: userMessageError } = await serviceClient
+      .from("messages")
+      .insert({
+        thread_id: threadId,
+        user_id: user.id,
+        role: "user",
+        content: message.trim(),
+        files: incoming.length > 0 ? incoming : null,
+      })
+      .select("id")
+      .single();
     if (userMessageError) throw userMessageError;
+    if (!userMessage) throw new Error("El mensaje se guardó sin devolver su identificador");
+    await recordMessageAttachments(serviceClient, userMessage.id, incoming);
 
     const input = buildUserInput(message, incoming);
     const messageLabel = message.trim() || attachmentLabel(incoming);
+    const runtimeConfig = await getGptRuntimeConfig(serviceClient, gptId, {
+      system_prompt: gpt.system_prompt,
+      model: gpt.model,
+    });
     const response = runStreamResponse({
       conversationId,
-      model: gpt.model || "gpt-4.1-mini",
-      instructions: gpt.system_prompt || "",
+      model: runtimeConfig.model || "gpt-4.1-mini",
+      instructions: runtimeConfig.system_prompt || "",
       input,
       tools,
       onAssistantText: async (text) => {
@@ -271,7 +294,7 @@ export async function POST(request: NextRequest) {
         }
       },
       onSettled: async () => {
-        await supabase.rpc("release_thread_lock", { p_thread_id: threadId });
+        await releaseThreadLease(supabase, threadId, lease);
       },
       signal: request.signal,
     });
@@ -289,7 +312,7 @@ export async function POST(request: NextRequest) {
     );
   } finally {
     if (!handedToStream) {
-      await supabase.rpc("release_thread_lock", { p_thread_id: threadId });
+      await releaseThreadLease(supabase, threadId, lease);
     }
   }
 }
