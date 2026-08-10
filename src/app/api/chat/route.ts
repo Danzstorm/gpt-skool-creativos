@@ -9,6 +9,10 @@ import { MAX_FILES_PER_MESSAGE } from "@/lib/upload-file";
 import { getGptRuntimeConfig } from "@/lib/gpt-runtime-config";
 import { recordMessageAttachments } from "@/lib/message-attachments";
 import {
+  CONVERSATION_KEY_FINGERPRINT,
+  ensureThreadConversation,
+} from "@/lib/conversation-sync";
+import {
   acquireThreadLease,
   releaseThreadLease,
   type ThreadLease,
@@ -103,7 +107,7 @@ export async function POST(request: NextRequest) {
     // de otro GPT.
     supabase
       .from("threads")
-      .select("openai_conversation_id, title")
+      .select("openai_conversation_id, title, conversation_key_fingerprint")
       .eq("id", threadId)
       .eq("gpt_id", gptId)
       .single(),
@@ -187,9 +191,23 @@ export async function POST(request: NextRequest) {
       conversationId = conversation.id;
       const { error: saveConversationError } = await supabase
         .from("threads")
-        .update({ openai_conversation_id: conversationId })
+        .update({
+          openai_conversation_id: conversationId,
+          conversation_key_fingerprint: CONVERSATION_KEY_FINGERPRINT,
+        })
         .eq("id", threadId);
       if (saveConversationError) throw saveConversationError;
+    } else {
+      // Un thread creado con otra API key apunta a una Conversation que esta
+      // cuenta no puede ver: se recrea con el historial local antes de seguir.
+      conversationId = await ensureThreadConversation({
+        openai,
+        supabase: serviceClient,
+        threadId,
+        conversationId,
+        fingerprint: thread.conversation_key_fingerprint,
+        metadata: { user_id: user.id, gpt_id: gptId },
+      });
     }
 
     const docFileIds = incoming

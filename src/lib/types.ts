@@ -90,6 +90,9 @@ export interface Thread {
   gpt_id: string;
   openai_thread_id: string | null; // legacy (Assistants API)
   openai_conversation_id: string | null;
+  // Huella de la API key con la que se verificó openai_conversation_id.
+  // NULL o distinta de la actual = pendiente de comprobar (ver conversation-sync).
+  conversation_key_fingerprint: string | null;
   title: string;
   created_at: string;
   updated_at: string;

@@ -7,6 +7,11 @@ import { buildUserInput, type IncomingFile } from "@/lib/chat-content";
 import { estimateCost } from "@/lib/pricing";
 import { getGptRuntimeConfig } from "@/lib/gpt-runtime-config";
 import {
+  ensureThreadConversation,
+  keepAvailableFiles,
+  needsConversationCheck,
+} from "@/lib/conversation-sync";
+import {
   acquireThreadLease,
   releaseThreadLease,
   type ThreadLease,
@@ -57,7 +62,7 @@ export async function POST(request: NextRequest) {
       .single(),
     supabase
       .from("threads")
-      .select("openai_conversation_id")
+      .select("openai_conversation_id, conversation_key_fingerprint")
       .eq("id", threadId)
       .eq("gpt_id", gptId)
       .single(),
@@ -69,7 +74,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Conversación no encontrada" }, { status: 404 });
   }
   const gpt = await getGptRuntimeConfig(serviceClient, gptId, gptRes.data);
-  const conversationId = threadRes.data.openai_conversation_id;
+  const storedConversationId = threadRes.data.openai_conversation_id;
+  // Thread heredado de otra API key: su Conversation y sus adjuntos pueden vivir
+  // en un proyecto de OpenAI que esta cuenta no ve (ver conversation-sync.ts).
+  const isLegacyThread = needsConversationCheck(
+    threadRes.data.conversation_key_fingerprint
+  );
 
   let lease: ThreadLease | null;
   try {
@@ -136,7 +146,22 @@ export async function POST(request: NextRequest) {
         openai_file_id: id,
         type: byId.get(id)?.mime?.startsWith("image/") ? "image" : "document",
       }));
+      if (isLegacyThread) {
+        // Reenviar un file_id de la cuenta anterior tumba la regeneración
+        // entera con "No such File object". Se omite el adjunto perdido: el
+        // usuario sigue viendo su miniatura (sale de Storage) y el turno corre.
+        incoming = await keepAvailableFiles(openai, incoming);
+      }
     }
+
+    const conversationId = await ensureThreadConversation({
+      openai,
+      supabase: serviceClient,
+      threadId,
+      conversationId: storedConversationId,
+      fingerprint: threadRes.data.conversation_key_fingerprint,
+      metadata: { user_id: user.id, gpt_id: gptId },
+    });
 
     const recentItems = await openai.conversations.items.list(conversationId, {
       order: "desc",

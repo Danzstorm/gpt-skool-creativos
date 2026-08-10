@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
+import { CONVERSATION_KEY_FINGERPRINT } from "@/lib/conversation-sync";
 import OpenAI from "openai";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -88,6 +89,8 @@ export async function POST(request: NextRequest) {
       user_id: user.id,
       gpt_id: gptId,
       openai_conversation_id: conversation.id,
+      // Nace verificado contra la key en uso: no hay nada que comprobar después.
+      conversation_key_fingerprint: CONVERSATION_KEY_FINGERPRINT,
     })
     .select("id, title, created_at, updated_at")
     .single();
