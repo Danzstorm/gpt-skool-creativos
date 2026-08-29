@@ -161,10 +161,19 @@ body {
   background-clip: padding-box;
 }
 
-/* Anillo de foco accesible y sobrio en controles */
-:where(button, a, input, textarea, select):focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent) 70%, transparent);
-  outline-offset: 2px;
+/* Anillo de foco accesible y sobrio en controles.
+   Va en @layer base a propósito: sin capa, esta regla queda "unlayered" y el
+   CSS sin capa gana SIEMPRE sobre cualquier @layer, así que pisaba el
+   `focus:outline-none` de Tailwind (que vive en @layer utilities) y dibujaba
+   el contorno violeta encima de los campos que ya definen su propio foco
+   —el textarea del composer, los inputs de admin, el buscador del sidebar—.
+   Dentro de base, utilities gana donde el componente opta por salirse, y los
+   controles que NO se salen (botones, links) conservan el anillo de acento. */
+@layer base {
+  :where(button, a, input, textarea, select):focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--accent) 70%, transparent);
+    outline-offset: 2px;
+  }
 }
 
 /* Transición base suave para interacción (respeta reduce-motion) */
