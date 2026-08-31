@@ -1,8 +1,8 @@
 import { forwardRef, memo, useCallback, useImperativeHandle, useRef, useState } from "react";
-import { ArrowUp, Plus, Image as ImageIcon, Paperclip, Mic, MicOff, X, Square } from "lucide-react";
+import { ArrowUp, Plus, Image as ImageIcon, Paperclip, Mic, X, Check, Square } from "lucide-react";
 import type { UploadedFile } from "@/lib/types";
-import { cn } from "@/lib/utils";
 import { useDismissable } from "@/lib/useDismissable";
+import RecordingWave from "./RecordingWave";
 
 export interface ComposerHandle {
   setText: (text: string) => void;
@@ -28,6 +28,9 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
 ) {
   const [input, setInput] = useState("");
   const [isRecording, setIsRecording] = useState(false);
+  // El stream vive en estado (y no en un ref) porque la onda necesita
+  // re-renderizar para montarse cuando arranca la grabación.
+  const [recordingStream, setRecordingStream] = useState<MediaStream | null>(null);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [micError, setMicError] = useState("");
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
@@ -36,6 +39,9 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  // Cancelar y confirmar detienen el mismo recorder; esta bandera es lo único
+  // que distingue "descartá el audio" de "transcribilo".
+  const cancelledRef = useRef(false);
 
   const closeAttachMenu = useCallback(() => setAttachMenuOpen(false), []);
   const attachMenuRef = useDismissable<HTMLDivElement>(attachMenuOpen, closeAttachMenu);
@@ -78,12 +84,15 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
     }
   }
 
-  async function toggleRecording() {
-    if (isRecording) {
-      mediaRecorderRef.current?.stop();
-      setIsRecording(false);
-      return;
-    }
+  function stopRecording(cancel: boolean) {
+    cancelledRef.current = cancel;
+    mediaRecorderRef.current?.stop();
+    setIsRecording(false);
+    setRecordingStream(null);
+  }
+
+  async function startRecording() {
+    if (isRecording) return;
 
     setMicError("");
 
@@ -104,7 +113,15 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
     audioChunksRef.current = [];
     recorder.ondataavailable = (e) => audioChunksRef.current.push(e.data);
     recorder.onstop = async () => {
+      // El micrófono se libera pase lo que pase, también al cancelar.
       stream.getTracks().forEach((t) => t.stop());
+
+      if (cancelledRef.current) {
+        cancelledRef.current = false;
+        audioChunksRef.current = [];
+        return;
+      }
+
       const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
       if (blob.size === 0) return;
       setIsTranscribing(true);
@@ -126,6 +143,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
     mediaRecorderRef.current = recorder;
     recorder.start();
     setIsRecording(true);
+    setRecordingStream(stream);
   }
 
   function submit() {
@@ -198,19 +216,9 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
         </div>
       )}
 
-      {(micError || isRecording) && (
-        <div
-          className={cn(
-            "max-w-3xl mx-auto mb-2 text-xs rounded-lg px-3 py-1.5 border flex items-center gap-2",
-            micError
-              ? "text-amber-300 bg-amber-500/10 border-amber-500/20"
-              : "text-red-300 bg-red-500/10 border-red-500/20"
-          )}
-        >
-          {!micError && (
-            <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
-          )}
-          {micError || "Grabando... toca el micrófono para detener y transcribir."}
+      {micError && (
+        <div className="max-w-3xl mx-auto mb-2 text-xs rounded-lg px-3 py-1.5 border flex items-center gap-2 text-amber-300 bg-amber-500/10 border-amber-500/20">
+          {micError}
         </div>
       )}
 
@@ -260,40 +268,70 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           </button>
         </div>
 
-        <textarea
-          ref={textareaRef}
-          value={input}
-          onChange={(e) => {
-            setInput(e.target.value);
-            autoResize();
-          }}
-          onKeyDown={handleKeyDown}
-          onPaste={handlePaste}
-          placeholder={
-            isTranscribing
-              ? "Transcribiendo audio..."
-              : isUploading
-                ? "Procesando imágenes..."
-                : "Escribe un mensaje... (Enter para enviar)"
-          }
-          disabled={isLoading || isTranscribing || isUploading}
-          rows={1}
-          className="flex-1 bg-transparent text-ink placeholder-zinc-500 resize-none focus:outline-none text-[15px] py-1.5 max-h-[180px] leading-normal"
-        />
+        {/* Grabando: la onda ocupa el centro (donde va el texto) y el micrófono
+            desaparece, porque detener pasa a ser el botón de la derecha. */}
+        {isRecording && recordingStream ? (
+          <>
+            <RecordingWave stream={recordingStream} />
+            <span className="sr-only" role="status" aria-live="polite">
+              Grabando audio
+            </span>
+          </>
+        ) : (
+          <>
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(e) => {
+                setInput(e.target.value);
+                autoResize();
+              }}
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
+              placeholder={
+                isTranscribing
+                  ? "Transcribiendo audio..."
+                  : isUploading
+                    ? "Procesando imágenes..."
+                    : "Escribe un mensaje... (Enter para enviar)"
+              }
+              disabled={isLoading || isTranscribing || isUploading}
+              rows={1}
+              className="flex-1 bg-transparent text-ink placeholder-zinc-500 resize-none focus:outline-none text-[15px] py-1.5 max-h-[180px] leading-normal"
+            />
 
-        <button
-          onClick={toggleRecording}
-          disabled={isLoading || isTranscribing || isUploading}
-          className={cn(
-            "flex-shrink-0 mb-0.5 transition",
-            isRecording ? "text-red-400 animate-pulse" : "text-zinc-500 hover:text-zinc-300"
-          )}
-          title={isRecording ? "Toca para detener y transcribir" : "Toca para grabar"}
-        >
-          {isRecording ? <MicOff size={17} /> : <Mic size={17} />}
-        </button>
+            <button
+              onClick={startRecording}
+              disabled={isLoading || isTranscribing || isUploading}
+              className="flex-shrink-0 mb-0.5 transition text-zinc-500 hover:text-zinc-300"
+              title="Toca para grabar"
+              aria-label="Grabar audio"
+            >
+              <Mic size={17} />
+            </button>
+          </>
+        )}
 
-        {isLoading ? (
+        {isRecording ? (
+          <>
+            <button
+              onClick={() => stopRecording(true)}
+              className="flex-shrink-0 mb-0.5 text-zinc-400 hover:text-ink transition"
+              title="Descartar grabación"
+              aria-label="Descartar grabación"
+            >
+              <X size={18} />
+            </button>
+            <button
+              onClick={() => stopRecording(false)}
+              className="flex-shrink-0 mb-0.5 text-zinc-200 hover:text-ink transition active:scale-95"
+              title="Listo, transcribir"
+              aria-label="Terminar grabación y transcribir"
+            >
+              <Check size={19} />
+            </button>
+          </>
+        ) : isLoading ? (
           <button
             onClick={onStop}
             className="bg-zinc-700 hover:bg-zinc-600 text-ink rounded-full p-2 flex-shrink-0 transition"
