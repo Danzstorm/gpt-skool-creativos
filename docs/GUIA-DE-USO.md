@@ -209,7 +209,7 @@ entrar" en producción.
 4. Sin esto, el botón "Continuar con Google" del login falla — pero el magic link funciona igual sin ningún paso extra.
 
 ### Deploy en Vercel — recomendaciones
-1. **Plan**: usar **Vercel Pro** como mínimo. Las rutas de chat declaran `maxDuration = 60` (respuestas largas de streaming); el plan Hobby limita/trunca funciones más agresivamente y puede cortar respuestas a mitad.
+1. **Plan**: Hobby alcanza. Las rutas de chat declaran `maxDuration = 300` (respuestas largas de streaming) y con **Fluid Compute** activo ese tope se respeta también en Hobby — verificado en el proyecto (`fluid: true`, `functionDefaultTimeout: 300`). Pro solo aporta el auto-deploy nativo por push, que este proyecto resuelve por GitHub Actions (ver README → Deploy).
 2. Cargar todas las env vars de §4 en Vercel (Production + Preview si se va a probar Zapier en preview).
 3. Dominio propio → actualizar en Supabase Auth: Site URL + Redirect URLs allowlist al dominio real (si no, el magic link redirige mal).
 4. Activar **Upstash Redis** (integración nativa de Vercel, un clic) y cargar `UPSTASH_REDIS_REST_URL`/`TOKEN` — sin esto el rate limiting es por instancia serverless, no global, y en tráfico real dos instancias distintas no comparten el contador.

@@ -10,7 +10,7 @@ Plataforma web privada de GPTs para una comunidad de Skool. Cada miembro tiene s
 
 El endurecimiento del modelo de datos ya está aplicado en producción. Mantiene compatibilidad con usuarios y administradores existentes: no elimina tablas ni columnas, conserva RPC heredados durante el rollout y añade fallbacks para instancias antiguas.
 
-La verificación confirmó 9 configuraciones privadas para 9 GPTs, 446 adjuntos normalizados, 7 constraints validados, cero relaciones huérfanas y prompts inaccesibles para usuarios anónimos. El despliegue se valida con lint, build, pruebas HTTP y logs.
+La verificación confirmó 9 configuraciones privadas para 9 GPTs, 446 adjuntos normalizados, 7 constraints validados, cero relaciones huérfanas y prompts inaccesibles para usuarios anónimos. El despliegue se valida en CI con typecheck, lint, tests y build (`npm run verify`).
 
 ---
 
@@ -53,7 +53,7 @@ Si la sección Accesos está **vacía pese a haber logins reales**, la auditorí
 |---|---|---|
 | **Supabase** | Auth, base de datos, storage | Sí |
 | **OpenAI** | Chat (se factura a esta cuenta) | Sí |
-| **Vercel** | Hosting | Sí (plan **Pro** — las rutas de chat usan `maxDuration = 300`; Hobby topa en 60s y corta respuestas largas) |
+| **Vercel** | Hosting | Sí. **Hobby alcanza**: con Fluid Compute activo el tope por función es 300s también en Hobby (verificado en el proyecto: `fluid: true`, `functionDefaultTimeout: 300`), que es lo que necesitan las rutas de chat. Pro solo hace falta si se quiere recuperar el auto-deploy por push (ver Deploy) |
 | **Resend** (u otro SMTP) | Que el magic link llegue de verdad | Sí para lanzar — ver guía §7 |
 | **Google Cloud** (OAuth) | Login con Google | Solo si se quiere; el magic link no lo necesita |
 | **Zapier / Make** | Automatizar altas/bajas desde Skool | Recomendado |
@@ -124,19 +124,48 @@ npm run audit:data-model
 
 ## Deploy
 
-**Producción se despliega automáticamente al hacer push a `cliente/master`.** Para una publicación manual o un preview se puede usar la CLI:
+**Producción se despliega al hacer push a `master`, a través de GitHub Actions** (`.github/workflows/deploy.yml`), que primero corre typecheck, lint, tests y build.
+
+No se despliega por la integración nativa de git de Vercel, y no puede: el team está en plan **Hobby** con un repositorio **privado**, así que Vercel bloquea todo deploy disparado por push porque el autor del commit no es contribuidor del proyecto — y Hobby no permite añadir miembros en repos privados. Todos los deploys `BLOCKED` del historial son eso, no fallos de build. El workflow lo esquiva desplegando desde un árbol desempaquetado con `git archive`, **sin `.git`**: sin metadata de git no hay autor que comprobar.
+
+El workflow necesita tres secrets de repositorio (**Settings → Secrets and variables → Actions**), que solo puede cargar un admin del repo:
+
+| Secret | De dónde sale |
+|---|---|
+| `VERCEL_TOKEN` | Vercel → Account Settings → Tokens, con scope del team `creativos-skool` |
+| `VERCEL_ORG_ID` | `.vercel/project.json` (campo `orgId`) |
+| `VERCEL_PROJECT_ID` | `.vercel/project.json` (campo `projectId`) |
+
+Mientras falte `VERCEL_TOKEN`, el workflow omite el despliegue con un aviso en vez de fallar.
+
+Despliegue manual, equivalente y sin pasar por GitHub:
 
 ```bash
-npx vercel --prod          # producción
-npx vercel                 # preview (URL temporal, para probar antes)
+npm run deploy:prod                    # verify + deploy a producción
+npm run deploy:prod -- --skip-verify   # si ya corriste verify
 ```
 
-El proyecto de Vercel está conectado al repositorio del cliente. Si se cambia la configuración del proyecto, verificar que la rama de producción siga siendo `master`.
+Requiere `VERCEL_TOKEN` en el entorno. Despliega **HEAD**, no el árbol de trabajo, y aborta si hay cambios sin commitear.
+
+### Revertir
+
+Vercel guarda todos los deploys anteriores:
+
+```bash
+vercel rollback <url-del-deploy-anterior> --scope creativos-skool
+vercel ls gpt-creativos --scope creativos-skool   # para encontrar la URL
+```
+
+El alias de producción se mueve solo. Ojo: **el rollback no revierte migraciones de base de datos** — son forward-only y no tienen `down`, así que el esquema tiene que seguir sirviendo a la versión anterior del código.
+
+### Orden con las migraciones
+
+Las migraciones se aplican a mano (`supabase db push`) y el código se despliega solo, así que pueden desincronizarse. Regla: **migraciones primero, código después.** Como no hay `down`, cada migración debe ser compatible con el código que todavía está en producción durante esa ventana.
 
 Configuración de la primera vez:
 
 1. Cargar **todas las env vars** en Vercel (Production, y Preview si se prueba Zapier ahí).
-2. Plan **Pro** (por `maxDuration = 300` en las rutas de chat y subida — en Hobby el techo real es 60s, que cortaba turnos con varias imágenes sobre threads largos y perdía la respuesta).
+2. Verificar que **Fluid Compute** esté activo en el proyecto: es lo que permite `maxDuration = 300` en las rutas de chat y subida. Sin él, el techo vuelve a 60s y se cortan los turnos con varias imágenes sobre threads largos.
 3. Dominio propio → en Supabase **Auth → URL Configuration**: `Site URL` y `Redirect URLs` (`https://<dominio>/auth/callback`) apuntando al dominio real. Si no coinciden, el login falla sin más pista que un error genérico.
 4. **SMTP propio** (Resend) en Supabase Auth → Email. Bloqueante: el SMTP por defecto manda 2 correos/hora, y como cada login es un correo, una comunidad de varios cientos lo agota en la primera hora.
 5. Activar **Upstash Redis** (integración nativa de Vercel) y cargar sus dos vars.
