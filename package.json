@@ -14,6 +14,7 @@
     "test": "vitest",
     "test:run": "vitest run",
     "verify": "npm run typecheck && npm run lint && npm run test:run && npm run build",
+    "deploy:prod": "node scripts/deploy-prod.mjs",
     "audit:data-model": "node --env-file=.env.local scripts/audit-data-model.mjs",
     "backfill:gpt-config": "node --env-file=.env.local scripts/backfill-gpt-config.mjs",
     "backfill:messages": "node --env-file=.env.local scripts/backfill-thread-messages.mjs",

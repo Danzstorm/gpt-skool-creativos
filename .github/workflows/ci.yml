@@ -1,0 +1,49 @@
+name: CI
+
+# El README ya afirmaba que el despliegue se valida con lint, build y pruebas.
+# Era un procedimiento humano: no existía ni un workflow ni un script typecheck.
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          # Coincide con el runtime del proyecto en Vercel (24.x). El campo
+          # engines dice >=20.9.0, pero construir con una versión distinta de la
+          # que ejecuta producción es como no probar.
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Tests
+        run: npm run test:run
+
+      # Sin las variables de Supabase, next.config.ts deja images.remotePatterns
+      # vacío y el prerender de /login revienta al llamar a getAppSettings().
+      # Aquí solo interesa que el build compile, así que se le dan valores de
+      # relleno con la forma correcta; el build real usa las del panel de Vercel.
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+          SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key
+          OPENAI_API_KEY: placeholder-openai-key

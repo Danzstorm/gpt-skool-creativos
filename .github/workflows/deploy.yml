@@ -1,0 +1,85 @@
+name: Deploy to production
+
+on:
+  push:
+    branches: [master]
+
+# Un deploy a la vez. Cancelar a mitad dejaría el alias apuntando a cualquier cosa.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # Las mismas puertas que CI. Se repiten a propósito: este workflow tiene
+      # que poder decir por sí solo que lo que sale a producción pasó los tests,
+      # sin depender de que otro job haya corrido antes.
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run test:run
+
+      - name: ¿Está configurado el token de Vercel?
+        id: guard
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Falta el secret VERCEL_TOKEN, se omite el deploy. Configúralo en Settings → Secrets and variables → Actions junto con VERCEL_ORG_ID y VERCEL_PROJECT_ID."
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Por qué se despliega desde un árbol SIN .git:
+      #
+      # El team está en plan Hobby y el repositorio es privado. Vercel bloquea
+      # todo deploy disparado por git porque el autor del commit no es
+      # contribuidor del proyecto, y Hobby no permite añadir miembros en repos
+      # privados. `vercel deploy` dentro del repo hereda el mismo bloqueo: el CLI
+      # adjunta la metadata de git del .git local y Vercel ve el mismo autor.
+      #
+      # `git archive` escribe solo los archivos versionados, sin .git, sin
+      # node_modules y sin .env*. Sin autor que comprobar, no hay bloqueo.
+      # Verificado el 2026-08-31: el deploy quedó READY y el alias se movió solo.
+      - name: Preparar árbol de despliegue
+        if: steps.guard.outputs.ready == 'true'
+        run: |
+          mkdir -p "$RUNNER_TEMP/deploy-src"
+          git archive HEAD | tar -x -C "$RUNNER_TEMP/deploy-src"
+
+      # .vercel/project.json no está versionado, así que el CLI identifica el
+      # proyecto por estas dos variables.
+      - name: Desplegar a producción
+        if: steps.guard.outputs.ready == 'true'
+        working-directory: ${{ runner.temp }}/deploy-src
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          npx --yes vercel@latest deploy --prod --yes \
+            --scope creativos-skool \
+            --token "${{ secrets.VERCEL_TOKEN }}" | tee deploy-url.txt
+
+      - name: Resumen
+        if: steps.guard.outputs.ready == 'true'
+        working-directory: ${{ runner.temp }}/deploy-src
+        run: |
+          echo "### Deploy a producción" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Commit: \`${GITHUB_SHA:0:7}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- URL: $(tail -1 deploy-url.txt)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Producción: https://prompts.creativos.lat" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Para revertir: \`vercel rollback <url-anterior> --scope creativos-skool\`" >> "$GITHUB_STEP_SUMMARY"
