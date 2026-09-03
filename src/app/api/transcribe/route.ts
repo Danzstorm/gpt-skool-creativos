@@ -1,24 +1,32 @@
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
-import { audioCost } from "@/lib/pricing";
+import { audioCost, worstCaseAudioCost } from "@/lib/pricing";
 import OpenAI from "openai";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-const MAX_AUDIO_MB = 25; // límite de Whisper
 const MODEL = "whisper-1";
 
-// Tope de gasto de transcripción por usuario y día, en USD. A $0.006/minuto son
-// unos 60 minutos de audio diarios: de sobra para dictar mensajes, y un techo
-// duro para el caso en que alguien automatice la ruta.
+// 10MB son ~28 minutos de audio al bitrate que produce MediaRecorder en el
+// navegador: de sobra para dictar un mensaje. El tope de Whisper es 25MB, pero
+// aceptar 25MB solo servía para que un archivo hecho a mano a bitrate mínimo
+// costase varios dólares en una sola petición.
+const MAX_AUDIO_MB = 10;
+
+// Dos topes que hacen cosas distintas y se necesitan los dos:
 //
-// Por qué hacía falta: esta ruta aceptaba 20 peticiones por minuto de hasta 25MB
-// cada una, y 25MB de opus son ~2 horas de audio (~$0.72). O sea ~$14 por minuto
-// de gasto posible, sobre la cuenta de OpenAI del cliente. Y era invisible: la
-// cuota mensual cuenta filas de `messages` con role='assistant' (aquí no se crea
-// ninguna) y el panel de admin agrega `usage_events` (aquí no se escribía nada).
-const MAX_AUDIO_USD_PER_DAY = 0.36;
+// - MAX_TRANSCRIPTIONS_PER_DAY es ATÓMICO (lo cuenta el rate limiter, que
+//   incrementa antes de trabajar), así que acota el peor caso aunque lleguen
+//   mil peticiones a la vez. Es el techo duro.
+// - MAX_AUDIO_USD_PER_DAY es contable: más ajustado en uso normal, pero se
+//   calcula leyendo lo ya registrado, así que por sí solo NO resiste
+//   concurrencia. Por eso el gasto se reserva antes de llamar a OpenAI (ver
+//   abajo) y por eso existe el tope atómico encima.
+const MAX_TRANSCRIPTIONS_PER_DAY = 40;
+const MAX_AUDIO_USD_PER_DAY = 0.6; // ~100 minutos de audio al día
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Se reutiliza el bucket de fecha del panel: día natural UTC.
 function startOfDayIso(): string {
@@ -38,24 +46,39 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
 
-  // Límite: 10 transcripciones por minuto por usuario. Una persona dictando no
-  // pasa de dos o tres; lo que había (20) solo servía para automatizar gasto.
+  // Ráfaga. Una persona dictando no pasa de dos o tres por minuto.
   const rl = await checkRateLimit(`transcribe:${user.id}`, 10, 60_000);
   if (!rl.ok) return rateLimitResponse(rl);
 
+  // Techo diario atómico. Va antes que cualquier lectura de la base: es el
+  // único de los dos topes que no tiene ventana de carrera.
+  const daily = await checkRateLimit(`transcribe:day:${user.id}`, MAX_TRANSCRIPTIONS_PER_DAY, DAY_MS);
+  if (!daily.ok) return rateLimitResponse(daily);
+
   const serviceClient = createServiceClient();
 
-  // Presupuesto diario. Se lee antes de llamar a OpenAI y se calcula sobre lo ya
-  // registrado, así que el último audio del día puede pasarse un poco del tope:
-  // se acepta a cambio de no bloquear un dictado a medias.
-  const { data: spentToday } = await serviceClient
+  // Fail-closed: si no se puede saber cuánto se lleva gastado, NO se gasta más.
+  // Tragarse el error aquí convertía el tope en decorativo, porque un fallo de
+  // la consulta se leía como "gasto cero" y dejaba pasar todo.
+  const { data: spentToday, error: ledgerError } = await serviceClient
     .from("usage_events")
     .select("cost")
     .eq("user_id", user.id)
     .eq("model", MODEL)
     .gte("created_at", startOfDayIso());
 
-  const spent = (spentToday ?? []).reduce((sum, row) => sum + Number(row.cost ?? 0), 0);
+  if (ledgerError || !spentToday) {
+    console.error("transcribe budget read failed", {
+      code: ledgerError?.code,
+      message: ledgerError?.message,
+    });
+    return NextResponse.json(
+      { error: "No se pudo verificar tu cuota de audio. Inténtalo de nuevo en un momento." },
+      { status: 503 }
+    );
+  }
+
+  const spent = spentToday.reduce((sum, row) => sum + Number(row.cost ?? 0), 0);
   if (spent >= MAX_AUDIO_USD_PER_DAY) {
     return NextResponse.json(
       { error: "Alcanzaste el límite de transcripción de audio de hoy. Vuelve a intentarlo mañana." },
@@ -85,29 +108,66 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // verbose_json en vez de json: trae `duration` en segundos, que es lo que
-  // OpenAI factura. Con eso el costo que se registra es exacto, no estimado.
-  const transcription = await openai.audio.transcriptions.create({
-    file: audio,
-    model: MODEL,
-    language: "es",
-    response_format: "verbose_json",
-  });
+  // Reserva antes de gastar. La llamada a Whisper tarda segundos y durante ese
+  // rato el ledger no reflejaba nada: varias peticiones simultáneas leían el
+  // mismo total y pasaban todas. Escribiendo primero una fila con el coste
+  // MÁXIMO posible para este tamaño, la siguiente petición ya la ve. La ventana
+  // de carrera baja del tiempo de la transcripción al de este insert, y lo que
+  // quede sin cubrir lo acota el tope atómico de arriba.
+  const { data: reservation, error: reservationError } = await serviceClient
+    .from("usage_events")
+    .insert({
+      user_id: user.id,
+      gpt_id: null,
+      thread_id: null,
+      model: MODEL,
+      tokens_in: null,
+      tokens_out: null,
+      cost: worstCaseAudioCost(audio.size),
+    })
+    .select("id")
+    .single();
 
-  // Registro best-effort: el gasto de audio tiene que verse en el panel de admin
-  // junto al del chat. gpt_id y thread_id quedan en null (una transcripción no
-  // pertenece a ningún GPT ni conversación) y la columna los admite.
-  const { error: usageError } = await serviceClient.from("usage_events").insert({
-    user_id: user.id,
-    gpt_id: null,
-    thread_id: null,
-    model: MODEL,
-    tokens_in: null,
-    tokens_out: null,
-    cost: audioCost(transcription.duration ?? 0),
-  });
+  if (reservationError || !reservation) {
+    console.error("transcribe reservation failed", {
+      code: reservationError?.code,
+      message: reservationError?.message,
+    });
+    return NextResponse.json(
+      { error: "No se pudo verificar tu cuota de audio. Inténtalo de nuevo en un momento." },
+      { status: 503 }
+    );
+  }
+
+  let transcription;
+  try {
+    // verbose_json en vez de json: trae `duration` en segundos, que es lo que
+    // OpenAI factura. Con eso el coste que queda registrado es exacto.
+    transcription = await openai.audio.transcriptions.create({
+      file: audio,
+      model: MODEL,
+      language: "es",
+      response_format: "verbose_json",
+    });
+  } catch (error) {
+    // La transcripción no llegó a producirse: se suelta la reserva para no
+    // cobrarle al usuario un gasto que no ocurrió. El slot del tope diario
+    // atómico sí queda consumido, así que reintentar en bucle sigue acotado.
+    await serviceClient.from("usage_events").delete().eq("id", reservation.id);
+    throw error;
+  }
+
+  // Se ajusta la reserva al coste real, casi siempre bastante menor que el peor
+  // caso reservado.
+  const { error: usageError } = await serviceClient
+    .from("usage_events")
+    .update({ cost: audioCost(transcription.duration ?? 0) })
+    .eq("id", reservation.id);
+
   if (usageError) {
-    console.error("transcribe usage log error", {
+    // Se deja la reserva tal cual: sobreestima el gasto del día, que es el lado
+    // seguro del error.
+    console.error("transcribe usage reconcile error", {
       code: usageError.code,
       message: usageError.message,
     });

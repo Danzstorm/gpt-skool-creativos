@@ -51,3 +51,15 @@ const WHISPER_USD_PER_MINUTE = 0.006;
 export function audioCost(durationSeconds: number): number {
   return (durationSeconds / 60) * WHISPER_USD_PER_MINUTE;
 }
+
+// Bitrate por debajo de cualquier cosa que produzca un navegador grabando
+// (MediaRecorder ronda los 48kbps). Sirve para acotar por arriba cuánto audio
+// puede esconder un archivo de N bytes, que es lo que hace falta para reservar
+// gasto ANTES de conocer la duración real.
+const WORST_CASE_BITRATE_KBPS = 24;
+
+/** Cota superior del coste de transcribir un archivo, a partir de su tamaño. */
+export function worstCaseAudioCost(sizeBytes: number): number {
+  const seconds = (sizeBytes * 8) / (WORST_CASE_BITRATE_KBPS * 1000);
+  return audioCost(seconds);
+}
