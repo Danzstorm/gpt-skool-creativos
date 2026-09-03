@@ -59,6 +59,17 @@ const redis =
       })
     : null;
 
+// Sin Redis el límite es POR INSTANCIA: en serverless, N instancias calientes
+// multiplican por N todos los topes, y eso multiplica también el gasto de
+// OpenAI que estos límites existen para contener. No se lanza —tirar el arranque
+// de producción por esto sería peor que el problema— pero deja de ser invisible.
+if (!redis && process.env.NODE_ENV === "production") {
+  console.error(
+    "rate-limit: UPSTASH_REDIS_REST_URL/TOKEN sin configurar en producción. " +
+      "El límite pasa a ser por instancia y deja de ser un tope real."
+  );
+}
+
 // Un Ratelimit por combinación (limit, windowMs), cacheado para no recrearlo en cada request.
 const limiters = new Map<string, Ratelimit>();
 function getLimiter(limit: number, windowMs: number): Ratelimit {
@@ -106,4 +117,22 @@ export function rateLimitResponse(result: RateLimitResult) {
       },
     }
   );
+}
+
+/**
+ * IP del cliente para las rutas públicas que limitan por IP.
+ *
+ * `x-forwarded-for` lo escribe el cliente y solo lo sobrescriben los proxies de
+ * confianza más cercanos, así que tomar su primer valor —el patrón que había—
+ * deja la clave del limitador en manos del atacante: cambiando la cabecera se
+ * reinicia el contador en cada petición. `x-vercel-forwarded-for` lo pone la
+ * plataforma y no es falsificable desde fuera, así que va primero. El
+ * `x-forwarded-for` queda solo como último recurso para desarrollo local.
+ */
+export function clientIp(request: Request): string {
+  const vercel = request.headers.get("x-vercel-forwarded-for");
+  if (vercel) return vercel.split(",")[0].trim();
+  const real = request.headers.get("x-real-ip");
+  if (real) return real.trim();
+  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
 }

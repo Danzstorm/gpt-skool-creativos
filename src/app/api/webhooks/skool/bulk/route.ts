@@ -1,21 +1,14 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { syncMembers, type IncomingMember } from "@/lib/members-sync";
 import { NextRequest, NextResponse } from "next/server";
-import { createHash, timingSafeEqual } from "crypto";
-
-// Comparación en tiempo constante (mismo enfoque que el webhook por-evento).
-function secretsMatch(a: string, b: string): boolean {
-  const ha = createHash("sha256").update(a).digest();
-  const hb = createHash("sha256").update(b).digest();
-  return timingSafeEqual(ha, hb);
-}
-
+import { authorizeWebhook } from "@/lib/webhook-auth";
+import { checkRateLimit, rateLimitResponse, clientIp } from "@/lib/rate-limit";
 // Import bulk de miembros SIN sesión admin — para automatizar el CSV diario de
 // Skool vía Zapier/Make (subida programada del export completo).
 //
 // Uso:
 //   POST /api/webhooks/skool/bulk
-//   Header:  x-webhook-secret: <SKOOL_WEBHOOK_SECRET>   (o ?secret= en la URL)
+//   Header:  x-webhook-secret: <SKOOL_WEBHOOK_SECRET>   (solo cabecera)
 //   Body JSON: { "members": [ {..fila..}, ... ], "sync"?: true }
 //
 // Cada fila acepta campos normalizados (email, full_name, tier, ltv, ...) o los
@@ -61,14 +54,13 @@ function normalize(row: RawRow): IncomingMember | null {
   };
 }
 
-export async function POST(request: NextRequest) {
-  const secret =
-    request.headers.get("x-webhook-secret") ||
-    request.nextUrl.searchParams.get("secret") ||
-    "";
+const MAX_BATCH = 5000;
 
-  const expected = process.env.SKOOL_WEBHOOK_SECRET;
-  if (!expected || !secret || !secretsMatch(secret, expected)) {
+export async function POST(request: NextRequest) {
+  const rl = await checkRateLimit(`webhook-skool-bulk:${clientIp(request)}`, 10, 60_000);
+  if (!rl.ok) return rateLimitResponse(rl);
+
+  if (!authorizeWebhook(request)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
@@ -81,6 +73,17 @@ export async function POST(request: NextRequest) {
 
   if (!Array.isArray(body.members) || body.members.length === 0) {
     return NextResponse.json({ error: "members[] requerido" }, { status: 400 });
+  }
+
+  // El lote no tenía tope. Con sync=true (el valor por defecto) esta ruta
+  // reconcilia toda la comunidad, así que un array enorme es a la vez memoria
+  // sin límite y una revocación masiva. El export real de Skool ronda las 600
+  // filas; 5000 deja margen de sobra sin dejar la puerta abierta.
+  if (body.members.length > MAX_BATCH) {
+    return NextResponse.json(
+      { error: `Lote demasiado grande (máximo ${MAX_BATCH} filas)` },
+      { status: 413 }
+    );
   }
 
   const members = (body.members as RawRow[])

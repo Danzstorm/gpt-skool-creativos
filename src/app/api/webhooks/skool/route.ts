@@ -1,15 +1,7 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
-import { createHash, timingSafeEqual } from "crypto";
-
-// Compara en tiempo constante hasheando ambos valores primero: evita tanto el
-// leak de timing por longitud (timingSafeEqual falla si los buffers difieren
-// en tamaño) como por contenido.
-function secretsMatch(a: string, b: string): boolean {
-  const ha = createHash("sha256").update(a).digest();
-  const hb = createHash("sha256").update(b).digest();
-  return timingSafeEqual(ha, hb);
-}
+import { authorizeWebhook } from "@/lib/webhook-auth";
+import { checkRateLimit, rateLimitResponse, clientIp } from "@/lib/rate-limit";
 
 // Webhook genérico para automatizar altas/bajas desde Skool.
 // Funciona con cualquier fuente que pueda hacer un POST: webhook nativo de Skool,
@@ -17,7 +9,7 @@ function secretsMatch(a: string, b: string): boolean {
 //
 // Uso:
 //   POST /api/webhooks/skool
-//   Header:  x-webhook-secret: <SKOOL_WEBHOOK_SECRET>   (o ?secret= en la URL)
+//   Header:  x-webhook-secret: <SKOOL_WEBHOOK_SECRET>   (solo cabecera)
 //   Body JSON: { "email": "...", "action": "add" | "remove", "full_name"?: "..." }
 //   action por defecto: "add".
 
@@ -25,13 +17,13 @@ function secretsMatch(a: string, b: string): boolean {
 const REMOVE = new Set(["remove", "delete", "cancel", "cancelled", "revoke", "member_removed", "churn"]);
 
 export async function POST(request: NextRequest) {
-  const secret =
-    request.headers.get("x-webhook-secret") ||
-    request.nextUrl.searchParams.get("secret") ||
-    "";
+  // Límite por IP ANTES de comprobar el secreto: sin esto,
+  // SKOOL_WEBHOOK_SECRET admitía adivinación en línea sin freno, y acertar
+  // significa poder dar de baja a toda la comunidad (ver /bulk).
+  const rl = await checkRateLimit(`webhook-skool:${clientIp(request)}`, 30, 60_000);
+  if (!rl.ok) return rateLimitResponse(rl);
 
-  const expected = process.env.SKOOL_WEBHOOK_SECRET;
-  if (!expected || !secret || !secretsMatch(secret, expected)) {
+  if (!authorizeWebhook(request)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
