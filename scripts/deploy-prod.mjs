@@ -77,5 +77,14 @@ try {
   console.log("\nListo. Producción: https://prompts.creativos.lat");
   console.log(`Para revertir: vercel rollback <url-anterior> --scope ${SCOPE}`);
 } finally {
-  rmSync(stage, { recursive: true, force: true });
+  // La limpieza NO puede decidir el resultado del script. En Windows, npx deja
+  // handles abiertos un instante y rmSync tira EPERM: el deploy había salido
+  // READY y el proceso terminaba con error igual, que es exactamente el
+  // resultado que no hay que reportar. Se reintenta y, si aun así no se puede,
+  // se avisa y se sigue: sobra un directorio en TEMP, nada más.
+  try {
+    rmSync(stage, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+  } catch (error) {
+    console.warn(`\nNo se pudo borrar el temporal ${stage} (${error.code}). El deploy no se ve afectado.`);
+  }
 }
