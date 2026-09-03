@@ -10,6 +10,13 @@ import MessageBubble from "./chat/MessageBubble";
 import Composer, { type ComposerHandle } from "./chat/Composer";
 import GptChatsModal from "./chat/GptChatsModal";
 import { consumeSSE } from "@/lib/stream-client";
+import ThinkingIndicator from "./chat/ThinkingIndicator";
+import {
+  countAttachments,
+  EMPTY_ATTACHMENTS,
+  type Phase,
+  type ThinkingAttachments,
+} from "@/lib/thinking-phrases";
 import { downscaleImage } from "@/lib/image-resize";
 import { createClient } from "@/lib/supabase/client";
 import { MAX_FILES_PER_MESSAGE } from "@/lib/upload-file";
@@ -42,6 +49,11 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  // Fase que informa el servidor y momento en que se abrió el stream, para el
+  // indicador de espera. Viven aquí porque solo runAssistant sabe cuándo
+  // empieza y termina un turno.
+  const [phase, setPhase] = useState<Phase>("thinking");
+  const [thinkingStartedAt, setThinkingStartedAt] = useState(0);
   const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>([]);
   const [pendingUploads, setPendingUploads] = useState(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -355,21 +367,30 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
       throw new Error(data?.error || "Error al enviar mensaje");
     }
 
-    await consumeSSE(res, (text) => {
-      setMessages((prev) => {
-        const updated = [...prev];
-        updated[updated.length - 1] = {
-          ...updated[updated.length - 1],
-          content: updated[updated.length - 1].content + text,
-        };
-        return updated;
-      });
-    });
+    await consumeSSE(
+      res,
+      (text) => {
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            ...updated[updated.length - 1],
+            content: updated[updated.length - 1].content + text,
+          };
+          return updated;
+        });
+      },
+      // El servidor puede mandar una fase que este cliente todavía no conozca
+      // (si un deploy va antes que el otro). phraseFor cae al relleno sola, así
+      // que no hace falta validar acá.
+      (next) => setPhase(next as Phase)
+    );
   }
 
   // Agrega un placeholder de asistente y streamea la respuesta desde `url`
   async function runAssistant(url: string, body: object) {
     setIsLoading(true);
+    setPhase("thinking");
+    setThinkingStartedAt(Date.now());
     setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
     const controller = new AbortController();
     abortRef.current = controller;
@@ -721,6 +742,11 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
               {messages.map((msg, i) => {
                 const isLast = i === messages.length - 1;
                 const streaming = isLoading && isLast && msg.role === "assistant";
+                // Los adjuntos salen del mensaje de usuario anterior, que es el
+                // que provocó esta espera. No hace falta pasarlos por
+                // runAssistant: ya están en el estado.
+                const attachments: ThinkingAttachments =
+                  streaming && !msg.content ? countAttachments(messages[i - 1]) : EMPTY_ATTACHMENTS;
                 return (
                   <MessageBubble
                     key={i}
@@ -729,6 +755,15 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
                     activeGpt={activeGpt}
                     isLast={isLast}
                     streaming={streaming}
+                    thinkingSlot={
+                      streaming && !msg.content ? (
+                        <ThinkingIndicator
+                          phase={phase}
+                          attachments={attachments}
+                          startedAt={thinkingStartedAt}
+                        />
+                      ) : undefined
+                    }
                     canRegenerate={isLast && !isLoading}
                     canEdit={i === lastUserIndex && !isLoading}
                     isCopied={copiedIndex === i}

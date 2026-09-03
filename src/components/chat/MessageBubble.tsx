@@ -10,6 +10,10 @@ interface Props {
   activeGpt?: Gpt;
   isLast: boolean;
   streaming: boolean;
+  // Qué mostrar mientras la burbuja del asistente sigue vacía. Se recibe ya
+  // renderizado en vez de los datos para armarlo: así este componente sigue
+  // siendo presentacional y no se entera de fases, contadores ni adjuntos.
+  thinkingSlot?: React.ReactNode;
   canRegenerate: boolean;
   canEdit: boolean;
   isCopied: boolean;
@@ -27,6 +31,7 @@ function MessageBubble({
   index,
   isLast,
   streaming,
+  thinkingSlot,
   canRegenerate,
   canEdit,
   isCopied,
@@ -116,11 +121,18 @@ function MessageBubble({
           // sin mirar `streaming`, así que un fallo con contenido vacío dejaba
           // los puntos rebotando para siempre — sin spinner, sin botón de
           // detener y sin ninguna acción disponible más que recargar la página.
-          <span className="inline-flex gap-1 text-zinc-400">
-            <span className="animate-bounce delay-0">·</span>
-            <span className="animate-bounce delay-100">·</span>
-            <span className="animate-bounce delay-200">·</span>
-          </span>
+          //
+          // Los tres puntos quedan de reserva para quien no pase `thinkingSlot`
+          // (el chat de prueba del admin). Ojo: `delay-100`/`delay-200` son
+          // utilidades de transition-delay, no de animation-delay, así que los
+          // tres rebotan sincronizados y se ven como un solo `···` parpadeando.
+          (thinkingSlot ?? (
+            <span className="inline-flex gap-1 text-zinc-400">
+              <span className="animate-bounce delay-0">·</span>
+              <span className="animate-bounce delay-100">·</span>
+              <span className="animate-bounce delay-200">·</span>
+            </span>
+          ))
         ) : (
           msg.error && <p className="text-sm text-red-400">{msg.error}</p>
         )}

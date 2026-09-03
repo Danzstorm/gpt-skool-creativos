@@ -287,6 +287,31 @@ body {
     animation: fade-up 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
 
+  /* Barrido de luz sobre el texto de espera del chat. Los keyframes `shimmer`
+     ya existían aquí arriba sin ninguna clase que los usara; esta es esa clase.
+     Al vivir dentro del bloque no-preference, con reduce-motion el texto se ve
+     estático y perfectamente legible — el color de fondo del degradado es el
+     mismo `currentColor` del texto. */
+  .thinking-shimmer {
+    /* Sin `currentColor`: al recortar el degradado con background-clip hay que
+       poner `color: transparent`, y entonces `currentColor` se resuelve a
+       transparente y el texto desaparece. Los dos extremos salen de los tokens
+       del tema, así que esto funciona igual en creativo, dark y Papel. */
+    background: linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--foreground) 50%, var(--background)) 0%,
+      color-mix(in oklab, var(--foreground) 50%, var(--background)) 35%,
+      var(--foreground) 50%,
+      color-mix(in oklab, var(--foreground) 50%, var(--background)) 65%,
+      color-mix(in oklab, var(--foreground) 50%, var(--background)) 100%
+    );
+    background-size: 220% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: shimmer 2.4s ease-in-out infinite;
+  }
+
   /* Entrada de modales: backdrop con fade, panel con fade+scale desde su centro.
      Fuera de este bloque (reduce-motion) las clases no hacen nada → aparecen al
      instante, sin quedar invisibles. */
