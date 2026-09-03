@@ -1,4 +1,6 @@
+import { redirect } from "next/navigation";
 import { createServiceClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/require-admin";
 import Link from "next/link";
 import { Bot, Users, MessageSquare, Activity, DollarSign, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -61,6 +63,14 @@ function rangeToDates(rangeKey: RangeKey): { since: string; until: string } {
 }
 
 export default async function AdminDashboard({ searchParams }: Props) {
+  // El layout de /admin ya comprueba is_admin, pero un layout NO es una frontera
+  // de autorización: no se vuelve a ejecutar en navegaciones de cliente entre
+  // rutas hermanas, así que confiar solo en él es el footgun documentado de Next.
+  // Esta página es además la única que abre un cliente service_role y lee emails
+  // de miembros y costos, o sea la que menos puede permitirse el atajo. Todas sus
+  // hermanas (/api/admin/*) revalidan; esta también.
+  if (!(await requireAdmin())) redirect("/dashboard?notice=not_admin");
+
   const { range } = await searchParams;
   const rangeKey: RangeKey = range && range in RANGES ? (range as RangeKey) : "30d";
   const { since, until } = rangeToDates(rangeKey);
