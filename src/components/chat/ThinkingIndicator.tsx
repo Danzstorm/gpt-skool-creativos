@@ -31,7 +31,9 @@ function ThinkingIndicator({ phase, attachments, startedAt }: Props) {
   }, [startedAt]);
 
   const seconds = Math.max(0, Math.floor(elapsedMs / 1000));
-  const phrase = phraseFor(phase, attachments, elapsedMs);
+  // startedAt sirve de semilla: ya es un número distinto en cada turno, así
+  // que no hace falta guardar un random aparte.
+  const phrase = phraseFor(phase, attachments, elapsedMs, startedAt);
 
   return (
     <div className="flex items-center gap-2 text-[15px] text-zinc-400">

@@ -15,18 +15,18 @@ describe("phraseFor — prioridad entre fuentes", () => {
   it("la fase del servidor pisa a lo que sabe el cliente", () => {
     // Si el modelo empezó a ejecutar código, eso es más informativo que
     // recordarle al usuario que adjuntó una imagen hace diez segundos.
-    expect(phraseFor("code", { images: 3, documents: 0 }, 0)).toBe("Ejecutando código…");
+    expect(phraseFor("code", { images: 3, documents: 0 }, 0)).toBe("Ejecutando código");
   });
 
   it("los adjuntos pisan al relleno", () => {
-    expect(phraseFor("thinking", { images: 1, documents: 0 }, 0)).toBe("Mirando tu imagen…");
+    expect(phraseFor("thinking", { images: 1, documents: 0 }, 0)).toBe("Mirando tu imagen");
     expect(phraseFor("thinking", SIN_ADJUNTOS, 0)).toBe(FILLER_PHRASES[0]);
   });
 
   it("nombra las imágenes antes que los documentos cuando hay de las dos", () => {
     // Las imágenes son las que hacen lento el turno: son las que explican
     // la espera que el usuario está mirando.
-    expect(phraseFor("thinking", { images: 1, documents: 2 }, 0)).toBe("Mirando tu imagen…");
+    expect(phraseFor("thinking", { images: 1, documents: 2 }, 0)).toBe("Mirando tu imagen");
   });
 
   it("una fase que no conoce no rompe: cae al relleno", () => {
@@ -39,49 +39,88 @@ describe("phraseFor — prioridad entre fuentes", () => {
 
 describe("phraseFor — singular y plural", () => {
   it("distingue una imagen de varias", () => {
-    expect(phraseFor("thinking", { images: 1, documents: 0 }, 0)).toBe("Mirando tu imagen…");
-    expect(phraseFor("thinking", { images: 2, documents: 0 }, 0)).toBe("Mirando tus imágenes…");
+    expect(phraseFor("thinking", { images: 1, documents: 0 }, 0)).toBe("Mirando tu imagen");
+    expect(phraseFor("thinking", { images: 2, documents: 0 }, 0)).toBe("Mirando tus imágenes");
   });
 
   it("distingue un documento de varios", () => {
-    expect(phraseFor("thinking", { images: 0, documents: 1 }, 0)).toBe("Leyendo tu documento…");
-    expect(phraseFor("thinking", { images: 0, documents: 5 }, 0)).toBe("Leyendo tus documentos…");
+    expect(phraseFor("thinking", { images: 0, documents: 1 }, 0)).toBe("Leyendo tu documento");
+    expect(phraseFor("thinking", { images: 0, documents: 5 }, 0)).toBe("Leyendo tus documentos");
+  });
+});
+
+describe("phraseFor — el relleno es una sola palabra", () => {
+  it("ninguna palabra de relleno lleva espacios ni puntos suspensivos", () => {
+    // El pedido explícito fue una palabra suelta en lugar de los tres puntos.
+    // Si alguien agrega "Puliendo los detalles…" a la lista, esto lo frena.
+    for (const palabra of FILLER_PHRASES) {
+      expect(palabra).not.toContain(" ");
+      expect(palabra).not.toContain("…");
+    }
+  });
+
+  it("no hay palabras repetidas en la lista", () => {
+    // Un duplicado rompe la promesa de no repetir hasta dar la vuelta entera.
+    expect(new Set(FILLER_PHRASES).size).toBe(FILLER_PHRASES.length);
   });
 });
 
 describe("phraseFor — rotación del relleno", () => {
-  it("avanza una frase por ventana de rotación", () => {
+  it("avanza una palabra por ventana de rotación", () => {
     for (let i = 0; i < FILLER_PHRASES.length; i++) {
       const dentroDeLaVentana = i * FILLER_ROTATION_MS + 1;
-      expect(phraseFor("thinking", SIN_ADJUNTOS, dentroDeLaVentana)).toBe(FILLER_PHRASES[i]);
+      expect(phraseFor("thinking", SIN_ADJUNTOS, dentroDeLaVentana, 0)).toBe(FILLER_PHRASES[i]);
     }
   });
 
-  it("se queda en la última y no vuelve a empezar", () => {
-    // Reciclar la lista sugiere un progreso que no existe. A los dos minutos,
-    // ver la primera frase otra vez delata que es decorado.
-    const muchoDespues = FILLER_ROTATION_MS * (FILLER_PHRASES.length + 50);
-    const ultima = FILLER_PHRASES[FILLER_PHRASES.length - 1];
-    expect(phraseFor("thinking", SIN_ADJUNTOS, muchoDespues)).toBe(ultima);
-    expect(phraseFor("thinking", SIN_ADJUNTOS, muchoDespues * 10)).toBe(ultima);
+  it("nunca repite dos veces seguidas mientras no dé la vuelta entera", () => {
+    // Es la razón de avanzar desde un arranque aleatorio en vez de sortear en
+    // cada tick: un sorteo puede sacar la misma palabra dos veces y el
+    // indicador se ve congelado justo cuando tiene que verse vivo.
+    const vistas: string[] = [];
+    for (let i = 0; i < FILLER_PHRASES.length; i++) {
+      vistas.push(phraseFor("thinking", SIN_ADJUNTOS, i * FILLER_ROTATION_MS, 7));
+    }
+    expect(new Set(vistas).size).toBe(FILLER_PHRASES.length);
   });
 
-  it("es determinista: el mismo tiempo da la misma frase", () => {
+  it("cicla al dar la vuelta en vez de quedarse trabado", () => {
+    const unaVuelta = FILLER_PHRASES.length * FILLER_ROTATION_MS;
+    expect(phraseFor("thinking", SIN_ADJUNTOS, unaVuelta, 3)).toBe(
+      phraseFor("thinking", SIN_ADJUNTOS, 0, 3)
+    );
+  });
+
+  it("semillas distintas arrancan en palabras distintas", () => {
+    // Es lo que hace que dos mensajes seguidos no se vean iguales.
+    const arranques = new Set(
+      [0, 1, 2, 3, 4].map((seed) => phraseFor("thinking", SIN_ADJUNTOS, 0, seed))
+    );
+    expect(arranques.size).toBe(5);
+  });
+
+  it("es determinista: mismo tiempo y misma semilla dan la misma palabra", () => {
     // Sin esto no se puede ni testear ni razonar sobre lo que ve el usuario.
     const t = FILLER_ROTATION_MS * 2 + 500;
-    expect(phraseFor("thinking", SIN_ADJUNTOS, t)).toBe(phraseFor("thinking", SIN_ADJUNTOS, t));
+    expect(phraseFor("thinking", SIN_ADJUNTOS, t, 42)).toBe(
+      phraseFor("thinking", SIN_ADJUNTOS, t, 42)
+    );
   });
 
-  it("tolera un tiempo negativo sin salirse del array", () => {
-    // Un reloj que corrige hacia atrás a mitad de espera no puede dar undefined.
-    expect(phraseFor("thinking", SIN_ADJUNTOS, -5000)).toBe(FILLER_PHRASES[0]);
+  it("tolera tiempo negativo y semillas raras sin salirse del array", () => {
+    // Un reloj que corrige hacia atrás, o un timestamp enorme como semilla,
+    // no pueden devolver undefined.
+    expect(FILLER_PHRASES).toContain(phraseFor("thinking", SIN_ADJUNTOS, -5000, 0));
+    expect(FILLER_PHRASES).toContain(phraseFor("thinking", SIN_ADJUNTOS, 0, -1));
+    expect(FILLER_PHRASES).toContain(phraseFor("thinking", SIN_ADJUNTOS, 0, Date.now()));
+    expect(FILLER_PHRASES).toContain(phraseFor("thinking", SIN_ADJUNTOS, 0, 1.5));
   });
 });
 
 describe("phraseFor — fases del servidor", () => {
   it("traduce cada fase conocida", () => {
-    expect(phraseFor("queued", SIN_ADJUNTOS, 0)).toBe("En cola…");
-    expect(phraseFor("code", SIN_ADJUNTOS, 0)).toBe("Ejecutando código…");
+    expect(phraseFor("queued", SIN_ADJUNTOS, 0)).toBe("En cola");
+    expect(phraseFor("code", SIN_ADJUNTOS, 0)).toBe("Ejecutando código");
   });
 
   it("las frases de fase son literales, sin metáfora", () => {
@@ -119,6 +158,6 @@ describe("countAttachments", () => {
     const attachments = countAttachments({
       files: [{ type: "image" as const }, { type: "image" as const }],
     });
-    expect(phraseFor("thinking", attachments, 0)).toBe("Mirando tus imágenes…");
+    expect(phraseFor("thinking", attachments, 0)).toBe("Mirando tus imágenes");
   });
 });
