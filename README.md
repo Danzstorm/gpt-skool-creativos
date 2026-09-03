@@ -128,6 +128,12 @@ npm run audit:data-model
 
 No se despliega por la integración nativa de git de Vercel, y no puede: el team está en plan **Hobby** con un repositorio **privado**, así que Vercel bloquea todo deploy disparado por push porque el autor del commit no es contribuidor del proyecto — y Hobby no permite añadir miembros en repos privados. Todos los deploys `BLOCKED` del historial son eso, no fallos de build. El workflow lo esquiva desplegando desde un árbol desempaquetado con `git archive`, **sin `.git`**: sin metadata de git no hay autor que comprobar.
 
+Por eso los deploys automáticos de git están **apagados** en el proyecto (`gitProviderOptions.createDeployments: "disabled"`): no podían desplegar y solo marcaban en rojo cada push y cada PR. Si algún día se pasa a Pro, se reactivan con:
+
+```bash
+curl -X PATCH -H "Authorization: Bearer $VERCEL_TOKEN" -H "Content-Type: application/json" \n  "https://api.vercel.com/v9/projects/gpt-creativos?teamId=$VERCEL_ORG_ID" \n  -d '{"gitProviderOptions":{"createDeployments":"enabled"}}'
+```
+
 El workflow necesita tres secrets de repositorio (**Settings → Secrets and variables → Actions**), que solo puede cargar un admin del repo:
 
 | Secret | De dónde sale |
