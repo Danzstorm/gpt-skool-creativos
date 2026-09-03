@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 
+const MAX_TITLE_CHARS = 200;
+
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -22,8 +24,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
   }
 
-  if (!title || !title.trim()) {
+  if (typeof title !== "string" || !title.trim()) {
     return NextResponse.json({ error: "Falta title" }, { status: 400 });
+  }
+  // Sin tope, el título se guardaba entero: lo pinta el sidebar y lo escribe
+  // quien renombra la conversación.
+  if (title.length > MAX_TITLE_CHARS) {
+    return NextResponse.json({ error: "El título es demasiado largo" }, { status: 400 });
   }
 
   const { data, error } = await supabase
