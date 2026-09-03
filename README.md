@@ -128,11 +128,13 @@ npm run audit:data-model
 
 No se despliega por la integración nativa de git de Vercel, y no puede: el team está en plan **Hobby** con un repositorio **privado**, así que Vercel bloquea todo deploy disparado por push porque el autor del commit no es contribuidor del proyecto — y Hobby no permite añadir miembros en repos privados. Todos los deploys `BLOCKED` del historial son eso, no fallos de build. El workflow lo esquiva desplegando desde un árbol desempaquetado con `git archive`, **sin `.git`**: sin metadata de git no hay autor que comprobar.
 
-Por eso los deploys automáticos de git están **apagados** en el proyecto (`gitProviderOptions.createDeployments: "disabled"`): no podían desplegar y solo marcaban en rojo cada push y cada PR. Si algún día se pasa a Pro, se reactivan con:
+Por eso el repositorio está **desconectado** del proyecto de Vercel: la integración de git no podía desplegar y solo dejaba un deploy `BLOCKED` y una marca roja en cada push y cada PR.
 
-```bash
-curl -X PATCH -H "Authorization: Bearer $VERCEL_TOKEN" -H "Content-Type: application/json" \n  "https://api.vercel.com/v9/projects/gpt-creativos?teamId=$VERCEL_ORG_ID" \n  -d '{"gitProviderOptions":{"createDeployments":"enabled"}}'
-```
+Desconectar el repo NO afecta a los deploys por CLI ni al workflow: identifican el proyecto por `VERCEL_PROJECT_ID`/`VERCEL_ORG_ID` (o por `.vercel/project.json` en local), no por el enlace de git. El dominio de producción tampoco se mueve.
+
+> Ojo, esto ya se intentó mal una vez: `gitProviderOptions.createDeployments: "disabled"` **no** sirve para esto. Ese ajuste controla los registros de Deployment que Vercel publica en GitHub, no si construye en cada push — con él en `disabled` los deploys se siguieron creando y bloqueando.
+
+Para reconectarlo (por ejemplo si se pasa a Pro y se quiere el deploy nativo por push): **Vercel → Project Settings → Git → Connect Git Repository**.
 
 El workflow necesita tres secrets de repositorio (**Settings → Secrets and variables → Actions**), que solo puede cargar un admin del repo:
 
