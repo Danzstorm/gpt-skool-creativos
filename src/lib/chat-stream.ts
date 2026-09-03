@@ -144,7 +144,46 @@ export function runStreamResponse(params: RunStreamParams): Response {
         // `event.response.output_text` en el evento crudo del stream NO viene poblado
         // (es un getter que el SDK solo agrega al valor de retorno no-streaming de
         // `create()`; en el stream crudo el texto vino vacío). Se acumula a mano.
+        // Fases: frames `{phase}` para que el cliente pueda decir qué está
+        // pasando de verdad mientras no llega ningún token. Estos eventos ya
+        // venían en el stream y se descartaban en silencio; emitirlos no cuesta
+        // ninguna llamada extra a OpenAI.
+        //
+        // Un cliente viejo ignora estos frames sin romperse: su parser solo
+        // mira `text` y `error` (src/lib/stream-client.ts).
+        let lastPhase: string | null = null;
+        const emitPhase = (phase: string) => {
+          // Solo en los cambios: la familia code_interpreter emite varios
+          // eventos seguidos de la misma fase y no hace falta repetirla.
+          if (phase === lastPhase) return;
+          lastPhase = phase;
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ phase })}\n\n`));
+        };
+
         for await (const event of events) {
+          if (event.type === "response.queued") {
+            emitPhase("queued");
+          }
+
+          // La petición dejó la cola y el modelo está trabajando: se vuelve a
+          // la fase genérica para que "En cola…" no se quede pegado.
+          if (event.type === "response.in_progress" || event.type === "response.created") {
+            emitPhase("thinking");
+          }
+
+          if (
+            event.type === "response.code_interpreter_call.in_progress" ||
+            event.type === "response.code_interpreter_call.interpreting"
+          ) {
+            emitPhase("code");
+          }
+
+          // Terminó de ejecutar código pero todavía no escribe: vuelve a la
+          // genérica en vez de dejar "Ejecutando código…" mintiendo.
+          if (event.type === "response.code_interpreter_call.completed") {
+            emitPhase("thinking");
+          }
+
           if (event.type === "response.output_text.delta") {
             fullText += event.delta;
             controller.enqueue(

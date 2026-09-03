@@ -19,7 +19,13 @@
 // silencio y el stream terminaba como si nada hubiera pasado; acá se convierte
 // en una excepción para que el catch del llamador (que ya existe en
 // UnifiedChat.tsx y GptTestModal.tsx) lo traduzca a un mensaje visible.
-export async function consumeSSE(res: Response, onToken: (text: string) => void): Promise<void> {
+export async function consumeSSE(
+  res: Response,
+  onToken: (text: string) => void,
+  // Opcional a propósito: GptTestModal no muestra indicador de espera y no lo
+  // pasa, así que el llamador que no lo necesita no cambia ni una línea.
+  onPhase?: (phase: string) => void
+): Promise<void> {
   const reader = res.body!.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
@@ -30,7 +36,7 @@ export async function consumeSSE(res: Response, onToken: (text: string) => void)
     const data = line.slice("data: ".length);
     if (data === "[DONE]") return;
 
-    let parsed: { text?: string; error?: string };
+    let parsed: { text?: string; error?: string; phase?: string };
     try {
       parsed = JSON.parse(data);
     } catch {
@@ -38,6 +44,8 @@ export async function consumeSSE(res: Response, onToken: (text: string) => void)
       return;
     }
     if (parsed.error) throw new Error(parsed.error);
+    // Antes que el texto: un frame trae una cosa o la otra, nunca las dos.
+    if (parsed.phase) onPhase?.(parsed.phase);
     if (parsed.text) onToken(parsed.text);
   }
 
