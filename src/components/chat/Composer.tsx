@@ -162,7 +162,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   }
 
   return (
-    <div className="border-t border-zinc-800/80 bg-zinc-950 px-4 pt-2.5 pb-2">
+    <div className="bg-zinc-950 px-4 pt-2.5 pb-2">
       {attachedFiles.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-3 max-w-3xl mx-auto">
           {attachedFiles.map((f, i) => {
@@ -260,7 +260,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           )}
           <button
             onClick={() => setAttachMenuOpen((v) => !v)}
-            className="text-zinc-500 hover:text-zinc-300 transition mb-0.5"
+            className="w-8 h-8 flex items-center justify-center rounded-full text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/60 transition"
             title="Adjuntar imágenes o archivos (también puedes pegar o arrastrar)"
             aria-label="Adjuntar"
           >
@@ -279,6 +279,9 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           </>
         ) : (
           <>
+            {/* Micrófono y controles de grabación usan la misma caja de 32px que
+                el botón de enviar: con items-end, dos alturas distintas dejan los
+                centros ópticos desalineados. */}
             <textarea
               ref={textareaRef}
               value={input}
@@ -303,11 +306,11 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             <button
               onClick={startRecording}
               disabled={isLoading || isTranscribing || isUploading}
-              className="flex-shrink-0 mb-0.5 transition text-zinc-500 hover:text-zinc-300"
+              className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/60 transition"
               title="Toca para grabar"
               aria-label="Grabar audio"
             >
-              <Mic size={17} />
+              <Mic size={18} />
             </button>
           </>
         )}
@@ -316,7 +319,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           <>
             <button
               onClick={() => stopRecording(true)}
-              className="flex-shrink-0 mb-0.5 text-zinc-400 hover:text-ink transition"
+              className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-zinc-400 hover:text-ink hover:bg-zinc-800/60 transition"
               title="Descartar grabación"
               aria-label="Descartar grabación"
             >
@@ -324,7 +327,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             </button>
             <button
               onClick={() => stopRecording(false)}
-              className="flex-shrink-0 mb-0.5 text-zinc-200 hover:text-ink transition active:scale-95"
+              className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-zinc-200 hover:text-ink hover:bg-zinc-800/60 transition active:scale-95"
               title="Listo, transcribir"
               aria-label="Terminar grabación y transcribir"
             >
