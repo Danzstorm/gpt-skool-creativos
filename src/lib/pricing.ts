@@ -37,3 +37,17 @@ export function estimateCost(model: string | null, tokensIn: number, tokensOut: 
   const p = (key && PRICING[key]) || DEFAULT;
   return (tokensIn / 1_000_000) * p.in + (tokensOut / 1_000_000) * p.out;
 }
+
+// Whisper se factura por minuto de audio, no por token, así que no entra en
+// PRICING (que es USD por 1M de tokens). Precio público: $0.006/minuto.
+const WHISPER_USD_PER_MINUTE = 0.006;
+
+/**
+ * Costo en USD de una transcripción, a partir de la duración REAL del audio.
+ * whisper-1 devuelve `duration` cuando se pide `response_format: "verbose_json"`,
+ * así que esto no es una estimación por bytes: es el dato exacto que factura
+ * OpenAI. Sin esto el gasto de audio no aparecía en ningún lado.
+ */
+export function audioCost(durationSeconds: number): number {
+  return (durationSeconds / 60) * WHISPER_USD_PER_MINUTE;
+}
