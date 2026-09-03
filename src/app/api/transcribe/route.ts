@@ -14,19 +14,15 @@ const MODEL = "whisper-1";
 // costase varios dólares en una sola petición.
 const MAX_AUDIO_MB = 10;
 
-// Dos topes que hacen cosas distintas y se necesitan los dos:
+// Presupuesto diario de transcripción por usuario, en USD. A $0.006/minuto son
+// unos 100 minutos de audio al día.
 //
-// - MAX_TRANSCRIPTIONS_PER_DAY es ATÓMICO (lo cuenta el rate limiter, que
-//   incrementa antes de trabajar), así que acota el peor caso aunque lleguen
-//   mil peticiones a la vez. Es el techo duro.
-// - MAX_AUDIO_USD_PER_DAY es contable: más ajustado en uso normal, pero se
-//   calcula leyendo lo ya registrado, así que por sí solo NO resiste
-//   concurrencia. Por eso el gasto se reserva antes de llamar a OpenAI (ver
-//   abajo) y por eso existe el tope atómico encima.
-const MAX_TRANSCRIPTIONS_PER_DAY = 40;
-const MAX_AUDIO_USD_PER_DAY = 0.6; // ~100 minutos de audio al día
-
-const DAY_MS = 24 * 60 * 60 * 1000;
+// Por qué existe: esta ruta aceptaba 20 peticiones por minuto de hasta 25MB
+// cada una, sin cuota y sin dejar rastro. La cuota mensual cuenta filas de
+// `messages` con role='assistant' (aquí no se crea ninguna) y el panel de admin
+// agrega `usage_events` (aquí no se escribía nada), así que el gasto de Whisper
+// sobre la cuenta de OpenAI del cliente era ilimitado E invisible.
+const MAX_AUDIO_USD_PER_DAY = 0.6;
 
 // Se reutiliza el bucket de fecha del panel: día natural UTC.
 function startOfDayIso(): string {
@@ -46,45 +42,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
 
-  // Ráfaga. Una persona dictando no pasa de dos o tres por minuto.
+  // Guarda de ráfaga, no el presupuesto: sin Upstash configurado el limitador
+  // es por instancia, así que en serverless no acota nada global. El tope real
+  // de gasto es el de más abajo, que vive en la base.
   const rl = await checkRateLimit(`transcribe:${user.id}`, 10, 60_000);
   if (!rl.ok) return rateLimitResponse(rl);
-
-  // Techo diario atómico. Va antes que cualquier lectura de la base: es el
-  // único de los dos topes que no tiene ventana de carrera.
-  const daily = await checkRateLimit(`transcribe:day:${user.id}`, MAX_TRANSCRIPTIONS_PER_DAY, DAY_MS);
-  if (!daily.ok) return rateLimitResponse(daily);
-
-  const serviceClient = createServiceClient();
-
-  // Fail-closed: si no se puede saber cuánto se lleva gastado, NO se gasta más.
-  // Tragarse el error aquí convertía el tope en decorativo, porque un fallo de
-  // la consulta se leía como "gasto cero" y dejaba pasar todo.
-  const { data: spentToday, error: ledgerError } = await serviceClient
-    .from("usage_events")
-    .select("cost")
-    .eq("user_id", user.id)
-    .eq("model", MODEL)
-    .gte("created_at", startOfDayIso());
-
-  if (ledgerError || !spentToday) {
-    console.error("transcribe budget read failed", {
-      code: ledgerError?.code,
-      message: ledgerError?.message,
-    });
-    return NextResponse.json(
-      { error: "No se pudo verificar tu cuota de audio. Inténtalo de nuevo en un momento." },
-      { status: 503 }
-    );
-  }
-
-  const spent = spentToday.reduce((sum, row) => sum + Number(row.cost ?? 0), 0);
-  if (spent >= MAX_AUDIO_USD_PER_DAY) {
-    return NextResponse.json(
-      { error: "Alcanzaste el límite de transcripción de audio de hoy. Vuelve a intentarlo mañana." },
-      { status: 429 }
-    );
-  }
 
   // formData() lanza con un body malformado; sin el try esto era un 500 y una
   // promesa rechazada sin capturar.
@@ -108,12 +70,19 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Reserva antes de gastar. La llamada a Whisper tarda segundos y durante ese
-  // rato el ledger no reflejaba nada: varias peticiones simultáneas leían el
-  // mismo total y pasaban todas. Escribiendo primero una fila con el coste
-  // MÁXIMO posible para este tamaño, la siguiente petición ya la ve. La ventana
-  // de carrera baja del tiempo de la transcripción al de este insert, y lo que
-  // quede sin cubrir lo acota el tope atómico de arriba.
+  const serviceClient = createServiceClient();
+
+  // RESERVAR, LUEGO VERIFICAR. El orden importa y es lo único que hace que el
+  // tope aguante peticiones simultáneas.
+  //
+  // Leer primero el gasto y decidir después es comprobar-y-actuar: dos
+  // peticiones a la vez leen el mismo total, las dos pasan, y el tope se salta
+  // por tantas veces como concurrencia haya. Escribiendo PRIMERO una fila con
+  // el coste máximo posible para este archivo, la suma que viene después ya
+  // incluye las reservas de todas las peticiones en vuelo, porque `usage_events`
+  // es estado compartido y no memoria de una instancia. Si dos entran a la vez
+  // y el total se pasa, las dos abortan y sueltan su reserva: se rechaza de más,
+  // nunca se gasta de más. Ese es el lado seguro del error.
   const { data: reservation, error: reservationError } = await serviceClient
     .from("usage_events")
     .insert({
@@ -139,6 +108,51 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const releaseReservation = async () => {
+    const { error } = await serviceClient.from("usage_events").delete().eq("id", reservation.id);
+    if (error) {
+      // Queda una reserva de más contra el presupuesto del día. Es el lado
+      // seguro (cobra de más, no de menos) pero hay que poder verlo.
+      console.error("transcribe reservation release failed", {
+        id: reservation.id,
+        code: error.code,
+        message: error.message,
+      });
+    }
+  };
+
+  // Fail-closed: si no se puede saber cuánto se lleva gastado, NO se gasta más.
+  // Tragarse este error convertía el tope en decorativo, porque una consulta
+  // fallida se leía como "gasto cero" y dejaba pasar todo.
+  const { data: spentToday, error: ledgerError } = await serviceClient
+    .from("usage_events")
+    .select("cost")
+    .eq("user_id", user.id)
+    .eq("model", MODEL)
+    .gte("created_at", startOfDayIso());
+
+  if (ledgerError || !spentToday) {
+    console.error("transcribe budget read failed", {
+      code: ledgerError?.code,
+      message: ledgerError?.message,
+    });
+    await releaseReservation();
+    return NextResponse.json(
+      { error: "No se pudo verificar tu cuota de audio. Inténtalo de nuevo en un momento." },
+      { status: 503 }
+    );
+  }
+
+  // La suma ya incluye la reserva propia y la de cualquier petición simultánea.
+  const spent = spentToday.reduce((sum, row) => sum + Number(row.cost ?? 0), 0);
+  if (spent > MAX_AUDIO_USD_PER_DAY) {
+    await releaseReservation();
+    return NextResponse.json(
+      { error: "Alcanzaste el límite de transcripción de audio de hoy. Vuelve a intentarlo mañana." },
+      { status: 429 }
+    );
+  }
+
   let transcription;
   try {
     // verbose_json en vez de json: trae `duration` en segundos, que es lo que
@@ -150,10 +164,9 @@ export async function POST(request: NextRequest) {
       response_format: "verbose_json",
     });
   } catch (error) {
-    // La transcripción no llegó a producirse: se suelta la reserva para no
-    // cobrarle al usuario un gasto que no ocurrió. El slot del tope diario
-    // atómico sí queda consumido, así que reintentar en bucle sigue acotado.
-    await serviceClient.from("usage_events").delete().eq("id", reservation.id);
+    // No hubo transcripción: se suelta la reserva para no cobrar un gasto que
+    // no ocurrió.
+    await releaseReservation();
     throw error;
   }
 
@@ -165,8 +178,8 @@ export async function POST(request: NextRequest) {
     .eq("id", reservation.id);
 
   if (usageError) {
-    // Se deja la reserva tal cual: sobreestima el gasto del día, que es el lado
-    // seguro del error.
+    // Se deja la reserva tal cual: sobreestima el gasto del día, que otra vez es
+    // el lado seguro.
     console.error("transcribe usage reconcile error", {
       code: usageError.code,
       message: usageError.message,
