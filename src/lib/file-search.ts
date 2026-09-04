@@ -12,27 +12,6 @@ export interface MentionQuery {
   query: string;
 }
 
-/** Primer y último code point de las marcas diacríticas combinantes. */
-const COMBINING_FIRST = 0x300;
-const COMBINING_LAST = 0x36f;
-
-/**
- * Minúsculas y sin acentos, para que la búsqueda no dependa de cómo se teclee.
- *
- * `normalize("NFD")` separa cada letra acentuada en letra + marca combinante, y
- * después se descartan esas marcas por code point. Se filtra en vez de usar un
- * rango en una expresión regular a propósito: ese rango se escribe con
- * caracteres invisibles en el editor y cualquiera los rompe sin darse cuenta.
- */
-export function normalize(value: string): string {
-  return [...value.toLowerCase().normalize("NFD")]
-    .filter((char) => {
-      const code = char.codePointAt(0) ?? 0;
-      return code < COMBINING_FIRST || code > COMBINING_LAST;
-    })
-    .join("");
-}
-
 /**
  * Devuelve la mención en curso si el cursor está dentro de una, o null.
  *
@@ -74,13 +53,6 @@ export function removeMention(
     text: text.slice(0, mention.start) + text.slice(caret),
     caret: mention.start,
   };
-}
-
-/** Filtra por nombre, ignorando mayúsculas y acentos. Consulta vacía = todo. */
-export function filterByName<T extends { name: string }>(items: T[], query: string): T[] {
-  const needle = normalize(query.trim());
-  if (!needle) return items;
-  return items.filter((item) => normalize(item.name).includes(needle));
 }
 
 /**

@@ -52,6 +52,13 @@ export async function GET(request: NextRequest) {
   // El filtro por nombre se hace en Postgres para no traer toda la biblioteca
   // y descartarla en memoria. `%` y `_` se escapan: sin eso, escribir "%" en el
   // buscador devuelve todo y "_" hace de comodín, que confunde sin avisar.
+  //
+  // Limitación conocida: `ilike` ignora mayúsculas pero NO acentos, así que
+  // buscar "resena" no encuentra "Reseña". Filtrar en el cliente tampoco lo
+  // arregla —solo podría reducir las 50 filas que ya volvieron, no recuperar
+  // las que el servidor descartó—, y hacerlo bien necesita la extensión
+  // `unaccent` en Postgres. Se deja así hasta que alguien lo pida: el
+  // reconocimiento real de las imágenes es la miniatura, no el nombre.
   if (q) {
     const escaped = q.replace(/[\\%_]/g, (match) => `\\${match}`);
     query = query.ilike("name", `%${escaped}%`);

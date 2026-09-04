@@ -216,7 +216,7 @@ Todos leen las credenciales de `.env.local`.
 | Comando | Qué hace |
 |---|---|
 | `npm run admin:bootstrap -- <email>` | Da acceso y admin. Idempotente. |
-| `npm run cleanup:orphans` | Borra archivos subidos que ya no referencia ningún mensaje. |
+| `npm run cleanup:orphans` | Borra archivos que se subieron y **nunca se enviaron**, con más de 30 días (`--keep-days=N` para cambiarlo, `--dry-run` para ver sin borrar). **Nunca toca lo que se envió alguna vez**: eso es la biblioteca del usuario, la que alimenta el menú `@` del composer, y sigue siendo suya aunque haya borrado la conversación. Requiere la columna `uploaded_files.attached_at`; sin ella se niega a correr. |
 | `npm run cleanup:orphan-users` | Borra cuentas de quien autenticó sin ser miembro (sin conversaciones, >7 días). **Solo informa**; hay que pasar `-- --confirm` para borrar. |
 | `npm run backfill:gpt-config` | Migración puntual de configuración de GPTs. |
 | `npm run backfill:messages` | Migración puntual de mensajes de threads. |

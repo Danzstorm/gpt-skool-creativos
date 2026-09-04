@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterByName, mentionAt, moveIndex, normalize, removeMention } from "./file-search";
+import { mentionAt, moveIndex, removeMention } from "./file-search";
 
 describe("mentionAt — cuándo se abre el menú", () => {
   it("se abre con @ al principio del texto", () => {
@@ -49,46 +49,6 @@ describe("removeMention", () => {
     const text = "mirá @bri y decime";
     const mention = mentionAt(text, 9)!;
     expect(removeMention(text, mention, 9)).toEqual({ text: "mirá  y decime", caret: 5 });
-  });
-});
-
-describe("normalize y filterByName", () => {
-  const files = [
-    { name: "Referencia-Luz.JPG" },
-    { name: "brief-2026.pdf" },
-    { name: "IMG_2039.jpg" },
-  ];
-
-  it("ignora mayúsculas", () => {
-    expect(filterByName(files, "referencia")).toEqual([{ name: "Referencia-Luz.JPG" }]);
-  });
-
-  it("ignora acentos en los dos sentidos", () => {
-    // Alguien escribe "referéncia" con acento, o el archivo lo tiene y la
-    // búsqueda no. Los dos casos tienen que encontrar.
-    expect(normalize("Referéncia")).toBe("referencia");
-    expect(filterByName([{ name: "Reseña Fotográfica.png" }], "resena")).toHaveLength(1);
-    expect(filterByName([{ name: "Resena.png" }], "reseña")).toHaveLength(1);
-  });
-
-  it("trata la ñ como n, a propósito", () => {
-    // NFD descompone la ñ en n + tilde combinante, y el filtro descarta la
-    // tilde. Lingüísticamente son letras distintas, pero en un buscador de
-    // archivos conviene perdonar: quien teclea "diseno" apurado tiene que
-    // encontrar "diseño". El precio es que "año" y "ano" empatan, que en
-    // nombres de archivo no molesta a nadie.
-    expect(normalize("diseño")).toBe("diseno");
-    expect(filterByName([{ name: "diseño-final.pdf" }], "diseno")).toHaveLength(1);
-  });
-
-  it("con la consulta vacía devuelve todo", () => {
-    // Es el estado inicial: se escribe @ y todavía no se filtró nada.
-    expect(filterByName(files, "")).toHaveLength(3);
-    expect(filterByName(files, "   ")).toHaveLength(3);
-  });
-
-  it("no encuentra nada cuando no hay coincidencia", () => {
-    expect(filterByName(files, "zzz")).toEqual([]);
   });
 });
 
