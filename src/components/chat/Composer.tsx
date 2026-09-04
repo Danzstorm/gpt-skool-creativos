@@ -1,9 +1,12 @@
-import { forwardRef, memo, useCallback, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { ArrowUp, Plus, Image as ImageIcon, Paperclip, Mic, X, Check, Square } from "lucide-react";
 import type { UploadedFile } from "@/lib/types";
 import { useDismissable } from "@/lib/useDismissable";
 import RecordingWave from "./RecordingWave";
 import { imageLabel, imageNumber } from "@/lib/attachment-labels";
+import { mentionAt, moveIndex, removeMention, type MentionQuery } from "@/lib/file-search";
+import FilePicker from "./FilePicker";
+import type { LibraryFile } from "@/app/api/files/route";
 
 export interface ComposerHandle {
   setText: (text: string) => void;
@@ -19,12 +22,14 @@ interface Props {
   onRemoveFile: (index: number) => void;
   onSend: (text: string) => void;
   onStop: () => void;
+  /** Adjunta un archivo ya subido antes, elegido desde el menú `@`. */
+  onLibraryPick: (file: LibraryFile) => void;
 }
 
 // Composer aislado: el texto y la grabación viven acá, no en el componente padre.
 // Así escribir no re-renderiza el resto del chat (sidebar, lista de mensajes).
 const Composer = forwardRef<ComposerHandle, Props>(function Composer(
-  { isLoading, isUploading, isEditing, onCancelEdit, attachedFiles, onFilesSelected, onRemoveFile, onSend, onStop },
+  { isLoading, isUploading, isEditing, onCancelEdit, attachedFiles, onFilesSelected, onRemoveFile, onSend, onStop, onLibraryPick },
   ref
 ) {
   const [input, setInput] = useState("");
@@ -35,6 +40,11 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [micError, setMicError] = useState("");
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
+  // Menú `@` de la biblioteca de archivos.
+  const [mention, setMention] = useState<MentionQuery | null>(null);
+  const [library, setLibrary] = useState<LibraryFile[]>([]);
+  const [libraryLoading, setLibraryLoading] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -46,6 +56,61 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
 
   const closeAttachMenu = useCallback(() => setAttachMenuOpen(false), []);
   const attachMenuRef = useDismissable<HTMLDivElement>(attachMenuOpen, closeAttachMenu);
+
+  const closeMention = useCallback(() => setMention(null), []);
+  const mentionRef = useDismissable<HTMLDivElement>(mention !== null, closeMention);
+
+  // Se busca en la biblioteca con un respiro de 180ms: sin él, cada tecla
+  // dispara una petición y el servidor recibe una ráfaga por palabra escrita.
+  const mentionQuery = mention?.query ?? null;
+  useEffect(() => {
+    if (mentionQuery === null) return;
+    let cancelled = false;
+    setLibraryLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/files?q=${encodeURIComponent(mentionQuery)}`);
+        if (!res.ok) throw new Error("no se pudo cargar la biblioteca");
+        const data: LibraryFile[] = await res.json();
+        if (cancelled) return;
+        setLibrary(data);
+        setActiveIndex(0);
+      } catch {
+        // Silencioso a propósito: el menú se ve vacío, que es información
+        // suficiente. Un error rojo tapando el composer sería peor que no
+        // encontrar archivos.
+        if (!cancelled) setLibrary([]);
+      } finally {
+        if (!cancelled) setLibraryLoading(false);
+      }
+    }, 180);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [mentionQuery]);
+
+  /** Recalcula si el cursor está dentro de una mención `@`. */
+  function syncMention(el: HTMLTextAreaElement) {
+    setMention(mentionAt(el.value, el.selectionStart ?? el.value.length));
+  }
+
+  function pickFromLibrary(file: LibraryFile) {
+    const el = textareaRef.current;
+    if (!el || !mention) return;
+    const caret = el.selectionStart ?? el.value.length;
+    const next = removeMention(el.value, mention, caret);
+    setInput(next.text);
+    setMention(null);
+    onLibraryPick(file);
+    // El cursor vuelve a donde estaba el `@`, para poder seguir escribiendo
+    // la frase sin buscar el punto con el mouse.
+    setTimeout(() => {
+      el.focus();
+      el.setSelectionRange(next.caret, next.caret);
+      autoResize();
+    }, 0);
+  }
 
   function autoResize() {
     const el = textareaRef.current;
@@ -156,6 +221,33 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    // El menú se atiende PRIMERO. Si no, Enter envía el mensaje en vez de
+    // elegir el archivo resaltado — el error clásico de este tipo de menú.
+    if (mention) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setActiveIndex((i) => moveIndex(i, 1, library.length));
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setActiveIndex((i) => moveIndex(i, -1, library.length));
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setMention(null);
+        return;
+      }
+      // Con la lista vacía NO se intercepta: alguien escribió "@zzz" sin
+      // resultados y lo que quiere es mandar su mensaje, no elegir nada.
+      if ((e.key === "Enter" || e.key === "Tab") && library.length > 0) {
+        e.preventDefault();
+        pickFromLibrary(library[activeIndex]);
+        return;
+      }
+    }
+
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       submit();
@@ -227,7 +319,17 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
         </div>
       )}
 
-      <div className="flex items-end gap-2 bg-zinc-900/80 border border-zinc-700/70 focus-within:border-zinc-500 rounded-2xl px-3.5 py-2 transition-colors shadow-[0_1px_0_rgba(255,255,255,0.03)_inset] max-w-3xl mx-auto">
+      <div ref={mentionRef} className="relative flex items-end gap-2 bg-zinc-900/80 border border-zinc-700/70 focus-within:border-zinc-500 rounded-2xl px-3.5 py-2 transition-colors shadow-[0_1px_0_rgba(255,255,255,0.03)_inset] max-w-3xl mx-auto">
+        {mention && (
+          <FilePicker
+            files={library}
+            activeIndex={activeIndex}
+            loading={libraryLoading}
+            query={mention.query}
+            onPick={pickFromLibrary}
+            onHover={setActiveIndex}
+          />
+        )}
         <input
           ref={fileInputRef}
           type="file"
@@ -292,8 +394,12 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
               value={input}
               onChange={(e) => {
                 setInput(e.target.value);
+                syncMention(e.target);
                 autoResize();
               }}
+              // onSelect cubre mover el cursor con el mouse o las flechas hasta
+              // dentro de un `@` que ya estaba escrito.
+              onSelect={(e) => syncMention(e.currentTarget)}
               onKeyDown={handleKeyDown}
               onPaste={handlePaste}
               placeholder={

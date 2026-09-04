@@ -11,6 +11,7 @@ import Composer, { type ComposerHandle } from "./chat/Composer";
 import GptChatsModal from "./chat/GptChatsModal";
 import { consumeSSE } from "@/lib/stream-client";
 import ThinkingIndicator from "./chat/ThinkingIndicator";
+import type { LibraryFile } from "@/app/api/files/route";
 import {
   countAttachments,
   EMPTY_ATTACHMENTS,
@@ -303,6 +304,29 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
     ];
     if (errors.length > 0) setUploadError(errors.join(" · "));
   }, [attachedFiles.length, pendingUploads]);
+
+  /**
+   * Adjunta un archivo que ya vive en la biblioteca del usuario.
+   *
+   * No sube nada: reusa el `openai_file_id` que ya existe, que es el punto
+   * entero de la función. Se ignora si ya está adjunto para que elegirlo dos
+   * veces no lo duplique.
+   */
+  const attachFromLibrary = useCallback((file: LibraryFile) => {
+    setAttachedFiles((prev) =>
+      prev.some((f) => f.openai_file_id === file.openai_file_id)
+        ? prev
+        : [
+            ...prev,
+            {
+              name: file.name,
+              openai_file_id: file.openai_file_id,
+              type: file.type,
+              previewUrl: file.previewUrl,
+            },
+          ]
+    );
+  }, []);
 
   const removeAttached = useCallback((index: number) => {
     setAttachedFiles((prev) => {
@@ -808,6 +832,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
           <Composer
             ref={composerRef}
             isLoading={isLoading}
+            onLibraryPick={attachFromLibrary}
             isUploading={pendingUploads > 0}
             isEditing={isEditing}
             onCancelEdit={cancelEdit}
