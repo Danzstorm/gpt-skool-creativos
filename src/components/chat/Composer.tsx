@@ -3,6 +3,7 @@ import { ArrowUp, Plus, Image as ImageIcon, Paperclip, Mic, X, Check, Square } f
 import type { UploadedFile } from "@/lib/types";
 import { useDismissable } from "@/lib/useDismissable";
 import RecordingWave from "./RecordingWave";
+import { imageLabel, imageNumber } from "@/lib/attachment-labels";
 
 export interface ComposerHandle {
   setText: (text: string) => void;
@@ -166,7 +167,11 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
       {attachedFiles.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-3 max-w-3xl mx-auto">
           {attachedFiles.map((f, i) => {
-            const imageIndex = attachedFiles.filter((x, xi) => x.type === "image" && xi <= i).length;
+            // La numeración sale de la misma función que usa el servidor para
+            // rotular las imágenes que le manda al modelo: si se calcularan por
+            // separado, el usuario vería "imagen 2" mientras el modelo habla
+            // de otra.
+            const position = imageNumber(attachedFiles, i);
             return f.type === "image" ? (
               <div key={i} className="relative group/thumb">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -176,7 +181,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
                   className="w-16 h-16 object-cover rounded-xl border border-zinc-700"
                 />
                 <span className="absolute bottom-0.5 left-0.5 text-[10px] bg-black/70 text-white rounded px-1">
-                  img {imageIndex}
+                  {position !== null ? imageLabel(position) : "imagen"}
                 </span>
                 <button
                   onClick={() => onRemoveFile(i)}

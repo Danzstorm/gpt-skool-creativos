@@ -3,6 +3,7 @@ import { Copy, Check, RotateCcw, Pencil, Paperclip } from "lucide-react";
 import type { Gpt, Message } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import MessageContent from "../MessageContent";
+import { imageLabel, imageNumber } from "@/lib/attachment-labels";
 
 interface Props {
   message: Message;
@@ -43,22 +44,33 @@ function MessageBubble({
 
   const files = msg.files && msg.files.length > 0 && (
     <div className="flex flex-wrap gap-1.5 mb-2">
-      {msg.files.map((f, fi) =>
-        f.type === "image" && f.previewUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            key={fi}
-            src={f.previewUrl}
-            alt={f.name}
-            className="w-24 h-24 object-cover rounded-lg border border-white/20"
-          />
+      {msg.files.map((f, fi) => {
+        // La misma etiqueta que ve el usuario en el composer y que el servidor
+        // le manda al modelo. Sin esto, la numeración desaparecía al enviar y
+        // el usuario perdía la referencia justo cuando iba a usarla para
+        // escribir el siguiente mensaje ("en la imagen 2…").
+        const position = imageNumber(msg.files!, fi);
+        return f.type === "image" && f.previewUrl ? (
+          <div key={fi} className="relative">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={f.previewUrl}
+              alt={position !== null ? imageLabel(position) : "imagen"}
+              className="w-24 h-24 object-cover rounded-lg border border-white/20"
+            />
+            {position !== null && (
+              <span className="absolute bottom-0.5 left-0.5 text-[10px] bg-black/70 text-white rounded px-1">
+                {imageLabel(position)}
+              </span>
+            )}
+          </div>
         ) : (
           <span key={fi} className="inline-flex items-center gap-1 text-xs bg-zinc-700/40 rounded-lg px-2 py-1">
             <Paperclip size={12} className="flex-shrink-0" />
             {f.name}
           </span>
-        )
-      )}
+        );
+      })}
     </div>
   );
 
