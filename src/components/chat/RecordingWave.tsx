@@ -1,21 +1,24 @@
 import { memo, useEffect, useRef } from "react";
+import { INITIAL_LEVEL_STATE, nextLevel, rmsOf, type LevelState } from "@/lib/audio-level";
 
-// Ranuras de la pista. La grabación entra por la derecha y empuja el historial
-// hacia la izquierda; cuando se llenan todas, las más viejas se caen del borde.
-const SLOTS = 96;
+// Menos barras y más anchas que la versión anterior (eran 96 de 3px con 2px de
+// separación, que a esa densidad se lee como una trama y no como una onda).
+const SLOTS = 40;
 
-// Cada cuánto se captura un nivel. 55ms ≈ 18 muestras por segundo: suficiente
-// para que la onda se lea como voz y no como ruido, y mucho más barato que
-// redibujar en cada frame.
-const SAMPLE_MS = 55;
+// Cada cuánto ENTRA una muestra nueva al historial. El dibujado no depende de
+// esto: corre por requestAnimationFrame y va interpolando entre muestras, así
+// que 60ms de muestreo no se ven como 16 saltos por segundo.
+const SAMPLE_MS = 60;
 
-// Ganancia empírica: la voz de conversación normal mueve la señal ~0.2-0.4 del
-// rango, así que sin amplificar las barras casi no se despegan del piso.
-// ponytail: constante fija; si un micrófono queda muy corto o satura, esto es
-// lo que se ajusta (o se pasa a normalización por pico rodante).
-const GAIN = 2.2;
+// Cuánto se acerca cada barra a su objetivo en cada frame. Más alto = más
+// pegado al dato y más nervioso; más bajo = más suave pero con retardo
+// perceptible al empezar a hablar.
+const EASING = 0.28;
 
-const FLOOR = 0.06; // alto de una ranura vacía: el "puntito"
+const FLOOR = 0.08; // alto de una ranura vacía: el "puntito"
+
+// El ataque/caída y la normalización contra pico rodante viven en
+// src/lib/audio-level.ts, que es donde se pueden testear.
 
 /**
  * Onda de audio de la grabación en curso, al estilo del dictado de ChatGPT.
@@ -26,8 +29,8 @@ const FLOOR = 0.06; // alto de una ranura vacía: el "puntito"
  * grabaron quedan como puntos tenues.
  *
  * Lee el mismo MediaStream que usa el MediaRecorder, así que refleja la voz
- * real. Las barras se mutan por ref y no por estado: un setState por muestra
- * re-renderizaría el composer entero 18 veces por segundo.
+ * real. Las barras se mutan por ref y no por estado: un setState por frame
+ * re-renderizaría el composer entero 60 veces por segundo.
  */
 function RecordingWave({ stream }: { stream: MediaStream }) {
   const barsRef = useRef<(HTMLSpanElement | null)[]>([]);
@@ -48,19 +51,30 @@ function RecordingWave({ stream }: { stream: MediaStream }) {
     // y no espectro. Con frecuencias la voz vive en los primeros bins y la mitad
     // de las barras quedaría muerta.
     const data = new Uint8Array(analyser.fftSize);
+
     const history: number[] = [];
+    // Lo que se está mostrando ahora mismo, que persigue a `history`. Son dos
+    // cosas distintas: el historial salta cada SAMPLE_MS, esto se desliza.
+    const shown = new Float32Array(SLOTS);
 
-    const id = setInterval(() => {
-      analyser.getByteTimeDomainData(data);
+    let levelState: LevelState = INITIAL_LEVEL_STATE;
+    let lastSampleAt = 0;
+    let frame = 0;
 
-      let peak = 0;
-      for (let i = 0; i < data.length; i++) {
-        const deviation = Math.abs(data[i] - 128) / 128;
-        if (deviation > peak) peak = deviation;
+    const draw = (now: number) => {
+      frame = requestAnimationFrame(draw);
+
+      if (now - lastSampleAt >= SAMPLE_MS) {
+        lastSampleAt = now;
+
+        analyser.getByteTimeDomainData(data);
+
+        const advanced = nextLevel(levelState, rmsOf(data));
+        levelState = advanced.state;
+
+        history.push(advanced.level);
+        if (history.length > SLOTS) history.shift();
       }
-
-      history.push(Math.min(1, peak * GAIN));
-      if (history.length > SLOTS) history.shift();
 
       // Anclado a la derecha: la muestra más nueva ocupa la última ranura.
       const offset = SLOTS - history.length;
@@ -68,21 +82,30 @@ function RecordingWave({ stream }: { stream: MediaStream }) {
         const el = barsRef.current[i];
         if (!el) continue;
         const recorded = i >= offset;
-        const level = recorded ? history[i - offset] : 0;
-        el.style.transform = `scaleY(${FLOOR + level * (1 - FLOOR)})`;
+        const target = recorded ? history[i - offset] : 0;
+
+        // Aquí está la fluidez: la barra no salta al valor nuevo, se acerca un
+        // porcentaje por frame. Como el historial se corre una posición cada
+        // SAMPLE_MS, el conjunto se lee como una onda que fluye en vez de una
+        // fila de barras que parpadean.
+        shown[i] += (target - shown[i]) * EASING;
+
+        el.style.transform = `scaleY(${FLOOR + shown[i] * (1 - FLOOR)})`;
         el.style.opacity = recorded ? "0.9" : "0.3";
       }
-    }, SAMPLE_MS);
+    };
+
+    frame = requestAnimationFrame(draw);
 
     return () => {
-      clearInterval(id);
+      cancelAnimationFrame(frame);
       source.disconnect();
       void ctx.close();
     };
   }, [stream]);
 
   return (
-    <div className="flex flex-1 items-center gap-[2px] h-9 min-w-0 px-1">
+    <div className="flex flex-1 items-center gap-[3px] h-9 min-w-0 px-1">
       {/* Decorativa para lectores de pantalla: el estado lo anuncia el
           aria-live del composer. */}
       {Array.from({ length: SLOTS }, (_, i) => (
@@ -92,7 +115,7 @@ function RecordingWave({ stream }: { stream: MediaStream }) {
             barsRef.current[i] = el;
           }}
           aria-hidden="true"
-          className="flex-1 max-w-[3px] h-6 rounded-full bg-ink origin-center will-change-transform"
+          className="flex-1 max-w-[4px] h-6 rounded-full bg-ink origin-center will-change-transform"
           style={{ transform: `scaleY(${FLOOR})`, opacity: 0.3 }}
         />
       ))}
