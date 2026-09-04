@@ -411,11 +411,9 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
               placeholder={
                 isTranscribing
                   ? "Transcribiendo audio..."
-                  : isUploading
-                    ? "Procesando imágenes..."
-                    : "Escribe un mensaje... (Enter para enviar)"
+                  : "Escribe un mensaje... (Enter para enviar)"
               }
-              disabled={isLoading || isTranscribing || isUploading}
+              disabled={isLoading || isTranscribing}
               rows={1}
               className="flex-1 bg-transparent text-ink placeholder-zinc-500 resize-none focus:outline-none text-[15px] py-1.5 max-h-[180px] leading-normal"
             />
