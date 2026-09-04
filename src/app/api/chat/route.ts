@@ -11,6 +11,7 @@ import { recordMessageAttachments } from "@/lib/message-attachments";
 import {
   CONVERSATION_KEY_FINGERPRINT,
   ensureThreadConversation,
+  keepAvailableFiles,
 } from "@/lib/conversation-sync";
 import {
   acquireThreadLease,
@@ -162,6 +163,28 @@ export async function POST(request: NextRequest) {
     });
     if (!gpt.vision_enabled && incoming.some((file) => file.type === "image")) {
       return NextResponse.json({ error: "Este GPT no admite imágenes" }, { status: 400 });
+    }
+
+    // Un archivo puede existir en nuestra base y ya no en OpenAI: la key se
+    // rotó (los file_id pertenecen a la cuenta que los subió) o alguien lo
+    // borró allá. Pasa sobre todo con archivos elegidos desde la biblioteca
+    // con `@`, que pueden ser de hace meses.
+    //
+    // Sin esta comprobación, OpenAI responde "No such File object" a mitad del
+    // stream y el usuario ve un error crudo en inglés. Los bytes siguen en
+    // Storage, así que re-subirlos es posible — pero no es trivial: el índice
+    // único (user_id, storage_path) impide crear otra fila para el mismo
+    // objeto, y la FK de message_attachments impide cambiarle el id a uno ya
+    // referenciado. Queda como trabajo aparte; por ahora se avisa claro.
+    const available = await keepAvailableFiles(openai, incoming);
+    if (available.length !== incoming.length) {
+      return NextResponse.json(
+        {
+          error:
+            "Uno de los archivos ya no está disponible. Vuelve a subirlo desde el botón de adjuntar.",
+        },
+        { status: 400 }
+      );
     }
   }
 
