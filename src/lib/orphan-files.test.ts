@@ -6,48 +6,81 @@ import { DEFAULT_KEEP_DAYS, selectOrphans } from "../../scripts/lib/orphan-files
 
 const AHORA = new Date("2026-09-03T00:00:00Z").getTime();
 const DIA = 24 * 60 * 60 * 1000;
+const hace = (dias: number) => new Date(AHORA - dias * DIA).toISOString();
 
-const archivo = (id: string, diasDeAntiguedad: number) => ({
+/** Subido hace N días y nunca enviado. */
+const nuncaEnviado = (id: string, dias: number) => ({
   openai_file_id: id,
   storage_path: `u/${id}.png`,
-  created_at: new Date(AHORA - diasDeAntiguedad * DIA).toISOString(),
+  created_at: hace(dias),
+  attached_at: null,
 });
 
+/** Subido hace N días y enviado alguna vez: biblioteca del usuario. */
+const enviado = (id: string, dias: number) => ({
+  ...nuncaEnviado(id, dias),
+  attached_at: hace(dias),
+});
+
+const ids = (rows: Array<{ openai_file_id: string }>) => rows.map((r) => r.openai_file_id);
+
 describe("selectOrphans", () => {
-  it("no borra lo que algún mensaje referencia, por viejo que sea", () => {
-    const uploaded = [archivo("file-A", 400)];
-    expect(selectOrphans(uploaded, new Set(["file-A"]), 30, AHORA)).toEqual([]);
+  it("NUNCA borra un archivo que se envió alguna vez", () => {
+    // Es la regla que da sentido a la biblioteca. Da igual la antigüedad y da
+    // igual que su conversación ya no exista: si se mandó, es del usuario.
+    expect(selectOrphans([enviado("file-A", 4000)], 30, AHORA)).toEqual([]);
   });
 
-  it("borra lo que no referencia nadie y ya pasó la ventana", () => {
-    const uploaded = [archivo("file-A", 40)];
-    const orphans = selectOrphans(uploaded, new Set(), 30, AHORA);
-    expect(orphans.map((f: { openai_file_id: string }) => f.openai_file_id)).toEqual(["file-A"]);
+  it("no depende de que un mensaje siga apuntando al archivo", () => {
+    // El fallo que motivó el cambio: antes se deducía por alcanzabilidad, así
+    // que borrar una conversación dejaba sus archivos a merced de la limpieza
+    // aunque siguieran en la biblioteca de su dueño.
+    const borroSuConversacion = { ...enviado("file-A", 90) };
+    expect(selectOrphans([borroSuConversacion], 30, AHORA)).toEqual([]);
   });
 
-  it("PROTEGE lo reciente aunque no lo referencie ningún mensaje", () => {
-    // El caso que motivó la ventana: alguien borra una conversación y sus
-    // archivos quedan sin referencia, pero los sigue esperando en la
-    // biblioteca del composer.
-    const uploaded = [archivo("file-nuevo", 3)];
-    expect(selectOrphans(uploaded, new Set(), 30, AHORA)).toEqual([]);
+  it("borra lo que se subió y nunca se mandó, pasada la ventana", () => {
+    // Este sí es el caso original: alguien adjuntó algo y cerró la pestaña.
+    expect(ids(selectOrphans([nuncaEnviado("file-A", 40)], 30, AHORA))).toEqual(["file-A"]);
+  });
+
+  it("protege lo nunca enviado pero reciente", () => {
+    // Alguien adjunta hoy, no manda todavía y vuelve mañana a terminar.
+    expect(selectOrphans([nuncaEnviado("file-nuevo", 3)], 30, AHORA)).toEqual([]);
   });
 
   it("el límite es estricto: justo en la ventana todavía se conserva", () => {
-    expect(selectOrphans([archivo("file-A", 30)], new Set(), 30, AHORA)).toEqual([]);
-    expect(selectOrphans([archivo("file-A", 31)], new Set(), 30, AHORA)).toHaveLength(1);
+    expect(selectOrphans([nuncaEnviado("file-A", 30)], 30, AHORA)).toEqual([]);
+    expect(selectOrphans([nuncaEnviado("file-A", 31)], 30, AHORA)).toHaveLength(1);
   });
 
-  it("conserva un archivo sin fecha en vez de borrarlo", () => {
+  it("conserva un archivo sin fecha de subida en vez de borrarlo", () => {
     // Ante la duda no se borra: es la dirección segura del error cuando lo que
     // está del otro lado es irreversible.
-    const sinFecha = { openai_file_id: "file-X", storage_path: "u/x.png", created_at: null };
-    expect(selectOrphans([sinFecha], new Set(), 30, AHORA)).toEqual([]);
+    const sinFecha = {
+      openai_file_id: "file-X",
+      storage_path: "u/x.png",
+      created_at: null,
+      attached_at: null,
+    };
+    expect(selectOrphans([sinFecha], 30, AHORA)).toEqual([]);
   });
 
-  it("con keepDays 0 se comporta como antes de la ventana", () => {
-    // La vía de escape para una limpieza agresiva deliberada.
-    expect(selectOrphans([archivo("file-A", 0.5)], new Set(), 0, AHORA)).toHaveLength(1);
+  it("con keepDays 0 sigue sin tocar la biblioteca", () => {
+    // La vía de escape para una limpieza agresiva no puede convertirse en una
+    // forma de borrar archivos enviados.
+    const lote = [nuncaEnviado("file-basura", 0.5), enviado("file-biblioteca", 0.5)];
+    expect(ids(selectOrphans(lote, 0, AHORA))).toEqual(["file-basura"]);
+  });
+
+  it("separa correctamente un lote mezclado", () => {
+    const lote = [
+      enviado("file-1", 500),
+      nuncaEnviado("file-2", 500),
+      enviado("file-3", 1),
+      nuncaEnviado("file-4", 1),
+    ];
+    expect(ids(selectOrphans(lote, 30, AHORA))).toEqual(["file-2"]);
   });
 
   it("la ventana por defecto es de 30 días", () => {

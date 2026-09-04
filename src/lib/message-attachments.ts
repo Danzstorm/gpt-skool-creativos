@@ -15,6 +15,32 @@ export async function recordMessageAttachments(
   files: IncomingFile[]
 ): Promise<void> {
   if (files.length === 0) return;
+
+  // Marca de ciclo de vida: este archivo llegó a mandarse, así que pasa a ser
+  // biblioteca del usuario y la limpieza ya no lo puede recolectar. Va antes
+  // del dual-write y fuera de su circuit breaker porque protege de un borrado
+  // irreversible en tres sistemas, mientras que message_attachments es todavía
+  // una tabla sombra que nadie lee.
+  //
+  // Solo la primera vez (filtro attached_at is null): re-adjuntar un archivo
+  // viejo desde la biblioteca no debe reescribir su fecha original.
+  const { error: attachError } = await service
+    .from("uploaded_files")
+    .update({ attached_at: new Date().toISOString() })
+    .in(
+      "openai_file_id",
+      files.map((file) => file.openai_file_id)
+    )
+    .is("attached_at", null);
+
+  if (attachError) {
+    console.error("uploaded_files attached_at error", {
+      messageId,
+      code: attachError.code,
+      message: attachError.message,
+    });
+  }
+
   if (Date.now() < unavailableUntil) return;
 
   const { error } = await service.from("message_attachments").insert(

@@ -1,7 +1,11 @@
-// Limpia archivos huérfanos: uploaded_files (+ su copia en Storage y el archivo
-// en OpenAI) que ya no está referenciado por ningún mensaje. Pasa esto cuando
-// se borran threads/mensajes (editar, regenerar, borrar conversación) — el
-// archivo subido no se borra automáticamente en esos flujos.
+// Limpia archivos que se subieron y NUNCA se mandaron: quedan en
+// uploaded_files (+ su copia en Storage y el archivo en OpenAI) ocupando lugar
+// sin haber llegado a ningún mensaje. Pasa cuando alguien adjunta algo y cierra
+// la pestaña sin enviar.
+//
+// Lo que NO borra: nada que se haya enviado alguna vez (attached_at no nulo).
+// Eso es la biblioteca del usuario, la que alimenta el menú `@` del composer, y
+// sigue siendo suya aunque haya borrado la conversación donde la mandó.
 //
 // Uso: node --env-file=.env.local scripts/cleanup-orphans.mjs [--dry-run] [--keep-days=N]
 //
@@ -27,25 +31,32 @@ if (!Number.isFinite(keepDays) || keepDays < 0) {
 async function main() {
   const { data: uploaded, error: uploadedError } = await supabase
     .from("uploaded_files")
-    .select("openai_file_id, storage_path, created_at");
-  if (uploadedError) throw uploadedError;
+    .select("openai_file_id, storage_path, created_at, attached_at");
 
-  const { data: messages, error: messagesError } = await supabase.from("messages").select("files");
-  if (messagesError) throw messagesError;
-
-  const referenced = new Set();
-  for (const m of messages) {
-    for (const f of m.files ?? []) {
-      if (f?.openai_file_id) referenced.add(f.openai_file_id);
+  // Sin la columna, la única forma de decidir sería la vieja —por
+  // alcanzabilidad— y esa borra biblioteca legítima. Se prefiere no correr
+  // antes que borrar de más: lo de enfrente es irreversible.
+  if (uploadedError) {
+    if (uploadedError.code === "42703" || /attached_at/.test(uploadedError.message ?? "")) {
+      console.error(
+        [
+          "Falta la columna uploaded_files.attached_at.",
+          "Aplica la migración 20260904040000_uploaded_files_attached_at.sql (supabase db push)",
+          "antes de correr esta limpieza.",
+        ].join(" ")
+      );
+      process.exit(1);
     }
+    throw uploadedError;
   }
 
-  const orphans = selectOrphans(uploaded, referenced, keepDays);
-  const sinReferencia = uploaded.filter((u) => !referenced.has(u.openai_file_id)).length;
+  const enviados = uploaded.filter((u) => u.attached_at).length;
+  const orphans = selectOrphans(uploaded, keepDays);
+  const nuncaEnviados = uploaded.length - enviados;
   console.log(
-    `${uploaded.length} archivos subidos, ${referenced.size} referenciados, ` +
-      `${sinReferencia} sin mensaje, ${orphans.length} borrables ` +
-      `(los otros ${sinReferencia - orphans.length} son de los últimos ${keepDays} días).`
+    `${uploaded.length} archivos subidos, ${enviados} enviados alguna vez (biblioteca, intocables), ` +
+      `${nuncaEnviados} nunca enviados, ${orphans.length} borrables ` +
+      `(los otros ${nuncaEnviados - orphans.length} son de los últimos ${keepDays} días).`
   );
 
   if (dryRun) {
