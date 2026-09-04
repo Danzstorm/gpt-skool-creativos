@@ -50,8 +50,21 @@ async function main() {
     throw uploadedError;
   }
 
-  const enviados = uploaded.filter((u) => u.attached_at).length;
-  const orphans = selectOrphans(uploaded, keepDays);
+  // Segunda señal, independiente de attached_at: si algún mensaje todavía
+  // apunta al archivo, se envió — aunque la marca no se haya llegado a
+  // escribir. Se piden las dos porque fallan de formas distintas.
+  const { data: messages, error: messagesError } = await supabase.from("messages").select("files");
+  if (messagesError) throw messagesError;
+
+  const referenced = new Set();
+  for (const m of messages) {
+    for (const f of m.files ?? []) {
+      if (f?.openai_file_id) referenced.add(f.openai_file_id);
+    }
+  }
+
+  const enviados = uploaded.filter((u) => u.attached_at || referenced.has(u.openai_file_id)).length;
+  const orphans = selectOrphans(uploaded, referenced, keepDays);
   const nuncaEnviados = uploaded.length - enviados;
   console.log(
     `${uploaded.length} archivos subidos, ${enviados} enviados alguna vez (biblioteca, intocables), ` +
