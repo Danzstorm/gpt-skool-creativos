@@ -313,19 +313,27 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
    * veces no lo duplique.
    */
   const attachFromLibrary = useCallback((file: LibraryFile) => {
-    setAttachedFiles((prev) =>
-      prev.some((f) => f.openai_file_id === file.openai_file_id)
-        ? prev
-        : [
-            ...prev,
-            {
-              name: file.name,
-              openai_file_id: file.openai_file_id,
-              type: file.type,
-              previewUrl: file.previewUrl,
-            },
-          ]
-    );
+    setUploadError(null);
+    setAttachedFiles((prev) => {
+      if (prev.some((f) => f.openai_file_id === file.openai_file_id)) return prev;
+      // El mismo tope que aplica al subir. Sin esto se podían elegir 11
+      // archivos de la biblioteca, y el rechazo llegaba del servidor DESPUÉS
+      // de que el composer ya había vaciado los adjuntos al enviar: el usuario
+      // veía un error y encima perdía lo que había adjuntado.
+      if (prev.length >= MAX_FILES_PER_MESSAGE) {
+        setUploadError(`Puedes adjuntar hasta ${MAX_FILES_PER_MESSAGE} archivos por mensaje.`);
+        return prev;
+      }
+      return [
+        ...prev,
+        {
+          name: file.name,
+          openai_file_id: file.openai_file_id,
+          type: file.type,
+          previewUrl: file.previewUrl,
+        },
+      ];
+    });
   }, []);
 
   const removeAttached = useCallback((index: number) => {

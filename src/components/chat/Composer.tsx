@@ -241,7 +241,13 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
       }
       // Con la lista vacía NO se intercepta: alguien escribió "@zzz" sin
       // resultados y lo que quiere es mandar su mensaje, no elegir nada.
-      if ((e.key === "Enter" || e.key === "Tab") && library.length > 0) {
+      //
+      // Y tampoco mientras se está buscando: en ese momento `library` todavía
+      // tiene los resultados de la consulta ANTERIOR, que ya no se ven en
+      // pantalla (el menú muestra "Buscando…"). Sin este guardia, escribir
+      // `@bri`, seguir tecleando y dar Enter adjuntaba un archivo que el
+      // usuario no tenía delante.
+      if ((e.key === "Enter" || e.key === "Tab") && !libraryLoading && library.length > 0) {
         e.preventDefault();
         pickFromLibrary(library[activeIndex]);
         return;
