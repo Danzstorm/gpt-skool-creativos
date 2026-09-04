@@ -18,6 +18,9 @@ export interface RunStreamParams {
   conversationId: string;
   model: string;
   instructions: string;
+  // Si el turno lleva imágenes o documentos. Cuando es true se concatena un
+  // bloque propio de la app a las instrucciones (ver ATTACHMENT_RULES).
+  hasAttachments?: boolean;
   // La Responses API exige `input` en cada llamada; no hay forma de "continuar
   // sin aportar nada nuevo" (confirmado: omitirlo da 400 missing_required_parameter).
   input: ResponseInputItem[];
@@ -87,8 +90,33 @@ function safeErrorDetails(error: unknown) {
   };
 }
 
+/**
+ * Reglas que la app agrega a las instrucciones del GPT, y SOLO en los turnos
+ * que llevan adjuntos.
+ *
+ * El system_prompt lo escribe el cliente y es su producto: no se toca ni se
+ * reescribe. Esto se concatena aparte y después, y en un mensaje de texto puro
+ * el modelo recibe exactamente los mismos bytes que antes.
+ *
+ * Hace falta porque OpenAI le muestra al modelo el filename del archivo, y sin
+ * una regla explícita el modelo lo cita — o cita la ruta del contenedor de code
+ * interpreter (/mnt/data/...), que es de donde salía "mt.data.image23490.png".
+ * Las etiquetas de chat-content.ts le dan el vocabulario correcto; esto le dice
+ * que use ese y no otro.
+ */
+const ATTACHMENT_RULES = [
+  "",
+  "",
+  "Sobre los archivos adjuntos de este mensaje:",
+  "- Las imágenes se llaman «imagen 1», «imagen 2», etc., según el rótulo que",
+  "  precede a cada una. Refiérete a ellas siempre con ese nombre.",
+  "- Nunca menciones nombres de archivo, rutas del sistema ni rutas del entorno",
+  "  de ejecución (por ejemplo /mnt/data). Al usuario no le dicen nada.",
+].join("\n");
+
 export function runStreamResponse(params: RunStreamParams): Response {
-  const { conversationId, model, instructions, input, tools, onAssistantText, onComplete, onSettled, signal } = params;
+  const { conversationId, model, instructions, hasAttachments, input, tools, onAssistantText, onComplete, onSettled, signal } = params;
+  const fullInstructions = hasAttachments ? `${instructions}${ATTACHMENT_RULES}` : instructions;
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
@@ -131,7 +159,7 @@ export function runStreamResponse(params: RunStreamParams): Response {
         const events = await openai.responses.create(
           {
             model,
-            instructions,
+            instructions: fullInstructions,
             conversation: conversationId,
             input,
             ...(tools && tools.length > 0 ? { tools } : {}),

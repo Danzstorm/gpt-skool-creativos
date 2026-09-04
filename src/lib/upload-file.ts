@@ -17,6 +17,25 @@ const MIME_EXTENSIONS: Record<string, string> = {
 export const MAX_FILES_PER_MESSAGE = 10;
 
 /**
+ * Nombre con el que se registra una IMAGEN en OpenAI.
+ *
+ * A propósito NO se conserva el del dispositivo. OpenAI resuelve el file_id a
+ * su filename del lado del servidor y se lo muestra al modelo, así que el
+ * nombre del archivo de quien sube la foto terminaba en la respuesta: de ahí
+ * salían cosas como "Referencias de Imagen 3: mt.data.image23490.png".
+ *
+ * Que varias imágenes del mismo mensaje compartan este nombre no molesta,
+ * porque el modelo las direcciona por la etiqueta de texto que va pegada a cada
+ * una (ver src/lib/chat-content.ts). Y si el nombre se filtrara igual, se
+ * filtra "imagen.jpg", que no delata nada y no contradice la etiqueta.
+ *
+ * Los DOCUMENTOS conservan su nombre real: ahí sí es información útil.
+ */
+export function openaiImageName(mime: string): string {
+  return `imagen${MIME_EXTENSIONS[mime.toLowerCase()] ?? ".jpg"}`;
+}
+
+/**
  * OpenAI valida la extensión de las imágenes de forma sensible a mayúsculas
  * (`.JPG` fue rechazado aunque el contenido fuera JPEG). Además, una imagen
  * redimensionada puede cambiar de WebP a JPEG. El nombre que llega a OpenAI

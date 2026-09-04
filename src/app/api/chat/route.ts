@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
   if (requestedIds.length > 0) {
     const { data: ownedFiles, error: ownedFilesError } = await serviceClient
       .from("uploaded_files")
-      .select("openai_file_id, mime")
+      .select("openai_file_id, mime, name")
       .eq("user_id", user.id)
       .in("openai_file_id", requestedIds);
     if (ownedFilesError) {
@@ -150,10 +150,16 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    incoming = requestedIds.map((id) => ({
-      openai_file_id: id,
-      type: byId.get(id)?.mime?.startsWith("image/") ? "image" : "document",
-    }));
+    incoming = requestedIds.map((id) => {
+      const row = byId.get(id);
+      const isImage = row?.mime?.startsWith("image/") ?? false;
+      return {
+        openai_file_id: id,
+        type: isImage ? "image" : "document",
+        // Solo para documentos: el nombre de una imagen no se manda nunca.
+        ...(isImage ? {} : { name: row?.name ?? null }),
+      } satisfies IncomingFile;
+    });
     if (!gpt.vision_enabled && incoming.some((file) => file.type === "image")) {
       return NextResponse.json({ error: "Este GPT no admite imágenes" }, { status: 400 });
     }
@@ -280,6 +286,7 @@ export async function POST(request: NextRequest) {
       conversationId,
       model: runtimeConfig.model || "gpt-4.1-mini",
       instructions: runtimeConfig.system_prompt || "",
+      hasAttachments: incoming.length > 0,
       input,
       tools,
       onAssistantText: async (text) => {

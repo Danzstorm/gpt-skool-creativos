@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { MAX_SIZE_BYTES, rejectReason } from "@/lib/upload-limits";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
-import { detectSupportedImageMime, normalizeUploadFileName } from "@/lib/upload-file";
+import { detectSupportedImageMime, normalizeUploadFileName, openaiImageName } from "@/lib/upload-file";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -83,7 +83,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: reason ?? "Archivo demasiado grande" }, { status: 400 });
   }
 
-  const openaiName = normalizeUploadFileName(name, finalMime);
+  // Las imágenes van con nombre neutro para que el modelo no pueda citar el
+  // archivo del dispositivo; los documentos conservan el suyo.
+  const openaiName = detectedImageMime
+    ? openaiImageName(finalMime)
+    : normalizeUploadFileName(name, finalMime);
   let uploaded;
   try {
     uploaded = await openai.files.create({

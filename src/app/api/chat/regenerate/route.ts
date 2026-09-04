@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
     if (fileIds.length > 0) {
       const { data: ownedFiles, error: ownedFilesError } = await serviceClient
         .from("uploaded_files")
-        .select("openai_file_id, mime")
+        .select("openai_file_id, mime, name")
         .eq("user_id", user.id)
         .in("openai_file_id", fileIds);
       if (ownedFilesError) throw ownedFilesError;
@@ -142,10 +142,16 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-      incoming = fileIds.map((id) => ({
-        openai_file_id: id,
-        type: byId.get(id)?.mime?.startsWith("image/") ? "image" : "document",
-      }));
+      incoming = fileIds.map((id) => {
+        const row = byId.get(id);
+        const isImage = row?.mime?.startsWith("image/") ?? false;
+        return {
+          openai_file_id: id,
+          type: isImage ? "image" : "document",
+          // Solo para documentos: el nombre de una imagen no se manda nunca.
+          ...(isImage ? {} : { name: row?.name ?? null }),
+        } satisfies IncomingFile;
+      });
       if (isLegacyThread) {
         // Reenviar un file_id de la cuenta anterior tumba la regeneración
         // entera con "No such File object". Se omite el adjunto perdido: el
@@ -203,6 +209,7 @@ export async function POST(request: NextRequest) {
       conversationId,
       model: gpt.model || "gpt-4.1-mini",
       instructions: gpt.system_prompt || "",
+      hasAttachments: incoming.length > 0,
       input,
       tools,
       onAssistantText: async (text) => {
