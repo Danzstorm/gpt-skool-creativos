@@ -3,20 +3,16 @@
 // sin haber llegado a ningún mensaje. Pasa cuando alguien adjunta algo y cierra
 // la pestaña sin enviar.
 //
-// Lo que NO borra: nada que se haya enviado alguna vez (attached_at no nulo).
-// Eso es la biblioteca del usuario, la que alimenta el menú `@` del composer, y
-// sigue siendo suya aunque haya borrado la conversación donde la mandó.
+// Lo que NO borra: nada que se haya enviado alguna vez. Eso es la biblioteca
+// del usuario, la que alimenta el menú `@` del composer, y sigue siendo suya
+// aunque haya borrado la conversación donde la mandó.
 //
 // Uso: node --env-file=.env.local scripts/cleanup-orphans.mjs [--dry-run] [--keep-days=N]
-//
-// Los archivos recientes NO se borran aunque hayan quedado sin mensaje: desde
-// que el composer tiene biblioteca (`@`), un archivo sin mensaje ya no es
-// necesariamente basura — puede ser algo que la persona espera reusar y cuya
-// conversación borró.
 
 import { createClient } from "@supabase/supabase-js";
 import OpenAI from "openai";
 import { DEFAULT_KEEP_DAYS, selectOrphans } from "./lib/orphan-files.mjs";
+import { fetchAllRows } from "./lib/fetch-all.mjs";
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -28,16 +24,50 @@ if (!Number.isFinite(keepDays) || keepDays < 0) {
   process.exit(1);
 }
 
-async function main() {
-  const { data: uploaded, error: uploadedError } = await supabase
+/**
+ * ¿Sigue siendo basura JUSTO AHORA?
+ *
+ * Entre que se arma la lista y se llega a borrar pasan segundos o minutos, y en
+ * ese rato alguien puede haber elegido ese mismo archivo desde el menú `@` y
+ * haberlo mandado. Sin esta re-comprobación, la limpieza borra un archivo que
+ * se acaba de usar. Son dos consultas por candidato, y se pagan de buena gana:
+ * los candidatos son pocos y el borrado no se puede deshacer.
+ */
+async function sigueSiendoBasura(fileId) {
+  const { data: row, error } = await supabase
     .from("uploaded_files")
-    .select("openai_file_id, storage_path, created_at, attached_at");
+    .select("attached_at")
+    .eq("openai_file_id", fileId)
+    .maybeSingle();
+  if (error) throw error;
+  // Ya no está: alguien lo borró en el medio. Nada que hacer.
+  if (!row) return false;
+  if (row.attached_at) return false;
 
-  // Sin la columna, la única forma de decidir sería la vieja —por
-  // alcanzabilidad— y esa borra biblioteca legítima. Se prefiere no correr
-  // antes que borrar de más: lo de enfrente es irreversible.
-  if (uploadedError) {
-    if (uploadedError.code === "42703" || /attached_at/.test(uploadedError.message ?? "")) {
+  const { data: usos, error: usosError } = await supabase
+    .from("messages")
+    .select("id")
+    .contains("files", [{ openai_file_id: fileId }])
+    .limit(1);
+  if (usosError) throw usosError;
+  return (usos ?? []).length === 0;
+}
+
+async function main() {
+  let uploaded;
+  try {
+    uploaded = await fetchAllRows((from, to) =>
+      supabase
+        .from("uploaded_files")
+        .select("openai_file_id, storage_path, created_at, attached_at")
+        .order("created_at", { ascending: true })
+        .range(from, to)
+    );
+  } catch (error) {
+    // Sin la columna, la única forma de decidir sería la vieja —por
+    // alcanzabilidad— y esa borra biblioteca legítima. Se prefiere no correr
+    // antes que borrar de más: lo de enfrente es irreversible.
+    if (error?.code === "42703" || /attached_at/.test(error?.message ?? "")) {
       console.error(
         [
           "Falta la columna uploaded_files.attached_at.",
@@ -47,14 +77,19 @@ async function main() {
       );
       process.exit(1);
     }
-    throw uploadedError;
+    throw error;
   }
 
   // Segunda señal, independiente de attached_at: si algún mensaje todavía
   // apunta al archivo, se envió — aunque la marca no se haya llegado a
   // escribir. Se piden las dos porque fallan de formas distintas.
-  const { data: messages, error: messagesError } = await supabase.from("messages").select("files");
-  if (messagesError) throw messagesError;
+  //
+  // Paginado: sin esto PostgREST devolvía solo los primeros 1000 mensajes y el
+  // set quedaba incompleto, así que archivos enviados figuraban como no
+  // referenciados.
+  const messages = await fetchAllRows((from, to) =>
+    supabase.from("messages").select("id, files").order("id", { ascending: true }).range(from, to)
+  );
 
   const referenced = new Set();
   for (const m of messages) {
@@ -67,7 +102,8 @@ async function main() {
   const orphans = selectOrphans(uploaded, referenced, keepDays);
   const nuncaEnviados = uploaded.length - enviados;
   console.log(
-    `${uploaded.length} archivos subidos, ${enviados} enviados alguna vez (biblioteca, intocables), ` +
+    `${uploaded.length} archivos subidos, ${messages.length} mensajes revisados, ` +
+      `${enviados} enviados alguna vez (biblioteca, intocables), ` +
       `${nuncaEnviados} nunca enviados, ${orphans.length} borrables ` +
       `(los otros ${nuncaEnviados - orphans.length} son de los últimos ${keepDays} días).`
   );
@@ -79,9 +115,15 @@ async function main() {
 
   let ok = 0;
   let failed = 0;
+  let salvados = 0;
 
   for (const o of orphans) {
     try {
+      if (!(await sigueSiendoBasura(o.openai_file_id))) {
+        salvados++;
+        console.log(`omitido ${o.openai_file_id}: se usó mientras corría la limpieza.`);
+        continue;
+      }
       await supabase.storage.from("chat-uploads").remove([o.storage_path]);
       try {
         await openai.files.delete(o.openai_file_id);
@@ -97,7 +139,10 @@ async function main() {
     }
   }
 
-  console.log(`\nCompletado: ${ok} borrados, ${failed} fallidos de ${orphans.length}.`);
+  console.log(
+    `\nCompletado: ${ok} borrados, ${salvados} omitidos por uso concurrente, ` +
+      `${failed} fallidos de ${orphans.length}.`
+  );
   if (failed > 0) process.exitCode = 1;
 }
 

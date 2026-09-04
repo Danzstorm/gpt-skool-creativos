@@ -16,6 +16,7 @@
 // Uso: node --env-file=.env.local scripts/cleanup-orphan-users.mjs [--confirm]
 
 import { createClient } from "@supabase/supabase-js";
+import { fetchAllRows } from "./lib/fetch-all.mjs";
 
 // Margen para no borrar a alguien que está en pleno proceso de alta: se une a
 // Skool, entra antes de que Zapier lo sincronice, es rechazado, y minutos
@@ -30,10 +31,17 @@ const supabase = createClient(
 const confirm = process.argv.includes("--confirm");
 
 async function main() {
-  const { data: members, error: membersError } = await supabase
-    .from("allowed_members")
-    .select("email, is_active");
-  if (membersError) throw membersError;
+  // Paginado: PostgREST corta en max_rows (1000) sin avisar, y estos dos
+  // conjuntos son las redes que impiden borrar la cuenta de alguien real. Un
+  // set truncado hace que un miembro activo parezca inactivo, o que alguien con
+  // conversaciones parezca no tenerlas — y acá lo que se borra son cuentas.
+  const members = await fetchAllRows((from, to) =>
+    supabase
+      .from("allowed_members")
+      .select("email, is_active")
+      .order("email", { ascending: true })
+      .range(from, to)
+  );
 
   const active = new Set(
     members.filter((m) => m.is_active).map((m) => m.email.toLowerCase().trim())
@@ -42,10 +50,9 @@ async function main() {
   // Los threads son el criterio de "acá hay algo que perder". Si alguien alcanzó
   // a conversar, su cuenta no se toca aunque hoy no sea miembro — eso es una
   // baja, no un huérfano, y sus conversaciones deben seguir ahí si vuelve.
-  const { data: threads, error: threadsError } = await supabase
-    .from("threads")
-    .select("user_id");
-  if (threadsError) throw threadsError;
+  const threads = await fetchAllRows((from, to) =>
+    supabase.from("threads").select("user_id").order("id", { ascending: true }).range(from, to)
+  );
   const withThreads = new Set(threads.map((t) => t.user_id));
 
   const cutoff = Date.now() - MIN_AGE_DAYS * 86400_000;
