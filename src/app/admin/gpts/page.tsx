@@ -11,9 +11,13 @@ const CATEGORIES = ["General", "Imágenes", "Marketing", "Copywriting", "Diseño
 // Ordenados de más económico a más caro por mensaje real (medido, no por precio
 // de lista). gpt-5.4-nano cuesta casi lo mismo que gpt-4.1-mini pero es un modelo
 // mucho más nuevo; gpt-5.4-mini es el salto de calidad a ~2.5x el costo.
-// El reasoning de la familia 5.4 se apaga en chat-stream.ts — sin eso son 10x
+// El reasoning de la familia 5.x se apaga en chat-stream.ts — sin eso son 10x
 // más lentos y caros. Ver `reasoningFor`.
-const MODELS = ["gpt-5.4-nano", "gpt-4.1-mini", "gpt-5.4-mini"];
+//
+// gpt-5.6-luna (agregado 2026-09-04) todavía NO está medido como los otros:
+// va por precio de lista nomás, junto a gpt-5.4-nano (mismo tramo de costo).
+// Si se usa en producción y se mide su costo/latencia real, mover a su lugar.
+const MODELS = ["gpt-5.4-nano", "gpt-5.6-luna", "gpt-4.1-mini", "gpt-5.4-mini"];
 
 const DEFAULT_FORM = {
   name: "",

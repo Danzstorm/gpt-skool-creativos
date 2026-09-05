@@ -12,6 +12,11 @@ const PRICING: Record<string, { in: number; out: number }> = {
   "gpt-5.4-nano": { in: 0.2, out: 1.25 },
   "gpt-5-mini": { in: 0.25, out: 2.0 },
   "gpt-5-nano": { in: 0.05, out: 0.4 },
+  // GPT-5.6: nomenclatura nueva de OpenAI (Sol/Terra/Luna en vez de nano/mini).
+  // Luna es el tramo barato/liviano. Precio de contexto corto; el largo
+  // ($0.40/$1.80) no está modelado acá — este estimador no distingue por
+  // longitud de contexto para ningún modelo, no solo para este.
+  "gpt-5.6-luna": { in: 0.2, out: 1.2 },
 };
 
 // Default conservador (mini, no el más caro): si un modelo no se reconoce, no
