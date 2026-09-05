@@ -40,6 +40,12 @@ yarn-error.log*
 # supabase cli temp / linked project
 supabase/.temp/
 
+# local SDD tooling metadata (machine-specific skill paths)
+.atl/
+
+# video pilot output — client material, never committed
+pilot-output/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

@@ -20,7 +20,8 @@
     "backfill:messages": "node --env-file=.env.local scripts/backfill-thread-messages.mjs",
     "cleanup:orphans": "node --env-file=.env.local scripts/cleanup-orphans.mjs",
     "cleanup:orphan-users": "node --env-file=.env.local scripts/cleanup-orphan-users.mjs",
-    "admin:bootstrap": "node --env-file=.env.local scripts/bootstrap-admin.mjs"
+    "admin:bootstrap": "node --env-file=.env.local scripts/bootstrap-admin.mjs",
+    "pilot:video": "node --env-file=.env.local scripts/pilot-video-prompt.mjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.17",
