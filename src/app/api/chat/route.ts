@@ -323,27 +323,23 @@ export async function POST(request: NextRequest) {
         if (assistantMessageError) throw assistantMessageError;
       },
       onComplete: async (meta) => {
+        // Costo del título fusionado en el ÚNICO usage_events de este turno
+        // (no una fila aparte): admin_top_users/admin_stats_summary cuentan
+        // filas de esta tabla como "mensajes" (ver migración
+        // 20260704020421_admin_dashboard_rpc_v2.sql). Una fila extra por chat
+        // nuevo inflaba ese conteo sin que nadie hubiera mandado un mensaje más.
+        let titleTokensIn = 0;
+        let titleTokensOut = 0;
+        let titleCost = 0;
         if (thread.title === "Nueva conversación") {
           let title = messageLabel.slice(0, 40);
           try {
             const generated = await generateThreadTitle(openai, messageLabel, meta.text);
             if (generated) {
               title = generated.title;
-              const { error: titleUsageError } = await serviceClient.from("usage_events").insert({
-                user_id: user.id,
-                gpt_id: gptId,
-                thread_id: threadId,
-                model: generated.model,
-                tokens_in: generated.tokensIn,
-                tokens_out: generated.tokensOut,
-                cost: estimateCost(generated.model, generated.tokensIn, generated.tokensOut),
-              });
-              if (titleUsageError) {
-                console.error("thread title usage log error", {
-                  code: titleUsageError.code,
-                  message: titleUsageError.message,
-                });
-              }
+              titleTokensIn = generated.tokensIn;
+              titleTokensOut = generated.tokensOut;
+              titleCost = estimateCost(generated.model, generated.tokensIn, generated.tokensOut);
             }
           } catch (titleError) {
             // Nunca debe tirar abajo el turno del usuario: si falla, el chat
@@ -359,9 +355,9 @@ export async function POST(request: NextRequest) {
           gpt_id: gptId,
           thread_id: threadId,
           model: meta.model,
-          tokens_in: meta.tokensIn,
-          tokens_out: meta.tokensOut,
-          cost: estimateCost(meta.model, meta.tokensIn, meta.tokensOut),
+          tokens_in: meta.tokensIn + titleTokensIn,
+          tokens_out: meta.tokensOut + titleTokensOut,
+          cost: estimateCost(meta.model, meta.tokensIn, meta.tokensOut) + titleCost,
         });
         if (usageError) {
           console.error("chat usage log error", {

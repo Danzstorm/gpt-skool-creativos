@@ -9,6 +9,13 @@ const TITLE_MODEL = "gpt-4.1-nano";
 // respuesta larguísima.
 const MAX_INPUT_CHARS = 600;
 
+// Es una llamada auxiliar y cosmética que corre DENTRO de onComplete, antes
+// de que el stream emita [DONE] y el composer del usuario se desbloquee. Un
+// colgue de red hacia OpenAI acá no puede demorar indefinidamente un turno
+// que, para el usuario, ya terminó — de ahí el timeout corto y cero reintentos
+// (un reintento del SDK duplicaría el peor caso).
+const TITLE_REQUEST_OPTIONS = { timeout: 5_000, maxRetries: 0 };
+
 const TITLE_INSTRUCTIONS = [
   "Generás títulos cortos para una lista de conversaciones, como las pestañas",
   "del historial de un chat.",
@@ -59,11 +66,14 @@ export async function generateThreadTitle(
   userMessage: string,
   assistantText: string
 ): Promise<ThreadTitleResult | null> {
-  const response = await openai.responses.create({
-    model: TITLE_MODEL,
-    instructions: TITLE_INSTRUCTIONS,
-    input: `Mensaje del usuario:\n${clip(userMessage)}\n\nRespuesta del asistente:\n${clip(assistantText)}`,
-  });
+  const response = await openai.responses.create(
+    {
+      model: TITLE_MODEL,
+      instructions: TITLE_INSTRUCTIONS,
+      input: `Mensaje del usuario:\n${clip(userMessage)}\n\nRespuesta del asistente:\n${clip(assistantText)}`,
+    },
+    TITLE_REQUEST_OPTIONS
+  );
 
   const title = cleanGeneratedTitle(response.output_text ?? "");
   if (!title) return null;
