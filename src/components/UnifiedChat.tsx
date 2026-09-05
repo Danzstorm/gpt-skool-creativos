@@ -841,6 +841,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
             ref={composerRef}
             isLoading={isLoading}
             onLibraryPick={attachFromLibrary}
+            activeThreadId={activeThreadId}
             isUploading={pendingUploads > 0}
             isEditing={isEditing}
             onCancelEdit={cancelEdit}

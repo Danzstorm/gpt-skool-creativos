@@ -5,6 +5,26 @@ const SCHEMA_RETRY_MS = 60_000;
 let unavailableUntil = 0;
 
 /**
+ * Junta los `openai_file_id` únicos de `messages.files` (el read model real,
+ * ver recordMessageAttachments más abajo) para un conjunto de mensajes.
+ *
+ * Usado por /api/files para acotar la biblioteca del `@` al hilo actual, en
+ * vez de a todo lo que el usuario subió alguna vez en cualquier chat.
+ */
+export function threadFileIds(messages: { files: unknown }[]): string[] {
+  const ids = new Set<string>();
+  for (const { files } of messages) {
+    if (!Array.isArray(files)) continue;
+    for (const f of files) {
+      if (f && typeof f === "object" && typeof (f as { openai_file_id?: unknown }).openai_file_id === "string") {
+        ids.add((f as { openai_file_id: string }).openai_file_id);
+      }
+    }
+  }
+  return [...ids];
+}
+
+/**
  * Compatibility dual-write for the normalized attachment relationship.
  * `messages.files` remains the read model during phase 1, so a failure here is
  * observable but must not discard a user turn that was already persisted.

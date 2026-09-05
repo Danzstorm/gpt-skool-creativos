@@ -16,6 +16,8 @@ interface Props {
   isLoading: boolean;
   isUploading: boolean;
   isEditing: boolean;
+  /** Hilo activo: acota la biblioteca del `@` a los archivos de este chat. */
+  activeThreadId: string | null;
   onCancelEdit: () => void;
   attachedFiles: UploadedFile[];
   onFilesSelected: (files: File[]) => void;
@@ -29,7 +31,7 @@ interface Props {
 // Composer aislado: el texto y la grabación viven acá, no en el componente padre.
 // Así escribir no re-renderiza el resto del chat (sidebar, lista de mensajes).
 const Composer = forwardRef<ComposerHandle, Props>(function Composer(
-  { isLoading, isUploading, isEditing, onCancelEdit, attachedFiles, onFilesSelected, onRemoveFile, onSend, onStop, onLibraryPick },
+  { isLoading, isUploading, isEditing, activeThreadId, onCancelEdit, attachedFiles, onFilesSelected, onRemoveFile, onSend, onStop, onLibraryPick },
   ref
 ) {
   const [input, setInput] = useState("");
@@ -65,11 +67,18 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   const mentionQuery = mention?.query ?? null;
   useEffect(() => {
     if (mentionQuery === null) return;
+    // Chat nuevo, sin hilo todavía: nada propio que referenciar.
+    if (!activeThreadId) {
+      setLibrary([]);
+      setLibraryLoading(false);
+      return;
+    }
     let cancelled = false;
     setLibraryLoading(true);
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/files?q=${encodeURIComponent(mentionQuery)}`);
+        const params = new URLSearchParams({ threadId: activeThreadId, q: mentionQuery });
+        const res = await fetch(`/api/files?${params}`);
         if (!res.ok) throw new Error("no se pudo cargar la biblioteca");
         const data: LibraryFile[] = await res.json();
         if (cancelled) return;
@@ -88,7 +97,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [mentionQuery]);
+  }, [mentionQuery, activeThreadId]);
 
   /** Recalcula si el cursor está dentro de una mención `@`. */
   function syncMention(el: HTMLTextAreaElement) {

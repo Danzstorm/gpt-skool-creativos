@@ -1,6 +1,7 @@
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
+import { threadFileIds } from "@/lib/message-attachments";
 
 /** Tope duro: el menú muestra una lista corta, no un explorador de archivos. */
 const MAX_RESULTS = 50;
@@ -15,11 +16,15 @@ export interface LibraryFile {
 }
 
 /**
- * Biblioteca de archivos del usuario: todo lo que subió en cualquier
- * conversación, para poder re-adjuntarlo con `@` sin volver a subirlo.
+ * Biblioteca de archivos del CHAT ACTUAL, para poder re-adjuntarlos con `@`
+ * sin volver a subirlos.
  *
- * Es de la PERSONA, no del GPT: alguien sube un brief trabajando con un GPT y
- * lo reusa en otro. Si cada GPT tuviera su isla, casi nunca encontraría nada.
+ * Escopeada al hilo a propósito: antes buscaba en todo lo que el usuario
+ * subió en cualquier conversación, y `@` terminaba sugiriendo archivos de
+ * chats sin relación entre sí. `messages.files` (no `message_attachments`,
+ * que todavía es una tabla sombra best-effort — ver message-attachments.ts)
+ * es el read model real de qué se adjuntó en qué mensaje, así que de ahí sale
+ * la lista de `openai_file_id` permitidos para este hilo.
  */
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
@@ -35,6 +40,10 @@ export async function GET(request: NextRequest) {
   if (!rl.ok) return rateLimitResponse(rl);
 
   const q = request.nextUrl.searchParams.get("q")?.trim() ?? "";
+  const threadId = request.nextUrl.searchParams.get("threadId")?.trim() ?? "";
+
+  // Un chat nuevo todavía no tiene mensajes propios: nada que referenciar.
+  if (!threadId) return NextResponse.json([]);
 
   // service_role y no el cliente RLS: `uploaded_files` tiene RLS activa SIN
   // policies y con los permisos revocados para `authenticated`, así que es una
@@ -42,10 +51,29 @@ export async function GET(request: NextRequest) {
   // frontera de acceso, y por eso va siempre y no es opcional.
   const service = createServiceClient();
 
+  const { data: threadMessages, error: threadMessagesError } = await service
+    .from("messages")
+    .select("files")
+    .eq("thread_id", threadId)
+    .eq("user_id", user.id);
+
+  if (threadMessagesError) {
+    console.error("files list error (thread scope)", {
+      code: threadMessagesError.code,
+      message: threadMessagesError.message,
+    });
+    return NextResponse.json({ error: "No se pudo cargar tu biblioteca" }, { status: 500 });
+  }
+
+  // .eq("user_id", user.id) arriba es la frontera real: si el hilo es de otro
+  // usuario o no existe, esto queda vacío y la respuesta es [], nunca ajena.
+  const fileIds = threadFileIds(threadMessages ?? []);
+  if (fileIds.length === 0) return NextResponse.json([]);
+
   let query = service
     .from("uploaded_files")
     .select("openai_file_id, name, mime, storage_path, created_at")
-    .eq("user_id", user.id)
+    .in("openai_file_id", fileIds)
     .order("created_at", { ascending: false })
     .limit(MAX_RESULTS);
 
