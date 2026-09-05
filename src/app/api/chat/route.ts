@@ -8,6 +8,7 @@ import { estimateCost } from "@/lib/pricing";
 import { MAX_FILES_PER_MESSAGE } from "@/lib/upload-file";
 import { getGptRuntimeConfig } from "@/lib/gpt-runtime-config";
 import { recordMessageAttachments } from "@/lib/message-attachments";
+import { generateThreadTitle } from "@/lib/thread-title";
 import {
   CONVERSATION_KEY_FINGERPRINT,
   ensureThreadConversation,
@@ -323,7 +324,35 @@ export async function POST(request: NextRequest) {
       },
       onComplete: async (meta) => {
         if (thread.title === "Nueva conversación") {
-          await supabase.from("threads").update({ title: messageLabel.slice(0, 40) }).eq("id", threadId);
+          let title = messageLabel.slice(0, 40);
+          try {
+            const generated = await generateThreadTitle(openai, messageLabel, meta.text);
+            if (generated) {
+              title = generated.title;
+              const { error: titleUsageError } = await serviceClient.from("usage_events").insert({
+                user_id: user.id,
+                gpt_id: gptId,
+                thread_id: threadId,
+                model: generated.model,
+                tokens_in: generated.tokensIn,
+                tokens_out: generated.tokensOut,
+                cost: estimateCost(generated.model, generated.tokensIn, generated.tokensOut),
+              });
+              if (titleUsageError) {
+                console.error("thread title usage log error", {
+                  code: titleUsageError.code,
+                  message: titleUsageError.message,
+                });
+              }
+            }
+          } catch (titleError) {
+            // Nunca debe tirar abajo el turno del usuario: si falla, el chat
+            // se queda con el truncado de siempre en vez de un título lindo.
+            console.error("thread title generation error", {
+              error: titleError instanceof Error ? titleError.message : String(titleError),
+            });
+          }
+          await supabase.from("threads").update({ title }).eq("id", threadId);
         }
         const { error: usageError } = await serviceClient.from("usage_events").insert({
           user_id: user.id,

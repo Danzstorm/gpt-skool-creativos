@@ -12,6 +12,8 @@ export interface RunMeta {
   model: string | null;
   tokensIn: number;
   tokensOut: number;
+  /** Texto final del turno (incluye avisos de incompleto, si los hubo). */
+  text: string;
 }
 
 export interface RunStreamParams {
@@ -236,6 +238,7 @@ export function runStreamResponse(params: RunStreamParams): Response {
               model: event.response.model ?? null,
               tokensIn: usage?.input_tokens ?? 0,
               tokensOut: usage?.output_tokens ?? 0,
+              text: fullText,
             };
             await persistOnce(fullText);
             if (onComplete) await onComplete(meta);
@@ -256,11 +259,6 @@ export function runStreamResponse(params: RunStreamParams): Response {
           // Vercel (ese bug ya estaba resuelto), era este evento sin cubrir.
           if (event.type === "response.incomplete") {
             const usage = event.response.usage;
-            const meta: RunMeta = {
-              model: event.response.model ?? null,
-              tokensIn: usage?.input_tokens ?? 0,
-              tokensOut: usage?.output_tokens ?? 0,
-            };
             const reason = event.response.incomplete_details?.reason;
             const note =
               reason === "content_filter"
@@ -276,6 +274,14 @@ export function runStreamResponse(params: RunStreamParams): Response {
               fullText = `⚠️ ${note}`;
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: fullText })}\n\n`));
             }
+            // meta se arma después de completar fullText (arriba): onComplete
+            // necesita el texto final con el aviso ya pegado, no el de antes.
+            const meta: RunMeta = {
+              model: event.response.model ?? null,
+              tokensIn: usage?.input_tokens ?? 0,
+              tokensOut: usage?.output_tokens ?? 0,
+              text: fullText,
+            };
             await persistOnce(fullText);
             if (onComplete) await onComplete(meta);
             controller.enqueue(encoder.encode("data: [DONE]\n\n"));
