@@ -65,14 +65,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "No se pudo cargar tu biblioteca" }, { status: 500 });
   }
 
-  // .eq("user_id", user.id) arriba es la frontera real: si el hilo es de otro
-  // usuario o no existe, esto queda vacío y la respuesta es [], nunca ajena.
+  // El `.eq("user_id", user.id)` de arriba ya acota qué hilo se puede leer,
+  // pero `uploaded_files` es su propia tabla sin RLS: lleva su propio filtro
+  // por dueño abajo, no puede depender solo de la query anterior para eso.
   const fileIds = threadFileIds(threadMessages ?? []);
   if (fileIds.length === 0) return NextResponse.json([]);
 
   let query = service
     .from("uploaded_files")
     .select("openai_file_id, name, mime, storage_path, created_at")
+    .eq("user_id", user.id)
     .in("openai_file_id", fileIds)
     .order("created_at", { ascending: false })
     .limit(MAX_RESULTS);
