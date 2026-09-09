@@ -772,13 +772,20 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
     // fondo propio y antes dejaba pasar el `--background` oscuro del <body> —
     // invisible en temas oscuros, pero en Papel el sidebar se volvía crema y el
     // centro seguía negro (split roto). Tematizar el root cubre toda la superficie.
-    // zoom 1.15 = interfaz de chat 15% más grande (pedido del cliente). Se compensa
-    // width/height (÷1.15) para que el shell siga llenando EXACTO el viewport y no
-    // desborde con scroll de página; el scroll real vive en el área de mensajes.
+    // zoom 1.15 = interfaz de chat 15% más grande (pedido del cliente). El tamaño
+    // del shell NO usa unidades de viewport: `fixed inset-0` lo ata al área de
+    // cliente, que es lo único que todos los motores miden igual. La versión previa
+    // (`width: calc(100vw / 1.15); height: calc(100dvh / 1.15)`) rompía por dos
+    // lados: `100vw` incluye la barra de scroll (medido en Chromium: shell de 1176px
+    // contra 1161px de área útil → desborde horizontal), y en un navegador sin `dvh`
+    // la declaración de alto es inválida, cae a `auto` y el shell colapsa a la altura
+    // del contenido — la pantalla rota que reportó el cliente. Con inset el zoom sigue
+    // aplicando (el bloque contenedor se resuelve en el espacio ya escalado) y, si el
+    // navegador no soporta `zoom`, degrada a interfaz sin escalar pero bien armada.
     <div
-      className="flex relative bg-zinc-950 text-zinc-100"
+      className="fixed inset-0 flex bg-zinc-950 text-zinc-100"
       data-theme={theme}
-      style={{ zoom: 1.15, width: "calc(100vw / 1.15)", height: "calc(100dvh / 1.15)" }}
+      style={{ zoom: 1.15 }}
     >
       <ChatSidebar
         gpts={gpts}
