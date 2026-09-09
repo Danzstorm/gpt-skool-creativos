@@ -1,5 +1,5 @@
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
-import { ArrowUp, Plus, Image as ImageIcon, Paperclip, Mic, X, Check, Square } from "lucide-react";
+import { ArrowUp, Plus, Image as ImageIcon, Paperclip, Mic, X, Check, Square, Video } from "lucide-react";
 import type { UploadedFile } from "@/lib/types";
 import { useDismissable } from "@/lib/useDismissable";
 import RecordingWave from "./RecordingWave";
@@ -15,6 +15,8 @@ export interface ComposerHandle {
 interface Props {
   isLoading: boolean;
   isUploading: boolean;
+  /** Un video del batch actual está subiéndose/analizándose (tarda más que un archivo normal). */
+  isUploadingVideo?: boolean;
   isEditing: boolean;
   /** Hilo activo: acota la biblioteca del `@` a los archivos de este chat. */
   activeThreadId: string | null;
@@ -31,7 +33,7 @@ interface Props {
 // Composer aislado: el texto y la grabación viven acá, no en el componente padre.
 // Así escribir no re-renderiza el resto del chat (sidebar, lista de mensajes).
 const Composer = forwardRef<ComposerHandle, Props>(function Composer(
-  { isLoading, isUploading, isEditing, activeThreadId, onCancelEdit, attachedFiles, onFilesSelected, onRemoveFile, onSend, onStop, onLibraryPick },
+  { isLoading, isUploading, isUploadingVideo, isEditing, activeThreadId, onCancelEdit, attachedFiles, onFilesSelected, onRemoveFile, onSend, onStop, onLibraryPick },
   ref
 ) {
   const [input, setInput] = useState("");
@@ -302,7 +304,11 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
                 key={i}
                 className="flex items-center gap-1.5 bg-zinc-800 rounded-xl px-3 py-1.5 text-xs text-zinc-300 h-16"
               >
-                <Paperclip size={13} className="text-zinc-400 flex-shrink-0" />
+                {f.type === "video" ? (
+                  <Video size={13} className="text-zinc-400 flex-shrink-0" />
+                ) : (
+                  <Paperclip size={13} className="text-zinc-400 flex-shrink-0" />
+                )}
                 <span className="max-w-[120px] truncate">{f.name}</span>
                 <button onClick={() => onRemoveFile(i)} className="text-zinc-500 hover:text-ink ml-1">
                   <X size={12} />
@@ -349,7 +355,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           ref={fileInputRef}
           type="file"
           multiple
-          accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,.txt,.md,.py,.js,.ts,.csv,.xlsx,.docx"
+          accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,.txt,.md,.py,.js,.ts,.csv,.xlsx,.docx,video/mp4,video/quicktime,video/webm"
           className="hidden"
           onChange={(e) => {
             handleFileUpload(e.target.files);
@@ -377,6 +383,14 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
               >
                 <Paperclip size={15} />
                 Archivos
+              </button>
+              <button
+                type="button"
+                onClick={() => openFilePicker("video/mp4,video/quicktime,video/webm")}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-ink transition text-left"
+              >
+                <Video size={15} />
+                Video
               </button>
             </div>
           )}
@@ -420,7 +434,9 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
               placeholder={
                 isTranscribing
                   ? "Transcribiendo audio..."
-                  : "Escribe un mensaje... (Enter para enviar)"
+                  : isUploadingVideo
+                    ? "Analizando video..."
+                    : "Escribe un mensaje... (Enter para enviar)"
               }
               disabled={isLoading || isTranscribing}
               rows={1}

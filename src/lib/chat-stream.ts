@@ -112,6 +112,9 @@ const ATTACHMENT_RULES = [
   "Sobre los archivos adjuntos de este mensaje:",
   "- Las imágenes se llaman «imagen 1», «imagen 2», etc., según el rótulo que",
   "  precede a cada una. Refiérete a ellas siempre con ese nombre.",
+  "- Los videos no se adjuntan como archivo: recibes su «descripción de video 1»,",
+  "  «descripción de video 2», etc. como texto. Trátala como si hubieras visto el",
+  "  video referenciado con ese mismo nombre.",
   "- Nunca menciones nombres de archivo, rutas del sistema ni rutas del entorno",
   "  de ejecución (por ejemplo /mnt/data). Al usuario no le dicen nada.",
 ].join("\n");

@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { imageLabel, imageNumber, type AttachmentLike } from "./attachment-labels";
+import { imageLabel, imageNumber, videoLabel, videoNumber, type AttachmentLike } from "./attachment-labels";
 
 const img: AttachmentLike = { type: "image" };
 const doc: AttachmentLike = { type: "document" };
+const vid: AttachmentLike = { type: "video" };
 
 describe("imageNumber", () => {
   it("numera 1-based, no 0-based", () => {
@@ -50,5 +51,33 @@ describe("imageLabel", () => {
     // modelo "imagen 1", el usuario dudaría de si hablan de la misma foto.
     expect(imageLabel(1)).toBe("imagen 1");
     expect(imageLabel(12)).toBe("imagen 12");
+  });
+});
+
+describe("videoNumber", () => {
+  it("numera 1-based, no 0-based", () => {
+    expect(videoNumber([vid], 0)).toBe(1);
+  });
+
+  it("cuenta solo videos, salteando imágenes y documentos", () => {
+    const files = [doc, vid, img, vid];
+    expect(videoNumber(files, 1)).toBe(1);
+    expect(videoNumber(files, 3)).toBe(2);
+  });
+
+  it("devuelve null para algo que no es video", () => {
+    expect(videoNumber([vid, doc], 1)).toBeNull();
+    expect(videoNumber([vid, img], 1)).toBeNull();
+  });
+
+  it("devuelve null fuera de rango o con la lista vacía", () => {
+    expect(videoNumber([], 0)).toBeNull();
+    expect(videoNumber([vid], 5)).toBeNull();
+  });
+});
+
+describe("videoLabel", () => {
+  it("es el nombre que se usa en pantalla y para el modelo", () => {
+    expect(videoLabel(1)).toBe("descripción de video 1");
   });
 });

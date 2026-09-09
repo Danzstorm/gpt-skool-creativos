@@ -1,11 +1,17 @@
 import type { ResponseInputItem } from "openai/resources/responses/responses";
-import { imageLabel, imageNumber } from "@/lib/attachment-labels";
+import { imageLabel, imageNumber, videoLabel, videoNumber } from "@/lib/attachment-labels";
 
 export type IncomingFile = {
   openai_file_id: string;
-  type: "image" | "document";
+  type: "image" | "document" | "video";
   /** Nombre real del documento. Las imágenes no lo usan (ver abajo). */
   name?: string | null;
+  /**
+   * Solo para videos: la descripción que generó Gemini al procesar el video
+   * (uploaded_files.video_description). El video NUNCA se sube a OpenAI —
+   * Responses API no lo entiende — así que esto es lo único que el modelo ve.
+   */
+  videoDescription?: string | null;
 };
 
 type ContentPart =
@@ -51,6 +57,11 @@ export function buildUserInput(message: string, files: IncomingFile[]): Response
         file_id: f.openai_file_id,
         ...(f.name ? { filename: f.name } : {}),
       });
+    } else if (f.type === "video") {
+      const position = videoNumber(files, index);
+      const label = position !== null ? videoLabel(position) : "descripción de video";
+      contentParts.push({ type: "input_text", text: `${heading(label)}:` });
+      contentParts.push({ type: "input_text", text: f.videoDescription?.trim() || "(sin descripción disponible)" });
     }
   });
 

@@ -98,11 +98,21 @@ export interface Thread {
   updated_at: string;
 }
 
+// Carpeta para agrupar conversaciones en el sidebar. Solo agrupa: no tiene
+// instrucciones ni archivos propios (ver 20260906130000_projects.sql).
+export interface Project {
+  id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // Resumen de conversación para el sidebar (cross-GPT)
 export interface ThreadSummary {
   id: string;
   title: string;
   gpt_id: string;
+  project_id: string | null;
   created_at: string;
   updated_at: string;
   last_message_preview?: string;
@@ -111,7 +121,7 @@ export interface ThreadSummary {
 export interface UploadedFile {
   name: string;
   openai_file_id: string;
-  type: "image" | "document";
+  type: "image" | "document" | "video";
   previewUrl?: string; // URL local (object URL) para vista previa de imágenes en la sesión
 }
 

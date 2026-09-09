@@ -9,6 +9,14 @@
 export const MAX_SIZE_MB = 25;
 export const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
 
+// Los videos nunca van a OpenAI (los describe Gemini, ver /api/upload/register
+// y src/lib/gemini-upload.ts), así que su tope de tamaño es propio y más alto:
+// no comparten el límite pensado para no reventar la función que copia a
+// OpenAI. Debe coincidir con el file_size_limit del bucket chat-uploads
+// (supabase/migrations/20260906120000_video_uploads.sql).
+export const MAX_VIDEO_SIZE_MB = 100;
+export const MAX_VIDEO_SIZE_BYTES = MAX_VIDEO_SIZE_MB * 1024 * 1024;
+
 export const ALLOWED_TYPES = [
   "image/jpeg", "image/png", "image/webp", "image/gif",
   "application/pdf",
@@ -19,8 +27,18 @@ export const ALLOWED_TYPES = [
   "text/x-python", "application/javascript", "text/typescript",
 ];
 
+export const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm"];
+
+// ponytail: no local duration probe (no ffprobe in serverless); relies on
+// size cap + Gemini's own rejection. Add a metadata-only MP4/mov duration
+// parser if Gemini cost from long videos becomes a problem.
+
 /** Motivo del rechazo, o null si el archivo es aceptable. */
 export function rejectReason(type: string, size: number): string | null {
+  if (type && ALLOWED_VIDEO_TYPES.includes(type)) {
+    if (size > MAX_VIDEO_SIZE_BYTES) return `supera el límite de ${MAX_VIDEO_SIZE_MB}MB para video`;
+    return null;
+  }
   if (size > MAX_SIZE_BYTES) return `supera el límite de ${MAX_SIZE_MB}MB`;
   // Sin `type` el navegador no reconoció el formato; lo dejamos pasar y que
   // OpenAI decida, como hacía la ruta original.

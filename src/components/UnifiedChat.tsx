@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import type { Gpt, Message, UploadedFile, ThreadSummary, Theme } from "@/lib/types";
+import type { Gpt, Message, Project, UploadedFile, ThreadSummary, Theme } from "@/lib/types";
 import { Menu, ArrowDown, ChevronDown, PanelLeftOpen, SquarePen } from "lucide-react";
 import Sparkle from "./Sparkle";
 import GptGlyph from "./chat/GptGlyph";
@@ -21,13 +21,14 @@ import {
 import { downscaleImage } from "@/lib/image-resize";
 import { createClient } from "@/lib/supabase/client";
 import { MAX_FILES_PER_MESSAGE } from "@/lib/upload-file";
-import { MAX_SIZE_BYTES, MAX_SIZE_MB } from "@/lib/upload-limits";
+import { MAX_SIZE_BYTES, MAX_SIZE_MB, MAX_VIDEO_SIZE_BYTES, MAX_VIDEO_SIZE_MB } from "@/lib/upload-limits";
 
 // Solo se usa para subir adjuntos a Storage con URL firmada; el resto de los
 // datos del chat viaja por las rutas de /api.
 const supabase = createClient();
 
 const SIDEBAR_COLLAPSED_KEY = "chat_sidebar_collapsed";
+const OPEN_PROJECTS_KEY = "chat_open_projects";
 
 interface Props {
   gpts: Gpt[];
@@ -57,6 +58,9 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
   const [thinkingStartedAt, setThinkingStartedAt] = useState(0);
   const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>([]);
   const [pendingUploads, setPendingUploads] = useState(0);
+  // Solo para el placeholder del composer ("Analizando video..."): el análisis
+  // con Gemini tarda bastante más que subir una imagen o un documento.
+  const [uploadingVideo, setUploadingVideo] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -67,6 +71,13 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
   const [chatSearch, setChatSearch] = useState("");
   const [gptChatsModalId, setGptChatsModalId] = useState<string | null>(null);
   const [theme, setTheme] = useState<Theme>(profile.theme);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [openProjectIds, setOpenProjectIds] = useState<string[]>([]);
+  const [renamingProjectId, setRenamingProjectId] = useState<string | null>(null);
+  const [projectRenameValue, setProjectRenameValue] = useState("");
+  // El chat se crea recién con el primer mensaje: hasta entonces la carpeta
+  // elegida con "nuevo chat en este proyecto" solo puede vivir acá.
+  const [pendingProjectId, setPendingProjectId] = useState<string | null>(null);
 
   // Optimista: cambia al instante en pantalla, guarda en la cuenta en paralelo.
   // Si el PATCH falla, no revertimos — es una preferencia visual, no algo
@@ -85,6 +96,19 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
   // leer localStorage en el lazy initializer de useState rompería esa paridad.
   useEffect(() => {
     if (localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1") setSidebarCollapsed(true);
+    try {
+      const saved = JSON.parse(localStorage.getItem(OPEN_PROJECTS_KEY) ?? "[]");
+      if (Array.isArray(saved)) setOpenProjectIds(saved.filter((id) => typeof id === "string"));
+    } catch {
+      // Valor corrupto: arrancar con todo plegado es preferible a romper el chat.
+    }
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/projects")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: Project[]) => setProjects(Array.isArray(data) ? data : []))
+      .catch(() => {});
   }, []);
 
   const toggleSidebarCollapsed = useCallback(() => {
@@ -94,6 +118,27 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
       return next;
     });
   }, []);
+
+  const persistOpenProjects = useCallback((ids: string[]) => {
+    localStorage.setItem(OPEN_PROJECTS_KEY, JSON.stringify(ids));
+    return ids;
+  }, []);
+
+  const toggleProject = useCallback(
+    (id: string) => {
+      setOpenProjectIds((prev) =>
+        persistOpenProjects(prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id])
+      );
+    },
+    [persistOpenProjects]
+  );
+
+  const openProject = useCallback(
+    (id: string) => {
+      setOpenProjectIds((prev) => (prev.includes(id) ? prev : persistOpenProjects([...prev, id])));
+    },
+    [persistOpenProjects]
+  );
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -165,6 +210,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
 
   const newChat = useCallback(() => {
     setSidebarOpen(false);
+    setPendingProjectId(null);
     setActiveThreadId(null);
     setActiveGptId(null);
     setMessages([]);
@@ -214,6 +260,112 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
   const openGptChats = useCallback((gptId: string) => setGptChatsModalId(gptId), []);
   const closeGptChats = useCallback(() => setGptChatsModalId(null), []);
 
+  // Optimista en los dos sentidos: la carpeta se pinta al instante y, si el
+  // PATCH falla, se vuelve atrás. Mover un chat no destruye nada, pero dejarlo
+  // en un lugar donde no está es peor que no moverlo.
+  const moveToProject = useCallback(
+    async (threadId: string, projectId: string | null) => {
+      const previous = threadList.find((t) => t.id === threadId)?.project_id ?? null;
+      if (previous === projectId) return;
+      setThreadList((prev) =>
+        prev.map((t) => (t.id === threadId ? { ...t, project_id: projectId } : t))
+      );
+      if (projectId) openProject(projectId);
+
+      const res = await fetch(`/api/threads/${threadId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project_id: projectId }),
+      });
+      if (!res.ok) {
+        setThreadList((prev) =>
+          prev.map((t) => (t.id === threadId ? { ...t, project_id: previous } : t))
+        );
+      }
+    },
+    [threadList, openProject]
+  );
+
+  const createProjectWith = useCallback(
+    async (threadIds: string[]) => {
+      const res = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Nuevo proyecto", threadIds }),
+      });
+      if (!res.ok) return;
+      const created: Project & { moved_thread_ids: string[] } = await res.json();
+
+      setProjects((prev) => [created, ...prev]);
+      const moved = new Set(created.moved_thread_ids);
+      setThreadList((prev) =>
+        prev.map((t) => (moved.has(t.id) ? { ...t, project_id: created.id } : t))
+      );
+      openProject(created.id);
+      // Con una búsqueda activa, "Nuevo proyecto" casi nunca matchea: la carpeta
+      // recién creada no se pintaría y el chat que se acaba de mover parecería
+      // haber desaparecido del sidebar (ya no está en la lista suelta).
+      setChatSearch("");
+      // Rename inline activo de una: una carpeta recién creada se llama "Nuevo
+      // proyecto" y nadie la deja así — pedir un click más para bautizarla es
+      // fricción gratis.
+      setRenamingProjectId(created.id);
+      setProjectRenameValue(created.name);
+    },
+    [openProject]
+  );
+
+  const startProjectRename = useCallback((project: Project) => {
+    setRenamingProjectId(project.id);
+    setProjectRenameValue(project.name);
+  }, []);
+  const cancelProjectRename = useCallback(() => setRenamingProjectId(null), []);
+
+  const renameProject = useCallback(
+    async (id: string) => {
+      // Mismo criterio que el rename de conversaciones: se cierra el input antes
+      // del await para que blur-tras-Enter no dispare dos veces.
+      if (renamingProjectId !== id) return;
+      const name = projectRenameValue.trim();
+      setRenamingProjectId(null);
+      if (!name) return;
+
+      const res = await fetch(`/api/projects/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      if (res.ok) {
+        const updated: Project = await res.json();
+        setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, name: updated.name } : p)));
+      }
+    },
+    [projectRenameValue, renamingProjectId]
+  );
+
+  const deleteProject = useCallback(async (id: string) => {
+    if (!confirm("¿Borrar este proyecto? Las conversaciones de adentro no se borran: vuelven a la lista de chats.")) {
+      return;
+    }
+    const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
+    if (!res.ok) return;
+    setProjects((prev) => prev.filter((p) => p.id !== id));
+    setThreadList((prev) => prev.map((t) => (t.project_id === id ? { ...t, project_id: null } : t)));
+    // Si había un "nuevo chat" apuntando a esta carpeta y todavía sin primer
+    // mensaje, el id quedaría colgado: POST /api/threads responde 404 por un
+    // proyecto que ya no existe y el mensaje no se puede enviar.
+    setPendingProjectId((pending) => (pending === id ? null : pending));
+  }, []);
+
+  const newChatInProject = useCallback((projectId: string) => {
+    setSidebarOpen(false);
+    setPendingProjectId(projectId);
+    setActiveThreadId(null);
+    setActiveGptId(null);
+    setMessages([]);
+    pushUrl("");
+  }, []);
+
   const uploadFiles = useCallback(async (files: File[]) => {
     setUploadError(null);
     if (pendingUploads > 0) {
@@ -229,14 +381,18 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
     const batch = files.slice(0, remaining);
     const skippedCount = files.length - batch.length;
     setPendingUploads(batch.length);
+    setUploadingVideo(batch.some((f) => f.type.startsWith("video/")));
 
     // En paralelo: antes iban de a uno y adjuntar 3 imágenes tardaba el triple.
     const results = await Promise.all(
       batch.map(async (original) => {
         const fail = (msg: string) => ({ error: `${original.name}: ${msg}` });
         try {
-          if (original.size > MAX_SIZE_BYTES) {
-            return fail(`supera el límite de ${MAX_SIZE_MB}MB`);
+          const isVideo = original.type.startsWith("video/");
+          const sizeCapBytes = isVideo ? MAX_VIDEO_SIZE_BYTES : MAX_SIZE_BYTES;
+          const sizeCapMb = isVideo ? MAX_VIDEO_SIZE_MB : MAX_SIZE_MB;
+          if (original.size > sizeCapBytes) {
+            return fail(`supera el límite de ${sizeCapMb}MB`);
           }
           // Las imágenes se achican igual: no por el límite (ya no aplica) sino
           // porque subir 8MB de foto no mejora la respuesta y se siente lento.
@@ -270,7 +426,8 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
           }
 
           const data = await regRes.json();
-          const uploadedAsImage = data.kind === "image";
+          const kind = data.kind as UploadedFile["type"];
+          const uploadedAsImage = kind === "image";
           const previewBlob =
             uploadedAsImage && !file.type && data.mime
               ? new Blob([file], { type: data.mime })
@@ -279,7 +436,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
             file: {
               name: original.name,
               openai_file_id: data.file_id,
-              type: (uploadedAsImage ? "image" : "document") as UploadedFile["type"],
+              type: kind,
               previewUrl: uploadedAsImage ? URL.createObjectURL(previewBlob) : undefined,
             },
           };
@@ -290,6 +447,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
     );
 
     setPendingUploads(0);
+    setUploadingVideo(false);
 
     const ok = results.flatMap((r) => ("file" in r && r.file ? [r.file] : []));
     if (ok.length > 0) setAttachedFiles((prev) => [...prev, ...ok]);
@@ -490,11 +648,27 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
       // Creación diferida: si no hay conversación aún, crearla al primer mensaje
       let threadId = activeThreadId;
       if (!threadId) {
-        const res = await fetch("/api/threads", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ gptId: activeGptId }),
-        });
+        const createThread = (projectId: string | null) =>
+          fetch("/api/threads", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ gptId: activeGptId, projectId }),
+          });
+
+        let res = await createThread(pendingProjectId);
+        // La carpeta es una preferencia de orden; el mensaje es el trabajo de
+        // quien escribe. Si el proyecto se borró entre el click y el envío —o
+        // mientras esta request viajaba— se reintenta sin carpeta en vez de
+        // perder el mensaje: el chat nace suelto y se puede mover después.
+        //
+        // SOLO ante 404, nunca ante cualquier error: crear un thread NO es
+        // idempotente (abre una Conversation en OpenAI y escribe una fila).
+        // Reintentar un 429 quema el siguiente slot del rate limit, y un 500
+        // paga otro round-trip a OpenAI por algo que no tiene que ver con la
+        // carpeta. Los 404 de esta ruta son seguros porque los emite la
+        // validación, antes de que exista la Conversation: no hay nada que
+        // duplicar.
+        if (res.status === 404 && pendingProjectId) res = await createThread(null);
         if (!res.ok) {
           setMessages((prev) => [
             ...prev,
@@ -508,11 +682,16 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
           id: created.id,
           title: created.title,
           gpt_id: activeGptId,
+          // Del servidor, no de pendingProjectId: si el proyecto se borró entre
+          // el click y el primer mensaje, la fila nace sin carpeta y el sidebar
+          // tiene que reflejar eso, no lo que el cliente pidió.
+          project_id: created.project_id ?? null,
           created_at: created.created_at,
           updated_at: created.updated_at,
         };
         threadId = newThread.id;
         setActiveThreadId(newThread.id);
+        setPendingProjectId(null);
         setThreadList((prev) => [newThread, ...prev]);
         pushUrl(`?c=${newThread.id}`);
       }
@@ -544,7 +723,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
     // runAssistant es estable en comportamiento (solo cierra sobre setState/refs); omitirla
     // evita que sendMessage cambie de referencia en cada token streameado.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeGptId, activeThreadId, attachedFiles, isEditing, isLoading, pendingUploads]
+    [activeGptId, activeThreadId, attachedFiles, isEditing, isLoading, pendingProjectId, pendingUploads]
   );
 
   const regenerate = useCallback(async () => {
@@ -604,6 +783,8 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
       <ChatSidebar
         gpts={gpts}
         threadList={threadList}
+        projects={projects}
+        openProjectIds={openProjectIds}
         activeGptId={activeGptId}
         activeThreadId={activeThreadId}
         sidebarOpen={sidebarOpen}
@@ -626,6 +807,17 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
         onSubmitRename={renameThread}
         onCancelRename={cancelRename}
         onDeleteThread={deleteThread}
+        onToggleProject={toggleProject}
+        onNewChatInProject={newChatInProject}
+        onDeleteProject={deleteProject}
+        onMoveToProject={moveToProject}
+        onCreateProjectWith={createProjectWith}
+        renamingProjectId={renamingProjectId}
+        projectRenameValue={projectRenameValue}
+        onProjectRenameValueChange={setProjectRenameValue}
+        onStartProjectRename={startProjectRename}
+        onSubmitProjectRename={renameProject}
+        onCancelProjectRename={cancelProjectRename}
       />
 
       {/* Área principal */}
@@ -635,7 +827,9 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
           // preventDefault siempre: si no, sin GPT activo el navegador abre el
           // archivo soltado en vez de ignorarlo.
           e.preventDefault();
-          if (showComposer) setIsDragging(true);
+          // Arrastrar un chat del sidebar también dispara esto; sin el filtro,
+          // mover una conversación encendía el overlay de "soltá tus archivos".
+          if (showComposer && e.dataTransfer.types.includes("Files")) setIsDragging(true);
         }}
         onDragLeave={(e) => {
           if (e.currentTarget === e.target) setIsDragging(false);
@@ -843,6 +1037,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
             onLibraryPick={attachFromLibrary}
             activeThreadId={activeThreadId}
             isUploading={pendingUploads > 0}
+            isUploadingVideo={uploadingVideo}
             isEditing={isEditing}
             onCancelEdit={cancelEdit}
             attachedFiles={attachedFiles}

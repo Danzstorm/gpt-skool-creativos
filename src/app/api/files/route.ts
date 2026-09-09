@@ -9,7 +9,7 @@ const MAX_RESULTS = 50;
 export interface LibraryFile {
   openai_file_id: string;
   name: string;
-  type: "image" | "document";
+  type: "image" | "document" | "video";
   created_at: string;
   /** URL firmada de Storage, solo para imágenes (la miniatura del menú). */
   previewUrl?: string;
@@ -107,10 +107,11 @@ export async function GET(request: NextRequest) {
   const files: LibraryFile[] = await Promise.all(
     rows.map(async (row) => {
       const isImage = row.mime?.startsWith("image/") ?? false;
+      const isVideo = row.mime?.startsWith("video/") ?? false;
       const base: LibraryFile = {
         openai_file_id: row.openai_file_id,
-        name: row.name || (isImage ? "imagen" : "archivo"),
-        type: isImage ? "image" : "document",
+        name: row.name || (isImage ? "imagen" : isVideo ? "video" : "archivo"),
+        type: isImage ? "image" : isVideo ? "video" : "document",
         created_at: row.created_at,
       };
       if (!isImage || !row.storage_path) return base;

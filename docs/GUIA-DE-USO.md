@@ -36,8 +36,10 @@ Al entrar caes en **`/chat`**, un shell fullscreen (sin header, como ChatGPT des
 3. Respuesta en streaming; se puede **detener** con el botón cuadrado.
 4. Clic en el nombre del GPT (header) o el icono de historial (sidebar) abre sus conversaciones anteriores.
 
-### Adjuntar imágenes y archivos
-Todos los GPTs aceptan **imágenes** (visión) y **documentos**. Tres formas: botón `+` → Imágenes/Archivos, **pegar** con Ctrl+V, o **arrastrar y soltar**. Las imágenes se numeran (**img 1, img 2…**) para GPTs que las referencian así.
+### Adjuntar imágenes, archivos y videos
+Todos los GPTs aceptan **imágenes** (visión), **documentos** y **videos** — sin distinción por GPT. Botón `+` → Imágenes/Archivos/Video, **pegar** con Ctrl+V (solo imágenes) o **arrastrar y soltar**. Las imágenes se numeran (**img 1, img 2…**) para GPTs que las referencian así.
+
+**Videos**: hasta 100MB, cualquier duración (no se valida localmente — si Gemini lo rechaza por ser demasiado largo, el aviso lo explica). El video no se adjunta como archivo: en segundo plano se sube a Gemini, que genera una descripción detallada, y esa descripción es lo que recibe el GPT (requiere `GEMINI_API_KEY` configurada, ver §4). Mientras se analiza, el composer muestra "Analizando video..." — puede tardar más que una imagen o un documento.
 
 ### Copiar prompts
 Los bloques de código (donde los GPTs devuelven prompts) traen botón **Copiar** siempre visible.
@@ -137,6 +139,7 @@ NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...
 OPENAI_API_KEY=...
+GEMINI_API_KEY=...                   # opcional: sin esto, adjuntar un video devuelve error claro; el resto del chat sigue funcionando
 NEXT_PUBLIC_SKOOL_URL=...            # fallback si Ajustes no tiene skool_url cargado
 SKOOL_WEBHOOK_SECRET=...             # secreto compartido con Zapier/Make/Skool
 UPSTASH_REDIS_REST_URL=...           # opcional en local; recomendado en producción (ver §5)

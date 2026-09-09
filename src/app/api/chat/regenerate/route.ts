@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
     if (fileIds.length > 0) {
       const { data: ownedFiles, error: ownedFilesError } = await serviceClient
         .from("uploaded_files")
-        .select("openai_file_id, mime, name")
+        .select("openai_file_id, mime, name, video_description")
         .eq("user_id", user.id)
         .in("openai_file_id", fileIds);
       if (ownedFilesError) throw ownedFilesError;
@@ -145,18 +145,30 @@ export async function POST(request: NextRequest) {
       incoming = fileIds.map((id) => {
         const row = byId.get(id);
         const isImage = row?.mime?.startsWith("image/") ?? false;
+        const isVideo = row?.mime?.startsWith("video/") ?? false;
+        const type = isImage ? "image" : isVideo ? "video" : "document";
         return {
           openai_file_id: id,
-          type: isImage ? "image" : "document",
-          // Solo para documentos: el nombre de una imagen no se manda nunca.
-          ...(isImage ? {} : { name: row?.name ?? null }),
+          type,
+          // El nombre real solo se guarda para documentos y videos (ver
+          // chat/route.ts para el porqué); las imágenes nunca lo llevan.
+          ...(type === "document" || type === "video" ? { name: row?.name ?? null } : {}),
+          ...(type === "video" ? { videoDescription: row?.video_description ?? null } : {}),
         } satisfies IncomingFile;
       });
       if (isLegacyThread) {
         // Reenviar un file_id de la cuenta anterior tumba la regeneración
         // entera con "No such File object". Se omite el adjunto perdido: el
         // usuario sigue viendo su miniatura (sale de Storage) y el turno corre.
-        incoming = await keepAvailableFiles(openai, incoming);
+        //
+        // Los videos NUNCA existieron en OpenAI (openai_file_id sintético, ver
+        // /api/upload/register): comprobarlos ahí siempre daría 404 y los
+        // descartaría, así que se excluyen de esta verificación.
+        const openaiBacked = incoming.filter((file) => file.type !== "video");
+        const availableIds = new Set(
+          (await keepAvailableFiles(openai, openaiBacked)).map((file) => file.openai_file_id)
+        );
+        incoming = incoming.filter((file) => file.type === "video" || availableIds.has(file.openai_file_id));
       }
     }
 

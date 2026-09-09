@@ -7,6 +7,11 @@ const document = (id: string, name?: string): IncomingFile => ({
   type: "document",
   name,
 });
+const video = (id: string, videoDescription?: string): IncomingFile => ({
+  openai_file_id: id,
+  type: "video",
+  videoDescription,
+});
 
 /** Las partes del único item de usuario que devuelve buildUserInput. */
 function partsOf(input: ReturnType<typeof buildUserInput>) {
@@ -56,6 +61,33 @@ describe("buildUserInput — documentos", () => {
   it("omite filename cuando no hay nombre, en vez de mandarlo vacío", () => {
     const parts = partsOf(buildUserInput("", [document("file-D")]));
     expect(parts[0]).not.toHaveProperty("filename");
+  });
+});
+
+describe("buildUserInput — videos", () => {
+  it("manda la descripción de Gemini como texto directo, nunca como archivo", () => {
+    // El video en sí NUNCA se sube a OpenAI (Responses API no lo entiende) —
+    // lo único que ve el modelo es el texto que describió Gemini.
+    const parts = partsOf(buildUserInput("", [video("video-1", "Un gato cruza una habitación soleada.")]));
+
+    expect(parts).toEqual([
+      { type: "input_text", text: "Descripción de video 1:" },
+      { type: "input_text", text: "Un gato cruza una habitación soleada." },
+    ]);
+  });
+
+  it("numera solo videos aunque haya imágenes y documentos intercalados", () => {
+    const parts = partsOf(
+      buildUserInput("", [image("file-A"), video("video-1", "desc 1"), document("file-D"), video("video-2", "desc 2")])
+    );
+    const etiquetas = parts.filter((p) => p.type === "input_text").map((p) => p.text);
+
+    expect(etiquetas).toEqual(["Imagen 1:", "Descripción de video 1:", "desc 1", "Descripción de video 2:", "desc 2"]);
+  });
+
+  it("no manda una parte vacía cuando Gemini no dejó descripción", () => {
+    const parts = partsOf(buildUserInput("", [video("video-1", undefined)]));
+    expect(parts[1]).toEqual({ type: "input_text", text: "(sin descripción disponible)" });
   });
 });
 

@@ -32,11 +32,16 @@ export const EMPTY_ATTACHMENTS: ThinkingAttachments = { images: 0, documents: 0 
  * objetos literales.
  */
 export function countAttachments(
-  message?: { files?: { type: "image" | "document" }[] } | null
+  message?: { files?: { type: "image" | "document" | "video" }[] } | null
 ): ThinkingAttachments {
   const files = message?.files;
   if (!files || files.length === 0) return EMPTY_ATTACHMENTS;
   return {
+    // Los videos no cuentan acá a propósito: para cuando el modelo genera la
+    // respuesta, el video ya se convirtió en texto (la descripción de Gemini)
+    // durante la subida — leerlo no es más lento que leer un documento, así
+    // que no hay una espera propia que anunciar y "sin adjuntos" (cae al
+    // relleno rotativo) es lo honesto, no un silencio raro.
     images: files.filter((f) => f.type === "image").length,
     documents: files.filter((f) => f.type === "document").length,
   };

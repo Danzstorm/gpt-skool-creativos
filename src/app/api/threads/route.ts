@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from("threads")
-    .select("id, title, gpt_id, created_at, updated_at")
+    .select("id, title, gpt_id, project_id, created_at, updated_at")
     .order("updated_at", { ascending: false });
 
   // gptId opcional: sin él devuelve todas las conversaciones del usuario (cross-GPT)
@@ -63,13 +63,28 @@ export async function POST(request: NextRequest) {
   if (!rl.ok) return rateLimitResponse(rl);
 
   let gptId: string | undefined;
+  let projectId: string | null | undefined;
   try {
-    ({ gptId } = await request.json());
+    ({ gptId, projectId } = await request.json());
   } catch {
     return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
   }
   if (!gptId) {
     return NextResponse.json({ error: "Falta gptId" }, { status: 400 });
+  }
+
+  // El chat se crea recién con el primer mensaje, así que "nuevo chat en este
+  // proyecto" no puede mover nada después: hereda la carpeta acá o nunca.
+  // El SELECT pasa por RLS y descarta el id de un proyecto ajeno (la FK no).
+  if (projectId) {
+    const { data: project } = await supabase
+      .from("projects")
+      .select("id")
+      .eq("id", projectId)
+      .maybeSingle();
+    if (!project) {
+      return NextResponse.json({ error: "Proyecto no encontrado" }, { status: 404 });
+    }
   }
 
   // Validar que el GPT existe y está activo antes de crear la Conversation en
@@ -88,11 +103,12 @@ export async function POST(request: NextRequest) {
     .insert({
       user_id: user.id,
       gpt_id: gptId,
+      project_id: projectId ?? null,
       openai_conversation_id: conversation.id,
       // Nace verificado contra la key en uso: no hay nada que comprobar después.
       conversation_key_fingerprint: CONVERSATION_KEY_FINGERPRINT,
     })
-    .select("id, title, created_at, updated_at")
+    .select("id, title, project_id, created_at, updated_at")
     .single();
 
   if (error) {

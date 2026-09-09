@@ -10,7 +10,7 @@
 // cambio en uno los desincroniza y el usuario ve "imagen 2" mientras el modelo
 // habla de otra. Por eso la cuenta vive acá y la usan los dos.
 
-export type AttachmentLike = { type: "image" | "document" };
+export type AttachmentLike = { type: "image" | "document" | "video" };
 
 /**
  * Posición 1-based de un adjunto **entre las imágenes** del mensaje, o null si
@@ -34,4 +34,29 @@ export function imageNumber(files: AttachmentLike[], index: number): number | nu
 /** Cómo se nombra una imagen, tanto en pantalla como para el modelo. */
 export function imageLabel(position: number): string {
   return `imagen ${position}`;
+}
+
+/**
+ * Posición 1-based de un adjunto **entre los videos** del mensaje, o null si
+ * no es un video. Mismo criterio que imageNumber: cuenta solo videos, para
+ * numerarlos aparte de las imágenes/documentos que compartan mensaje.
+ */
+export function videoNumber(files: AttachmentLike[], index: number): number | null {
+  const file = files[index];
+  if (!file || file.type !== "video") return null;
+
+  let count = 0;
+  for (let i = 0; i <= index; i++) {
+    if (files[i]?.type === "video") count++;
+  }
+  return count;
+}
+
+/**
+ * Cómo se nombra un video, tanto en pantalla como para el modelo. El video en
+ * sí nunca llega al modelo (no lo entiende la Responses API) — lo que recibe
+ * es la descripción de Gemini bajo este mismo rótulo.
+ */
+export function videoLabel(position: number): string {
+  return `descripción de video ${position}`;
 }

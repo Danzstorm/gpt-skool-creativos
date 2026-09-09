@@ -18,7 +18,7 @@ export async function getThreadMessages(
   if (error || !data) return [];
 
   return data.map((m) => {
-    const rawFiles = (m.files as Array<{ openai_file_id: string; type: "image" | "document"; name?: string }> | null) ?? [];
+    const rawFiles = (m.files as Array<{ openai_file_id: string; type: "image" | "document" | "video"; name?: string }> | null) ?? [];
     return {
       role: m.role as "user" | "assistant",
       content: m.content,
@@ -27,7 +27,7 @@ export async function getThreadMessages(
           ? rawFiles.map((f) => ({
               openai_file_id: f.openai_file_id,
               type: f.type,
-              name: f.name || (f.type === "image" ? "imagen" : "archivo"),
+              name: f.name || (f.type === "image" ? "imagen" : f.type === "video" ? "video" : "archivo"),
             }))
           : undefined,
     };

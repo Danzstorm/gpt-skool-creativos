@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
   if (requestedIds.length > 0) {
     const { data: ownedFiles, error: ownedFilesError } = await serviceClient
       .from("uploaded_files")
-      .select("openai_file_id, mime, name")
+      .select("openai_file_id, mime, name, video_description")
       .eq("user_id", user.id)
       .in("openai_file_id", requestedIds);
     if (ownedFilesError) {
@@ -155,11 +155,17 @@ export async function POST(request: NextRequest) {
     incoming = requestedIds.map((id) => {
       const row = byId.get(id);
       const isImage = row?.mime?.startsWith("image/") ?? false;
+      const isVideo = row?.mime?.startsWith("video/") ?? false;
+      const type = isImage ? "image" : isVideo ? "video" : "document";
       return {
         openai_file_id: id,
-        type: isImage ? "image" : "document",
-        // Solo para documentos: el nombre de una imagen no se manda nunca.
-        ...(isImage ? {} : { name: row?.name ?? null }),
+        type,
+        // El nombre real solo se guarda para documentos y videos: el de una
+        // imagen no se manda nunca (ver openaiImageName en upload-file.ts). El
+        // video nunca lleva su nombre al modelo (chat-content.ts no lo usa),
+        // esto es solo para que la miniatura/chip conserve el nombre real.
+        ...(type === "document" || type === "video" ? { name: row?.name ?? null } : {}),
+        ...(type === "video" ? { videoDescription: row?.video_description ?? null } : {}),
       } satisfies IncomingFile;
     });
     if (!gpt.vision_enabled && incoming.some((file) => file.type === "image")) {
@@ -177,8 +183,15 @@ export async function POST(request: NextRequest) {
     // único (user_id, storage_path) impide crear otra fila para el mismo
     // objeto, y la FK de message_attachments impide cambiarle el id a uno ya
     // referenciado. Queda como trabajo aparte; por ahora se avisa claro.
-    const available = await keepAvailableFiles(openai, incoming);
-    if (available.length !== incoming.length) {
+    //
+    // Los videos NUNCA llegaron a OpenAI (su openai_file_id es sintético, ver
+    // /api/upload/register): comprobarlos ahí siempre daría 404 y los
+    // descartaría en silencio, así que se excluyen de esta verificación.
+    const openaiBacked = incoming.filter((file) => file.type !== "video");
+    const availableIds = new Set(
+      (await keepAvailableFiles(openai, openaiBacked)).map((file) => file.openai_file_id)
+    );
+    if (availableIds.size !== openaiBacked.length) {
       return NextResponse.json(
         {
           error:
@@ -187,6 +200,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    incoming = incoming.filter((file) => file.type === "video" || availableIds.has(file.openai_file_id));
   }
 
   let lease: ThreadLease | null;

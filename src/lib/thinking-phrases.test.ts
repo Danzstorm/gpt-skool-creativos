@@ -145,6 +145,12 @@ describe("countAttachments", () => {
     expect(countAttachments(message)).toEqual({ images: 2, documents: 1 });
   });
 
+  it("no cuenta videos como imagen ni como documento", () => {
+    // El video ya es texto (descripción de Gemini) para cuando llega acá —
+    // no hay una espera propia que anunciar, así que cae al relleno rotativo.
+    expect(countAttachments({ files: [{ type: "video" as const }] })).toEqual(EMPTY_ATTACHMENTS);
+  });
+
   it("devuelve vacío cuando no hay mensaje o no hay adjuntos", () => {
     // El primer turno de una conversación no tiene mensaje anterior, así que
     // esto se llama con undefined en cada chat nuevo.
