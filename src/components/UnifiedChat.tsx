@@ -36,9 +36,11 @@ interface Props {
   initialThreadId?: string | null;
   initialGptId?: string | null;
   profile: { fullName: string | null; email: string | null; isAdmin: boolean; theme: Theme };
+  /** Hay GEMINI_API_KEY en el servidor; sin ella no se ofrece adjuntar video. */
+  videoEnabled: boolean;
 }
 
-export default function UnifiedChat({ gpts, threads, initialThreadId, initialGptId, profile }: Props) {
+export default function UnifiedChat({ gpts, threads, initialThreadId, initialGptId, profile, videoEnabled }: Props) {
   const [threadList, setThreadList] = useState<ThreadSummary[]>(threads);
   const initialThread = initialThreadId ? threads.find((t) => t.id === initialThreadId) : null;
 
@@ -1041,6 +1043,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
           <Composer
             ref={composerRef}
             isLoading={isLoading}
+            videoEnabled={videoEnabled}
             onLibraryPick={attachFromLibrary}
             activeThreadId={activeThreadId}
             isUploading={pendingUploads > 0}

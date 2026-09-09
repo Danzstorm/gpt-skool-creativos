@@ -33,9 +33,20 @@ export const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm"
 // size cap + Gemini's own rejection. Add a metadata-only MP4/mov duration
 // parser if Gemini cost from long videos becomes a problem.
 
-/** Motivo del rechazo, o null si el archivo es aceptable. */
-export function rejectReason(type: string, size: number): string | null {
+/**
+ * Motivo del rechazo, o null si el archivo es aceptable.
+ *
+ * `videoEnabled` es si hay GEMINI_API_KEY configurada. El video no se adjunta
+ * como archivo: se describe con Gemini, así que sin key no hay nada que hacer
+ * con él. El rechazo vive acá y no en cada ruta porque esta es la puerta que
+ * comparten /upload/sign y /upload/register — en sign corta ANTES de firmar,
+ * así nadie sube 100MB a Storage para que recién el registro le diga que no.
+ * Sin valor por defecto a propósito: un `true` por omisión volvería a abrir la
+ * puerta en la próxima ruta que llame a esto.
+ */
+export function rejectReason(type: string, size: number, videoEnabled: boolean): string | null {
   if (type && ALLOWED_VIDEO_TYPES.includes(type)) {
+    if (!videoEnabled) return "el análisis de video no está disponible todavía";
     if (size > MAX_VIDEO_SIZE_BYTES) return `supera el límite de ${MAX_VIDEO_SIZE_MB}MB para video`;
     return null;
   }

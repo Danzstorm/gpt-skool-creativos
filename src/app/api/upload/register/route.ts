@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
   // rejectReason ya aplica el tope correcto según el tipo (25MB general, 100MB
   // para video) — no hace falta un segundo chequeo de tamaño acá, y uno fijo
   // en MAX_SIZE_BYTES rechazaría de más cualquier video de más de 25MB.
-  const reason = rejectReason(finalMime, blob.size);
+  const reason = rejectReason(finalMime, blob.size, !!process.env.GEMINI_API_KEY);
   if (reason) {
     await service.storage.from("chat-uploads").remove([path]);
     return NextResponse.json({ error: reason }, { status: 400 });

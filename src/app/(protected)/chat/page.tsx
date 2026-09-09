@@ -34,6 +34,9 @@ export default async function ChatPage({ searchParams }: Props) {
       threads={(threads as ThreadSummary[]) ?? []}
       initialThreadId={threadId ?? null}
       initialGptId={gptId ?? null}
+      // Sin key de Gemini el video no se puede describir: la UI no lo ofrece y
+      // /api/upload/sign lo rechaza antes de firmar la subida.
+      videoEnabled={!!process.env.GEMINI_API_KEY}
       profile={{
         fullName: profile?.full_name ?? null,
         email: user?.email ?? null,

@@ -27,7 +27,11 @@ export async function POST(request: NextRequest) {
 
   // Validar ANTES de firmar: si no, el navegador sube 25MB a Storage y recién
   // el registro lo rechaza, con el archivo ya ocupando espacio.
-  const reason = rejectReason(typeof type === "string" ? type : "", size);
+  const reason = rejectReason(
+    typeof type === "string" ? type : "",
+    size,
+    !!process.env.GEMINI_API_KEY
+  );
   if (reason) return NextResponse.json({ error: reason }, { status: 400 });
 
   // Prefijo por usuario: /register comprueba que el path pedido empiece con el

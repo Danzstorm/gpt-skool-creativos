@@ -8,6 +8,12 @@ import { mentionAt, moveIndex, removeMention, type MentionQuery } from "@/lib/fi
 import FilePicker from "./FilePicker";
 import type { LibraryFile } from "@/app/api/files/route";
 
+// Tipos que acepta el <input type="file">. El video va aparte porque depende
+// de que Gemini esté configurado (ver `videoEnabled`).
+const FILE_ACCEPT =
+  "image/jpeg,image/png,image/webp,image/gif,application/pdf,.txt,.md,.py,.js,.ts,.csv,.xlsx,.docx";
+const VIDEO_ACCEPT = "video/mp4,video/quicktime,video/webm";
+
 export interface ComposerHandle {
   setText: (text: string) => void;
 }
@@ -17,6 +23,12 @@ interface Props {
   isUploading: boolean;
   /** Un video del batch actual está subiéndose/analizándose (tarda más que un archivo normal). */
   isUploadingVideo?: boolean;
+  /**
+   * Hay GEMINI_API_KEY en el servidor. Sin ella el video no se puede describir,
+   * así que la opción no se muestra: un botón que termina en "no está disponible"
+   * después de subir 100MB es peor que no ofrecerlo.
+   */
+  videoEnabled: boolean;
   isEditing: boolean;
   /** Hilo activo: acota la biblioteca del `@` a los archivos de este chat. */
   activeThreadId: string | null;
@@ -33,7 +45,7 @@ interface Props {
 // Composer aislado: el texto y la grabación viven acá, no en el componente padre.
 // Así escribir no re-renderiza el resto del chat (sidebar, lista de mensajes).
 const Composer = forwardRef<ComposerHandle, Props>(function Composer(
-  { isLoading, isUploading, isUploadingVideo, isEditing, activeThreadId, onCancelEdit, attachedFiles, onFilesSelected, onRemoveFile, onSend, onStop, onLibraryPick },
+  { isLoading, isUploading, isUploadingVideo, videoEnabled, isEditing, activeThreadId, onCancelEdit, attachedFiles, onFilesSelected, onRemoveFile, onSend, onStop, onLibraryPick },
   ref
 ) {
   const [input, setInput] = useState("");
@@ -355,7 +367,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           ref={fileInputRef}
           type="file"
           multiple
-          accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,.txt,.md,.py,.js,.ts,.csv,.xlsx,.docx,video/mp4,video/quicktime,video/webm"
+          accept={videoEnabled ? `${FILE_ACCEPT},${VIDEO_ACCEPT}` : FILE_ACCEPT}
           className="hidden"
           onChange={(e) => {
             handleFileUpload(e.target.files);
@@ -384,14 +396,16 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
                 <Paperclip size={15} />
                 Archivos
               </button>
-              <button
-                type="button"
-                onClick={() => openFilePicker("video/mp4,video/quicktime,video/webm")}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-ink transition text-left"
-              >
-                <Video size={15} />
-                Video
-              </button>
+              {videoEnabled && (
+                <button
+                  type="button"
+                  onClick={() => openFilePicker(VIDEO_ACCEPT)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-ink transition text-left"
+                >
+                  <Video size={15} />
+                  Video
+                </button>
+              )}
             </div>
           )}
           <button
