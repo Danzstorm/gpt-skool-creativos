@@ -1,5 +1,5 @@
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
-import { ArrowUp, Plus, Image as ImageIcon, Paperclip, Mic, X, Check, Square, Video } from "lucide-react";
+import { ArrowUp, Plus, Paperclip, Mic, X, Check, Square, Video } from "lucide-react";
 import type { UploadedFile } from "@/lib/types";
 import { useDismissable } from "@/lib/useDismissable";
 import RecordingWave from "./RecordingWave";
@@ -55,7 +55,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   const [recordingStream, setRecordingStream] = useState<MediaStream | null>(null);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [micError, setMicError] = useState("");
-  const [attachMenuOpen, setAttachMenuOpen] = useState(false);
+
   // Menú `@` de la biblioteca de archivos.
   const [mention, setMention] = useState<MentionQuery | null>(null);
   const [library, setLibrary] = useState<LibraryFile[]>([]);
@@ -70,8 +70,6 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   // que distingue "descartá el audio" de "transcribilo".
   const cancelledRef = useRef(false);
 
-  const closeAttachMenu = useCallback(() => setAttachMenuOpen(false), []);
-  const attachMenuRef = useDismissable<HTMLDivElement>(attachMenuOpen, closeAttachMenu);
 
   const closeMention = useCallback(() => setMention(null), []);
   const mentionRef = useDismissable<HTMLDivElement>(mention !== null, closeMention);
@@ -157,12 +155,13 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
     onFilesSelected(Array.from(files));
   }
 
-  function openFilePicker(accept: string) {
-    setAttachMenuOpen(false);
-    const el = fileInputRef.current;
-    if (!el) return;
-    el.accept = accept;
-    el.click();
+  // Un único botón de adjuntar, sin submenú por tipo. Los tres accesos
+  // (Imágenes / Archivos / Video) no hacían nada distinto entre sí: solo
+  // recortaban el `accept` que ya declara el <input>, a cambio de un click de
+  // más y de una decisión que no le toca al usuario ("¿un PDF es archivo o
+  // imagen?"). El tipo lo resuelve el servidor por el MIME real, no el menú.
+  function openFilePicker() {
+    fileInputRef.current?.click();
   }
 
   function handlePaste(e: React.ClipboardEvent) {
@@ -285,7 +284,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
 
   return (
     <div className="bg-zinc-950 px-4 pt-2.5 pb-2">
-      {attachedFiles.length > 0 && (
+      {(attachedFiles.length > 0 || isUploading) && (
         <div className="flex flex-wrap gap-2 mb-3 max-w-3xl mx-auto">
           {attachedFiles.map((f, i) => {
             // La numeración sale de la misma función que usa el servidor para
@@ -328,6 +327,22 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
               </div>
             );
           })}
+          {/* El progreso vive acá y no en el placeholder del textarea: ahí
+              decía "Analizando video..." y hacía sentir que el campo estaba
+              ocupado, cuando escribir siempre estuvo permitido. */}
+          {isUploading && (
+            <div className="flex items-center gap-2 bg-zinc-800 rounded-xl px-3 py-1.5 text-xs text-zinc-400 h-16">
+              <span className="w-3 h-3 rounded-full border-2 border-zinc-600 border-t-zinc-300 animate-spin" />
+              {isUploadingVideo ? (
+                <span>
+                  Analizando video...
+                  <span className="block text-zinc-500">Puedes seguir escribiendo</span>
+                </span>
+              ) : (
+                <span>Subiendo...</span>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -375,48 +390,18 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           }}
         />
 
-        <div ref={attachMenuRef} className="relative flex-shrink-0">
-          {attachMenuOpen && (
-            <div className="absolute bottom-full left-0 mb-2 w-48 bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl overflow-hidden py-1">
-              <button
-                type="button"
-                onClick={() => openFilePicker("image/jpeg,image/png,image/webp,image/gif")}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-ink transition text-left"
-              >
-                <ImageIcon size={15} />
-                Imágenes
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  openFilePicker("application/pdf,.txt,.md,.py,.js,.ts,.csv,.xlsx,.docx")
-                }
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-ink transition text-left"
-              >
-                <Paperclip size={15} />
-                Archivos
-              </button>
-              {videoEnabled && (
-                <button
-                  type="button"
-                  onClick={() => openFilePicker(VIDEO_ACCEPT)}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-ink transition text-left"
-                >
-                  <Video size={15} />
-                  Video
-                </button>
-              )}
-            </div>
-          )}
-          <button
-            onClick={() => setAttachMenuOpen((v) => !v)}
-            className="w-8 h-8 flex items-center justify-center rounded-full text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/60 transition"
-            title="Adjuntar imágenes o archivos (también puedes pegar o arrastrar)"
-            aria-label="Adjuntar"
-          >
-            <Plus size={17} />
-          </button>
-        </div>
+        <button
+          onClick={openFilePicker}
+          className="w-8 h-8 flex items-center justify-center rounded-full text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/60 transition flex-shrink-0"
+          title={
+            videoEnabled
+              ? "Adjuntar imágenes, archivos o video (también puedes pegar o arrastrar)"
+              : "Adjuntar imágenes o archivos (también puedes pegar o arrastrar)"
+          }
+          aria-label="Adjuntar"
+        >
+          <Plus size={17} />
+        </button>
 
         {/* Grabando: la onda ocupa el centro (donde va el texto) y el micrófono
             desaparece, porque detener pasa a ser el botón de la derecha. */}
@@ -448,9 +433,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
               placeholder={
                 isTranscribing
                   ? "Transcribiendo audio..."
-                  : isUploadingVideo
-                    ? "Analizando video..."
-                    : "Escribe un mensaje... (Enter para enviar)"
+                  : "Escribe un mensaje... (Enter para enviar)"
               }
               disabled={isLoading || isTranscribing}
               rows={1}
@@ -501,6 +484,9 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             onClick={submit}
             disabled={isUploading || (!input.trim() && attachedFiles.length === 0)}
             className="bg-cta hover:bg-cta-active disabled:bg-zinc-700 disabled:text-zinc-500 text-cta-fg disabled:cursor-not-allowed rounded-full p-2 flex-shrink-0 transition active:scale-95"
+            // Enviar sigue esperando al adjunto: mandar antes dejaría el mensaje
+            // sin el archivo que lo motivó. Escribir, en cambio, nunca se bloquea.
+            title={isUploading ? "Esperando a que termine el adjunto" : "Enviar"}
             aria-label="Enviar"
           >
             <ArrowUp size={16} strokeWidth={2.5} />
