@@ -30,7 +30,8 @@ const ITEMS_PER_CALL = 20;
 
 type StoredFile = { name?: unknown; type?: unknown };
 
-function isNotFound(error: unknown): boolean {
+/** 404 de la API: el recurso vive en otra cuenta, o ya no existe. */
+export function isNotFound(error: unknown): boolean {
   return (error as { status?: number } | null)?.status === 404;
 }
 
@@ -132,6 +133,15 @@ export async function ensureThreadConversation({
       .update({
         openai_conversation_id: conversation.id,
         conversation_key_fingerprint: CONVERSATION_KEY_FINGERPRINT,
+        // La Conversation nueva se siembra desde `messages`, y el turno con el
+        // contexto de la carpeta NUNCA se guarda ahí (es contexto invisible para
+        // la UI, no un mensaje del usuario). O sea: la siembra no lo trae. Si la
+        // huella sobreviviera a la recreación, el thread quedaría marcado como
+        // "contexto ya aplicado" sobre una Conversation que no lo tiene, y el
+        // proyecto dejaría de existir para ese chat sin un solo error. Se limpia
+        // acá y no en cada ruta porque tanto /api/chat como /api/chat/regenerate
+        // recrean por este mismo camino.
+        project_context_fingerprint: null,
       })
       .eq("id", threadId);
     if (error) throw error;

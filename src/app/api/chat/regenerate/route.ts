@@ -6,6 +6,7 @@ import { runStreamResponse } from "@/lib/chat-stream";
 import { buildUserInput, type IncomingFile } from "@/lib/chat-content";
 import { estimateCost } from "@/lib/pricing";
 import { getGptRuntimeConfig } from "@/lib/gpt-runtime-config";
+import { projectInstructionsOf, syncProjectContext } from "@/lib/project-instructions";
 import {
   ensureThreadConversation,
   keepAvailableFiles,
@@ -62,7 +63,9 @@ export async function POST(request: NextRequest) {
       .single(),
     supabase
       .from("threads")
-      .select("openai_conversation_id, conversation_key_fingerprint")
+      .select(
+        "openai_conversation_id, conversation_key_fingerprint, project_context_fingerprint, projects(instructions)"
+      )
       .eq("id", threadId)
       .eq("gpt_id", gptId)
       .single(),
@@ -74,6 +77,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Conversación no encontrada" }, { status: 404 });
   }
   const gpt = await getGptRuntimeConfig(serviceClient, gptId, gptRes.data);
+  const projectInstructions = projectInstructionsOf(threadRes.data);
   const storedConversationId = threadRes.data.openai_conversation_id;
   // Thread heredado de otra API key: su Conversation y sus adjuntos pueden vivir
   // en un proyecto de OpenAI que esta cuenta no ve (ver conversation-sync.ts).
@@ -216,6 +220,21 @@ export async function POST(request: NextRequest) {
         },
       },
     ];
+    // Casi siempre no hay nada que hacer: el contexto de la carpeta ya vive en
+    // la Conversation. Importa cuando el texto cambió desde la última respuesta
+    // —regenerar tiene que usar el nuevo, no el que se está reemplazando— y
+    // cuando la Conversation se acaba de recrear, porque la nueva se sembró
+    // desde `messages`, donde ese turno nunca se guarda.
+    await syncProjectContext({
+      openai,
+      supabase: serviceClient,
+      threadId,
+      conversationId,
+      instructions: projectInstructions,
+      appliedFingerprint: threadRes.data.project_context_fingerprint,
+      conversationRecreated: conversationId !== storedConversationId,
+    });
+
     const input = buildUserInput(lastUserMessage.content, incoming);
     const response = runStreamResponse({
       conversationId,

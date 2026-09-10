@@ -2,13 +2,14 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import type { Gpt, Message, Project, UploadedFile, ThreadSummary, Theme } from "@/lib/types";
-import { Menu, ArrowDown, ChevronDown, PanelLeftOpen, SquarePen } from "lucide-react";
+import { Menu, ArrowDown, ChevronDown, Folder, PanelLeftOpen, SquarePen } from "lucide-react";
 import Sparkle from "./Sparkle";
 import GptGlyph from "./chat/GptGlyph";
 import ChatSidebar from "./chat/ChatSidebar";
 import MessageBubble from "./chat/MessageBubble";
 import Composer, { type ComposerHandle } from "./chat/Composer";
 import GptChatsModal from "./chat/GptChatsModal";
+import ProjectInstructionsModal from "./chat/ProjectInstructionsModal";
 import { consumeSSE } from "@/lib/stream-client";
 import ThinkingIndicator from "./chat/ThinkingIndicator";
 import type { LibraryFile } from "@/app/api/files/route";
@@ -30,9 +31,20 @@ const supabase = createClient();
 const SIDEBAR_COLLAPSED_KEY = "chat_sidebar_collapsed";
 const OPEN_PROJECTS_KEY = "chat_open_projects";
 
+/** Cartel del proyecto donde va a nacer el chat que todavía no se creó. */
+function ProjectDestination({ name }: { name: string }) {
+  return (
+    <p className="my-2 inline-flex items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900/60 px-3 py-1 text-xs text-zinc-400">
+      <Folder size={12} className="text-zinc-500" />
+      Se guardará en <span className="text-zinc-200">{name}</span>
+    </p>
+  );
+}
+
 interface Props {
   gpts: Gpt[];
   threads: ThreadSummary[];
+  initialProjects: Project[];
   initialThreadId?: string | null;
   initialGptId?: string | null;
   profile: { fullName: string | null; email: string | null; isAdmin: boolean; theme: Theme };
@@ -40,7 +52,7 @@ interface Props {
   videoEnabled: boolean;
 }
 
-export default function UnifiedChat({ gpts, threads, initialThreadId, initialGptId, profile, videoEnabled }: Props) {
+export default function UnifiedChat({ gpts, threads, initialProjects, initialThreadId, initialGptId, profile, videoEnabled }: Props) {
   const [threadList, setThreadList] = useState<ThreadSummary[]>(threads);
   const initialThread = initialThreadId ? threads.find((t) => t.id === initialThreadId) : null;
 
@@ -73,13 +85,14 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
   const [chatSearch, setChatSearch] = useState("");
   const [gptChatsModalId, setGptChatsModalId] = useState<string | null>(null);
   const [theme, setTheme] = useState<Theme>(profile.theme);
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [openProjectIds, setOpenProjectIds] = useState<string[]>([]);
   const [renamingProjectId, setRenamingProjectId] = useState<string | null>(null);
   const [projectRenameValue, setProjectRenameValue] = useState("");
   // El chat se crea recién con el primer mensaje: hasta entonces la carpeta
   // elegida con "nuevo chat en este proyecto" solo puede vivir acá.
   const [pendingProjectId, setPendingProjectId] = useState<string | null>(null);
+  const [instructionsProjectId, setInstructionsProjectId] = useState<string | null>(null);
 
   // Optimista: cambia al instante en pantalla, guarda en la cuenta en paralelo.
   // Si el PATCH falla, no revertimos — es una preferencia visual, no algo
@@ -104,13 +117,6 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
     } catch {
       // Valor corrupto: arrancar con todo plegado es preferible a romper el chat.
     }
-  }, []);
-
-  useEffect(() => {
-    fetch("/api/projects")
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data: Project[]) => setProjects(Array.isArray(data) ? data : []))
-      .catch(() => {});
   }, []);
 
   const toggleSidebarCollapsed = useCallback(() => {
@@ -152,6 +158,21 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
   }, [messages]);
 
   const activeGpt = useMemo(() => gpts.find((g) => g.id === activeGptId), [gpts, activeGptId]);
+
+  // Carpeta a la que irá a parar el chat que todavía no existe. La pantalla de
+  // "nuevo chat" es idéntica con y sin destino, así que sin este cartel el
+  // botón de la carpeta parece no hacer nada.
+  const pendingProject = useMemo(
+    () => (pendingProjectId ? projects.find((p) => p.id === pendingProjectId) : undefined),
+    [pendingProjectId, projects]
+  );
+
+  // Se guarda el id, no el proyecto: si se guardara el objeto, el panel seguiría
+  // mostrando el texto viejo después de renombrar o editar en otra pestaña.
+  const instructionsProject = useMemo(
+    () => (instructionsProjectId ? projects.find((p) => p.id === instructionsProjectId) : undefined),
+    [instructionsProjectId, projects]
+  );
 
   useEffect(() => {
     if (!showScrollBtn) bottomRef.current?.scrollIntoView({ behavior: isLoading ? "auto" : "smooth" });
@@ -202,6 +223,11 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
     (t: ThreadSummary) => {
       if (t.id === activeThreadId || isLoadingHistory) return;
       setSidebarOpen(false);
+      // Abrir una conversación existente cancela el "nuevo chat en la carpeta"
+      // que hubiera quedado pendiente. Sin esto el destino sobrevive invisible
+      // y el próximo chat que se cree desde un GPT cae en un proyecto que el
+      // usuario ya no recuerda haber elegido.
+      setPendingProjectId(null);
       setActiveThreadId(t.id);
       setActiveGptId(t.gpt_id);
       pushUrl(`?c=${t.id}`);
@@ -344,6 +370,20 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
     },
     [projectRenameValue, renamingProjectId]
   );
+
+  const saveProjectInstructions = useCallback(async (id: string, instructions: string) => {
+    const res = await fetch(`/api/projects/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ instructions }),
+    });
+    // Se propaga el fallo a propósito: el panel lo atrapa, se queda abierto y
+    // conserva lo escrito. Un `if (res.ok)` silencioso cerraría el panel como si
+    // hubiera guardado.
+    if (!res.ok) throw new Error("No se pudieron guardar las instrucciones");
+    const updated: Project = await res.json();
+    setProjects((prev) => prev.map((p) => (p.id === id ? updated : p)));
+  }, []);
 
   const deleteProject = useCallback(async (id: string) => {
     if (!confirm("¿Borrar este proyecto? Las conversaciones de adentro no se borran: vuelven a la lista de chats.")) {
@@ -818,6 +858,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
         onDeleteThread={deleteThread}
         onToggleProject={toggleProject}
         onNewChatInProject={newChatInProject}
+        onEditProjectInstructions={(project) => setInstructionsProjectId(project.id)}
         onDeleteProject={deleteProject}
         onMoveToProject={moveToProject}
         onCreateProjectWith={createProjectWith}
@@ -923,6 +964,7 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
               <h3 className="font-display text-xl font-medium tracking-tight text-ink mb-1">
                 ¿Con qué GPT quieres trabajar?
               </h3>
+              {pendingProject && <ProjectDestination name={pendingProject.name} />}
               <p className="text-sm text-zinc-500 mb-7">Elige uno para empezar una conversación nueva.</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full">
                 {gpts.map((g) => (
@@ -956,6 +998,10 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
               {activeGpt.author && (
                 <p className="text-zinc-600 text-xs mt-1.5">By {activeGpt.author}</p>
               )}
+              {/* Sigue visible después de elegir el GPT: el destino recién se
+                  aplica al enviar el primer mensaje, y hasta entonces es la
+                  única señal de que este chat va a nacer dentro de la carpeta. */}
+              {pendingProject && <ProjectDestination name={pendingProject.name} />}
               {activeGpt.conversation_starters && activeGpt.conversation_starters.length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-8 w-full">
                   {activeGpt.conversation_starters.slice(0, 4).map((starter, i) => (
@@ -1074,6 +1120,14 @@ export default function UnifiedChat({ gpts, threads, initialThreadId, initialGpt
           onSubmitRename={renameThread}
           onCancelRename={cancelRename}
           onDeleteThread={deleteThread}
+        />
+      )}
+
+      {instructionsProject && (
+        <ProjectInstructionsModal
+          project={instructionsProject}
+          onClose={() => setInstructionsProjectId(null)}
+          onSave={saveProjectInstructions}
         />
       )}
     </div>

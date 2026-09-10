@@ -2,6 +2,7 @@ import { memo, useMemo, useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
+  FileText,
   Folder,
   PanelLeftClose,
   Pencil,
@@ -45,6 +46,7 @@ interface Props {
   onDeleteThread: (id: string) => void;
   onToggleProject: (id: string) => void;
   onNewChatInProject: (projectId: string) => void;
+  onEditProjectInstructions: (project: Project) => void;
   onDeleteProject: (id: string) => void;
   onMoveToProject: (threadId: string, projectId: string | null) => void;
   onCreateProjectWith: (threadIds: string[]) => void;
@@ -85,6 +87,7 @@ function ChatSidebar({
   onDeleteThread,
   onToggleProject,
   onNewChatInProject,
+  onEditProjectInstructions,
   onDeleteProject,
   onMoveToProject,
   onCreateProjectWith,
@@ -96,6 +99,7 @@ function ChatSidebar({
   onCancelProjectRename,
 }: Props) {
   const [dropProjectId, setDropProjectId] = useState<string | null>(null);
+  const [dropLoose, setDropLoose] = useState(false);
 
   const gptNameById = useMemo(() => new Map(gpts.map((g) => [g.id, g.name])), [gpts]);
 
@@ -266,14 +270,17 @@ function ChatSidebar({
                           ) : (
                             <>
                               <span className="flex-1 min-w-0 truncate">{project.name}</span>
-                              <span className="text-[11px] text-zinc-600 group-hover:hidden">
+                              <span className="text-[11px] text-zinc-600 group-hover:hidden max-md:hidden">
                                 {threads.length || ""}
                               </span>
                             </>
                           )}
 
                           {!isRenamingProject && (
-                            <div className="hidden group-hover:flex items-center gap-0.5 flex-shrink-0">
+                            // `max-md:flex` porque `group-hover` no existe en
+                            // touch: sin esto, en el celular no hay ninguna
+                            // forma de crear un chat dentro de la carpeta.
+                            <div className="hidden group-hover:flex max-md:flex items-center gap-0.5 flex-shrink-0">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -284,6 +291,30 @@ function ChatSidebar({
                                 aria-label="Nuevo chat en este proyecto"
                               >
                                 <SquarePen size={11} />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onEditProjectInstructions(project);
+                                }}
+                                className={cn(
+                                  "p-1 rounded-md hover:bg-zinc-800",
+                                  // Teñido cuando la carpeta ya tiene texto: es
+                                  // la única señal de que estos chats están
+                                  // respondiendo con un contexto extra que no se
+                                  // ve en la conversación.
+                                  project.instructions
+                                    ? "text-violet-400 hover:text-violet-300"
+                                    : "text-zinc-500 hover:text-ink"
+                                )}
+                                title={
+                                  project.instructions
+                                    ? "Editar las instrucciones del proyecto"
+                                    : "Agregar instrucciones al proyecto"
+                                }
+                                aria-label="Instrucciones del proyecto"
+                              >
+                                <FileText size={11} />
                               </button>
                               <button
                                 onClick={(e) => {
@@ -321,12 +352,44 @@ function ChatSidebar({
               </>
             )}
 
-            {loose.length > 0 && (
+            {/* Con proyectos en pantalla la sección se muestra aunque esté
+                vacía: si desaparece al mover el último chat suelto a una
+                carpeta, se lee como que los chats se perdieron. Vacía y con
+                su texto, además, es el lugar donde soltar para sacarlos. */}
+            {(loose.length > 0 || groups.length > 0) && (
               <>
                 <p className="text-[11px] uppercase tracking-wider text-zinc-600 font-medium px-2.5 pt-2 pb-1">
                   Chats
                 </p>
-                <div className="space-y-0.5">{loose.map(renderThread)}</div>
+                <div
+                  onDragOver={(e) => {
+                    if (!e.dataTransfer.types.includes(THREAD_DND_TYPE)) return;
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "move";
+                    setDropLoose(true);
+                  }}
+                  onDragLeave={() => setDropLoose(false)}
+                  onDrop={(e) => {
+                    if (!e.dataTransfer.types.includes(THREAD_DND_TYPE)) return;
+                    e.preventDefault();
+                    setDropLoose(false);
+                    const threadId = e.dataTransfer.getData(THREAD_DND_TYPE);
+                    // `null` = fuera de toda carpeta. Es el gesto inverso al de
+                    // arrastrar hacia un proyecto, que ya existía sin vuelta.
+                    if (threadId) onMoveToProject(threadId, null);
+                  }}
+                  className={cn(
+                    "space-y-0.5 rounded-lg",
+                    dropLoose && "ring-1 ring-violet-500/70 bg-violet-500/10"
+                  )}
+                >
+                  {loose.map(renderThread)}
+                  {loose.length === 0 && (
+                    <p className="px-2.5 py-2 text-[12px] text-zinc-600">
+                      Arrastra un chat aquí para sacarlo de su proyecto.
+                    </p>
+                  )}
+                </div>
               </>
             )}
           </div>

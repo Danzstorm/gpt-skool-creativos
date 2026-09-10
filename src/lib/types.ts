@@ -103,6 +103,8 @@ export interface Thread {
 export interface Project {
   id: string;
   name: string;
+  /** Contexto compartido por los chats de la carpeta. null = solo agrupa. */
+  instructions: string | null;
   created_at: string;
   updated_at: string;
 }

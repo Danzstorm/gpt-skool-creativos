@@ -8,6 +8,7 @@ import { estimateCost } from "@/lib/pricing";
 import { MAX_FILES_PER_MESSAGE } from "@/lib/upload-file";
 import { getGptRuntimeConfig } from "@/lib/gpt-runtime-config";
 import { recordMessageAttachments } from "@/lib/message-attachments";
+import { projectInstructionsOf, syncProjectContext } from "@/lib/project-instructions";
 import { generateThreadTitle } from "@/lib/thread-title";
 import {
   CONVERSATION_KEY_FINGERPRINT,
@@ -107,9 +108,16 @@ export async function POST(request: NextRequest) {
       .single(),
     // La igualdad de gpt_id evita usar un thread válido con las instrucciones
     // de otro GPT.
+    //
+    // `projects(instructions)` viaja en la misma query, no en una segunda: el
+    // contexto de la carpeta se necesita antes del primer token y un round-trip
+    // más a Postgres se pagaría en cada mensaje. Va por el cliente del usuario,
+    // así que RLS ya garantiza que la carpeta sea suya.
     supabase
       .from("threads")
-      .select("openai_conversation_id, title, conversation_key_fingerprint")
+      .select(
+        "openai_conversation_id, title, conversation_key_fingerprint, project_context_fingerprint, projects(instructions)"
+      )
       .eq("id", threadId)
       .eq("gpt_id", gptId)
       .single(),
@@ -127,6 +135,7 @@ export async function POST(request: NextRequest) {
   if (threadRes.error || !thread) {
     return NextResponse.json({ error: "Conversación no encontrada" }, { status: 404 });
   }
+  const projectInstructions = projectInstructionsOf(thread);
 
   // Nunca confiar en el `type` enviado por el navegador: el mapa server-side
   // acredita ownership y contiene el MIME detectado durante el registro.
@@ -314,6 +323,21 @@ export async function POST(request: NextRequest) {
     if (!userMessage) throw new Error("El mensaje se guardó sin devolver su identificador");
     await recordMessageAttachments(serviceClient, userMessage.id, incoming);
 
+    // El contexto de la carpeta vive UNA vez en la Conversation, no se reenvía
+    // en cada mensaje. Esto lo pone al día antes de responder: lo crea, lo
+    // reemplaza si el texto cambió, o lo borra si el chat salió de la carpeta.
+    // Un id distinto al guardado significa que la Conversation se creó o se
+    // recreó en esta misma request, y entonces no tiene nada aplicado todavía.
+    await syncProjectContext({
+      openai,
+      supabase: serviceClient,
+      threadId,
+      conversationId,
+      instructions: projectInstructions,
+      appliedFingerprint: thread.project_context_fingerprint,
+      conversationRecreated: conversationId !== thread.openai_conversation_id,
+    });
+
     const input = buildUserInput(message, incoming);
     const messageLabel = message.trim() || attachmentLabel(incoming);
     const runtimeConfig = await getGptRuntimeConfig(serviceClient, gptId, {
@@ -323,6 +347,8 @@ export async function POST(request: NextRequest) {
     const response = runStreamResponse({
       conversationId,
       model: runtimeConfig.model || "gpt-4.1-mini",
+      // Solo el prompt del admin. El texto de la carpeta va en `input`, como un
+      // turno de usuario: es de quien viene y es la autoridad que le toca.
       instructions: runtimeConfig.system_prompt || "",
       hasAttachments: incoming.length > 0,
       input,

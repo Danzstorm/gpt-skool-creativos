@@ -16,7 +16,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from("projects")
-    .select("id, name, created_at, updated_at")
+    .select("id, name, instructions, created_at, updated_at")
     .order("updated_at", { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
   const { data: project, error } = await supabase
     .from("projects")
     .insert({ user_id: user.id, name: name.trim() })
-    .select("id, name, created_at, updated_at")
+    .select("id, name, instructions, created_at, updated_at")
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

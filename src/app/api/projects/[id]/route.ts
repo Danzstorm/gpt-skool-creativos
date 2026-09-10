@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
+import { MAX_PROJECT_INSTRUCTIONS_CHARS } from "@/lib/project-instructions";
 
 const MAX_PROJECT_NAME_CHARS = 100;
 
@@ -14,25 +15,58 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
 
   const { id } = await params;
-  let name: unknown;
+  let body: Record<string, unknown>;
   try {
-    ({ name } = await request.json());
+    body = await request.json();
   } catch {
     return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
   }
 
-  if (typeof name !== "string" || !name.trim()) {
-    return NextResponse.json({ error: "Falta name" }, { status: 400 });
+  // Parcial a propósito: renombrar y editar las instrucciones son dos gestos
+  // distintos de la UI. Si el PATCH exigiera ambos campos, guardar el texto de
+  // la carpeta tendría que reenviar el nombre y una carrera entre las dos
+  // pantallas pisaría el rename recién hecho.
+  const update: { name?: string; instructions?: string | null; updated_at: string } = {
+    updated_at: new Date().toISOString(),
+  };
+
+  if (body.name !== undefined) {
+    if (typeof body.name !== "string" || !body.name.trim()) {
+      return NextResponse.json({ error: "Falta name" }, { status: 400 });
+    }
+    if (body.name.length > MAX_PROJECT_NAME_CHARS) {
+      return NextResponse.json({ error: "El nombre es demasiado largo" }, { status: 400 });
+    }
+    update.name = body.name.trim();
   }
-  if (name.length > MAX_PROJECT_NAME_CHARS) {
-    return NextResponse.json({ error: "El nombre es demasiado largo" }, { status: 400 });
+
+  if (body.instructions !== undefined) {
+    if (body.instructions !== null && typeof body.instructions !== "string") {
+      return NextResponse.json({ error: "instructions inválido" }, { status: 400 });
+    }
+    const text = typeof body.instructions === "string" ? body.instructions.trim() : "";
+    // El tope se valida acá aunque la base tenga su CHECK: sin esto el error
+    // vuelve como un 500 de Postgres y el usuario pierde lo que escribió.
+    if (text.length > MAX_PROJECT_INSTRUCTIONS_CHARS) {
+      return NextResponse.json(
+        { error: `Las instrucciones no pueden pasar de ${MAX_PROJECT_INSTRUCTIONS_CHARS} caracteres` },
+        { status: 400 }
+      );
+    }
+    // Vacío se guarda como NULL: "sin instrucciones" es una sola cosa, no dos
+    // estados que después haya que distinguir en cada lectura.
+    update.instructions = text || null;
+  }
+
+  if (update.name === undefined && update.instructions === undefined) {
+    return NextResponse.json({ error: "Nada para actualizar" }, { status: 400 });
   }
 
   const { data, error } = await supabase
     .from("projects")
-    .update({ name: name.trim(), updated_at: new Date().toISOString() })
+    .update(update)
     .eq("id", id)
-    .select("id, name, created_at, updated_at")
+    .select("id, name, instructions, created_at, updated_at")
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
