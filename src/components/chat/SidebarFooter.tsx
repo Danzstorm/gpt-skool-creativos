@@ -8,6 +8,7 @@ import type { Theme } from "@/lib/types";
 interface Props {
   fullName: string | null;
   email: string | null;
+  avatarUrl: string | null;
   isAdmin: boolean;
   theme: Theme;
   onThemeChange: (theme: Theme) => void;
@@ -166,13 +167,17 @@ function AppearanceModal({
   );
 }
 
-function SidebarFooter({ fullName, email, isAdmin, theme, onThemeChange }: Props) {
+function SidebarFooter({ fullName, email, avatarUrl, isAdmin, theme, onThemeChange }: Props) {
   const [open, setOpen] = useState(false);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
+  // Las URLs de foto de Google caducan y a veces devuelven 403/404. Si la
+  // imagen no carga, volvemos a las iniciales en vez de dejar un hueco roto.
+  const [avatarFailed, setAvatarFailed] = useState(false);
   const close = useCallback(() => setOpen(false), []);
   const rootRef = useDismissable<HTMLDivElement>(open, close);
 
   const displayName = fullName || email || "Cuenta";
+  const showAvatar = !!avatarUrl && !avatarFailed;
 
   return (
     <div ref={rootRef} className="relative border-t border-zinc-800/80 p-2">
@@ -223,8 +228,23 @@ function SidebarFooter({ fullName, email, isAdmin, theme, onThemeChange }: Props
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center gap-2.5 rounded-xl px-2 py-2 text-left hover:bg-zinc-900 transition"
       >
-        <span className="flex-shrink-0 w-7 h-7 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-[11px] font-medium text-zinc-200">
-          {initialsOf(fullName, email)}
+        <span className="flex-shrink-0 w-7 h-7 rounded-full bg-zinc-800 border border-zinc-700 overflow-hidden flex items-center justify-center text-[11px] font-medium text-zinc-200">
+          {showAvatar ? (
+            // <img> plano, no next/image: evita sumar el host de Google a
+            // `remotePatterns` y optimizar una miniatura de 28px no aporta nada.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={avatarUrl!}
+              alt=""
+              width={28}
+              height={28}
+              referrerPolicy="no-referrer"
+              onError={() => setAvatarFailed(true)}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            initialsOf(fullName, email)
+          )}
         </span>
         <span className="flex-1 min-w-0 text-sm text-zinc-300 truncate">{displayName}</span>
         <ChevronUp size={14} className="text-zinc-600 flex-shrink-0" />

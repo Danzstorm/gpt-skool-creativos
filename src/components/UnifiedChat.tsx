@@ -47,7 +47,13 @@ interface Props {
   initialProjects: Project[];
   initialThreadId?: string | null;
   initialGptId?: string | null;
-  profile: { fullName: string | null; email: string | null; isAdmin: boolean; theme: Theme };
+  profile: {
+    fullName: string | null;
+    email: string | null;
+    avatarUrl: string | null;
+    isAdmin: boolean;
+    theme: Theme;
+  };
   /** Hay GEMINI_API_KEY en el servidor; sin ella no se ofrece adjuntar video. */
   videoEnabled: boolean;
 }

@@ -30,7 +30,10 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self' data:",
   // blob: y data: son las miniaturas locales del composer antes de subirse.
-  `img-src 'self' data: blob: ${supabaseOrigin}`.trim(),
+  // lh3.googleusercontent.com es la foto de perfil de quien entra con Google:
+  // sin ella acá, el avatar del sidebar se rompe en cuanto la CSP pase de
+  // Report-Only a modo bloqueo.
+  `img-src 'self' data: blob: https://lh3.googleusercontent.com ${supabaseOrigin}`.trim(),
   // blob: es la reproducción del audio grabado antes de transcribirlo.
   "media-src 'self' blob:",
   // Supabase (REST, Auth, Storage y Realtime por WebSocket) y el streaming SSE

@@ -27,7 +27,12 @@ interface Props {
   sidebarOpen: boolean;
   collapsed: boolean;
   onToggleCollapse: () => void;
-  profile: { fullName: string | null; email: string | null; isAdmin: boolean };
+  profile: {
+    fullName: string | null;
+    email: string | null;
+    avatarUrl: string | null;
+    isAdmin: boolean;
+  };
   theme: Theme;
   onThemeChange: (theme: Theme) => void;
   chatSearch: string;
@@ -397,6 +402,7 @@ function ChatSidebar({
           <SidebarFooter
             fullName={profile.fullName}
             email={profile.email}
+            avatarUrl={profile.avatarUrl}
             isAdmin={profile.isAdmin}
             theme={theme}
             onThemeChange={onThemeChange}
