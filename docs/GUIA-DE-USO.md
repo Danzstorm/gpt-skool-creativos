@@ -37,9 +37,9 @@ Al entrar caes en **`/chat`**, un shell fullscreen (sin header, como ChatGPT des
 4. Clic en el nombre del GPT (header) o el icono de historial (sidebar) abre sus conversaciones anteriores.
 
 ### Adjuntar imágenes, archivos y videos
-Todos los GPTs aceptan **imágenes** (visión), **documentos** y **videos** — sin distinción por GPT. Botón `+` → Imágenes/Archivos/Video, **pegar** con Ctrl+V (solo imágenes) o **arrastrar y soltar**. Las imágenes se numeran (**img 1, img 2…**) para GPTs que las referencian así.
+Todos los GPTs aceptan **imágenes** (visión), **documentos** y **videos** — sin distinción por GPT. Dos formas de adjuntar: el botón `+` (abre el selector de archivos directo, sin menú) o **pegar** con Ctrl+V, que solo toma imágenes. Las imágenes se numeran (**img 1, img 2…**) para GPTs que las referencian así.
 
-**Videos**: hasta 100MB, cualquier duración (no se valida localmente — si Gemini lo rechaza por ser demasiado largo, el aviso lo explica). El video no se adjunta como archivo: en segundo plano se sube a Gemini, que genera una descripción detallada, y esa descripción es lo que recibe el GPT (requiere `GEMINI_API_KEY` configurada, ver §4). Mientras se analiza, el composer muestra "Analizando video..." — puede tardar más que una imagen o un documento.
+**Videos**: hasta 100MB, cualquier duración (no se valida localmente — si Gemini lo rechaza por ser demasiado largo, el aviso lo explica). El video no se adjunta como archivo: en segundo plano se sube a Gemini, que genera una descripción detallada, y esa descripción es lo que recibe el GPT (requiere `GEMINI_API_KEY` configurada, ver §5). Mientras se analiza, el composer muestra "Analizando video..." — puede tardar más que una imagen o un documento.
 
 ### Copiar prompts
 Los bloques de código (donde los GPTs devuelven prompts) traen botón **Copiar** siempre visible.
@@ -162,9 +162,21 @@ Esta plataforma es **single-tenant por diseño**: cada cliente corre su propia c
 | **OpenAI** (API key propia) | Todos los mensajes de chat se facturan a esta cuenta | El cliente — **importante**: es su costo, no el tuyo |
 | **Vercel** (proyecto) | Hosting del sitio | El cliente o tu agencia |
 | **Google Cloud Console** (OAuth Client) | Solo si quiere login con Google | El cliente — **solo necesario si usa Google login**; el magic link por email no lo requiere |
+| **Google AI Studio** (`GEMINI_API_KEY`) | Describir los videos que se adjuntan al chat — [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | El cliente — es su costo, igual que OpenAI. **Solo necesario si quiere adjuntar video**; sin la key el resto del chat funciona igual (ver abajo qué pasa exactamente) |
 | **Zapier** (o Make) | Automatizar altas/bajas desde Skool | El cliente (ya lo tienen, según mencionaste) |
 | **Upstash** (Redis, capa gratis alcanza) | Rate limiting compartido en producción | Recomendado, no bloqueante para lanzar |
 | **Resend** (SMTP) | Que el magic link llegue de verdad — ver §7, **bloqueante para lanzar** | El cliente (dominio propio necesario) |
+
+#### Qué pasa exactamente sin `GEMINI_API_KEY`
+
+La app no se rompe ni esconde nada: el botón `+` de adjuntar sigue estando y las imágenes y documentos funcionan igual. Lo que cambia es solo el video:
+
+- El selector de archivos deja de listar videos. Ojo, eso es una **pista del navegador, no un candado**: en el diálogo del sistema se puede cambiar a "Todos los archivos" y elegir el video igual.
+- El candado real está en el servidor. `/api/upload/sign` rechaza el video **antes** de firmar la subida, así que no llega a ocupar Storage, y `/api/upload/register` responde 503 nombrando la variable que falta.
+
+Con la key cargada, el video **nunca se sube a OpenAI**: va a Gemini, que devuelve una descripción en texto, se guarda en `uploaded_files.video_description` y *eso* es lo único que el modelo llega a "ver".
+
+> **Un detalle que rompe el video incluso con la key puesta:** el bucket `chat-uploads` tiene que estar en 100MB. Lo deja así la migración `20260906120000_video_uploads.sql`, pero si el bucket se creó a mano antes de aplicarla, se queda en el límite viejo y Storage rechaza la subida sin que la key tenga nada que ver. Tiene que coincidir con `MAX_VIDEO_SIZE_MB` de `src/lib/upload-limits.ts`.
 
 ### Pasos de setup (Supabase)
 

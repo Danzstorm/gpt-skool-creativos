@@ -56,6 +56,7 @@ Si la sección Accesos está **vacía pese a haber logins reales**, la auditorí
 | **Vercel** | Hosting | Sí. **Hobby alcanza**: con Fluid Compute activo el tope por función es 300s también en Hobby (verificado en el proyecto: `fluid: true`, `functionDefaultTimeout: 300`), que es lo que necesitan las rutas de chat. Pro solo hace falta si se quiere recuperar el auto-deploy por push (ver Deploy) |
 | **Resend** (u otro SMTP) | Que el magic link llegue de verdad | Sí para lanzar — ver guía §7 |
 | **Google Cloud** (OAuth) | Login con Google | Solo si se quiere; el magic link no lo necesita |
+| **Google AI Studio** (Gemini) | Describir los videos que se adjuntan (se factura a esta cuenta) | Solo si se quiere adjuntar video. Sin la key el resto del chat funciona igual — ver `GEMINI_API_KEY` más abajo |
 | **Zapier / Make** | Automatizar altas/bajas desde Skool | Recomendado |
 | **Upstash Redis** | Rate limiting global en serverless | Recomendado, no bloqueante |
 
@@ -93,6 +94,7 @@ Ver [`.env.example`](.env.example) para la lista completa con comentarios.
 | `OPENAI_API_KEY` | ✅ | |
 | `NEXT_PUBLIC_SKOOL_URL` | ✅ | Link público del Skool |
 | `SKOOL_WEBHOOK_SECRET` | ✅ | Secreto del webhook de altas/bajas |
+| `GEMINI_API_KEY` | ➖ | Habilita adjuntar video ([AI Studio](https://aistudio.google.com/apikey); se factura a esa cuenta). Sin ella el botón `+` sigue ahí: el selector deja de listar videos y `/api/upload/sign` los rechaza antes de firmar. El resto del chat funciona igual. Ver guía §5 |
 | `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED` | ➖ | `"true"` solo si Google está configurado en Supabase; si no, el botón falla |
 | `UPSTASH_REDIS_REST_URL` / `_TOKEN` | ➖ | Recomendado en prod |
 | `NEXT_PUBLIC_SITE_URL` | ➖ | Dominio propio (canonical/OG) |
