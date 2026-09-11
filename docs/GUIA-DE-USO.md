@@ -186,7 +186,11 @@ En este orden. Los pasos 4 y 5 son los que más fallos de login causan si se sal
 2. `supabase link --project-ref <ref>` y `supabase db push` para aplicar todas las migraciones de `supabase/migrations/`.
 3. Crear los dos buckets de Storage:
    - `gpt-icons` (público) — íconos de GPT.
-   - `chat-uploads` (privado) — adjuntos del chat, servidos con URLs firmadas.
+   - `chat-uploads` (privado, **límite de 100MB**) — adjuntos del chat, servidos con
+     URLs firmadas. El límite lo deja puesto la migración `20260906120000`, pero si
+     creas el bucket a mano **después** de correr `db push` se queda en el default de
+     Supabase y el video falla aunque `GEMINI_API_KEY` esté bien cargada. Tiene que
+     coincidir con `MAX_VIDEO_SIZE_MB` de `src/lib/upload-limits.ts`.
 4. **SMTP propio antes de abrir el acceso** (Auth → SMTP Settings). El default de
    Supabase manda 2 correos/hora y solo a direcciones pre-autorizadas — con el
    acceso por magic link, cada login es un correo, así que una comunidad de
@@ -200,7 +204,10 @@ En este orden. Los pasos 4 y 5 son los que más fallos de login causan si se sal
 6. Auth → Providers → Email: habilitar magic link.
 7. Crear el primer admin (ver §3):
    `node --env-file=.env.local scripts/bootstrap-admin.mjs admin@cliente.com`
-8. Copiar URL + anon key + service role key a las env vars de Vercel.
+8. Copiar URL + anon key + service role key a las env vars de Vercel — junto con el
+   resto de la lista de §4, que incluye `OPENAI_API_KEY` y, si se quiere video,
+   `GEMINI_API_KEY`. Estos tres pasos enumeran solo lo de Supabase; la lista completa
+   está en §4.
 
 ### Verificar que el login quedó bien
 

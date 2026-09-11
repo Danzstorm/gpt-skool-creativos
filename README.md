@@ -110,7 +110,9 @@ supabase link --project-ref <ref>
 supabase db push
 ```
 
-Luego crear los buckets de Storage: `gpt-icons` (público) y `chat-uploads` (privado). Detalle en la guía §5.
+Luego crear los buckets de Storage: `gpt-icons` (público) y `chat-uploads` (privado, **100MB**). Detalle en la guía §5.
+
+> El límite de `chat-uploads` lo pone la migración `20260906120000`. Un bucket creado a mano *después* de `db push` se queda en el default y el video falla aunque `GEMINI_API_KEY` esté cargada — el síntoma no señala a Storage, así que conviene verificarlo al montar una instancia nueva.
 
 > ⚠️ **`handle_new_user()` es la función más delicada del esquema.** Corre dentro del alta de usuario de Supabase Auth, así que un error ahí no rompe "algo": rompe **todos los logins** con `Database error saving new user`. Ya pasó una vez (ver `20260717212222`). Si la tocas, pruébala antes contra una copia y verifica un login real justo después.
 
