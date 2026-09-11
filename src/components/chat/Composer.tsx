@@ -393,10 +393,13 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
         <button
           onClick={openFilePicker}
           className="w-8 h-8 flex items-center justify-center rounded-full text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/60 transition flex-shrink-0"
+          // Arrastrar archivos acá no existe (el único drag&drop es mover chats
+          // a una carpeta en el sidebar) y `handlePaste` solo acepta image/*,
+          // así que el globo nombra pegar únicamente para imágenes.
           title={
             videoEnabled
-              ? "Adjuntar imágenes, archivos o video (también puedes pegar o arrastrar)"
-              : "Adjuntar imágenes o archivos (también puedes pegar o arrastrar)"
+              ? "Adjuntar imágenes, archivos o video (las imágenes también se pegan con Ctrl+V)"
+              : "Adjuntar imágenes o archivos (las imágenes también se pegan con Ctrl+V)"
           }
           aria-label="Adjuntar"
         >
