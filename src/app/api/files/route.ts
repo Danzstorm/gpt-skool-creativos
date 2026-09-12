@@ -1,19 +1,14 @@
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
-import { threadFileIds } from "@/lib/message-attachments";
+import { threadAttachmentLabels, threadFileIds } from "@/lib/message-attachments";
+import { matchLibraryRows, type LibraryFile } from "@/lib/file-library";
+
+// Re-exportado porque el FilePicker ya lo importaba desde acá.
+export type { LibraryFile };
 
 /** Tope duro: el menú muestra una lista corta, no un explorador de archivos. */
 const MAX_RESULTS = 50;
-
-export interface LibraryFile {
-  openai_file_id: string;
-  name: string;
-  type: "image" | "document" | "video";
-  created_at: string;
-  /** URL firmada de Storage, solo para imágenes (la miniatura del menú). */
-  previewUrl?: string;
-}
 
 /**
  * Biblioteca de archivos del CHAT ACTUAL, para poder re-adjuntarlos con `@`
@@ -51,11 +46,15 @@ export async function GET(request: NextRequest) {
   // frontera de acceso, y por eso va siempre y no es opcional.
   const service = createServiceClient();
 
+  // Ordenados del más viejo al más nuevo: threadAttachmentLabels se queda con
+  // la PRIMERA aparición de cada archivo, así un adjunto reusado con `@`
+  // conserva el rótulo con el que el modelo lo conoció.
   const { data: threadMessages, error: threadMessagesError } = await service
     .from("messages")
-    .select("files")
+    .select("files, created_at")
     .eq("thread_id", threadId)
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: true });
 
   if (threadMessagesError) {
     console.error("files list error (thread scope)", {
@@ -69,52 +68,35 @@ export async function GET(request: NextRequest) {
   // pero `uploaded_files` es su propia tabla sin RLS: lleva su propio filtro
   // por dueño abajo, no puede depender solo de la query anterior para eso.
   const fileIds = threadFileIds(threadMessages ?? []);
+  const labels = threadAttachmentLabels(threadMessages ?? []);
   if (fileIds.length === 0) return NextResponse.json([]);
 
-  let query = service
+  // Sin filtro en Postgres: la lista ya está acotada a los archivos de ESTE
+  // hilo, que son decenas, no la biblioteca entera. Traerlos y filtrarlos acá
+  // permite buscar también por el rótulo ("imagen 2"), que no es una columna
+  // sino algo que se calcula desde messages.files. Con el `ilike` de antes,
+  // escribir `@imagen` no encontraba nada: el menú mostraba un vocabulario y
+  // el buscador entendía otro.
+  const { data, error } = await service
     .from("uploaded_files")
     .select("openai_file_id, name, mime, storage_path, created_at")
     .eq("user_id", user.id)
     .in("openai_file_id", fileIds)
-    .order("created_at", { ascending: false })
-    .limit(MAX_RESULTS);
+    .order("created_at", { ascending: false });
 
-  // El filtro por nombre se hace en Postgres para no traer toda la biblioteca
-  // y descartarla en memoria. `%` y `_` se escapan: sin eso, escribir "%" en el
-  // buscador devuelve todo y "_" hace de comodín, que confunde sin avisar.
-  //
-  // Limitación conocida: `ilike` ignora mayúsculas pero NO acentos, así que
-  // buscar "resena" no encuentra "Reseña". Filtrar en el cliente tampoco lo
-  // arregla —solo podría reducir las 50 filas que ya volvieron, no recuperar
-  // las que el servidor descartó—, y hacerlo bien necesita la extensión
-  // `unaccent` en Postgres. Se deja así hasta que alguien lo pida: el
-  // reconocimiento real de las imágenes es la miniatura, no el nombre.
-  if (q) {
-    const escaped = q.replace(/[\\%_]/g, (match) => `\\${match}`);
-    query = query.ilike("name", `%${escaped}%`);
-  }
-
-  const { data, error } = await query;
   if (error) {
     console.error("files list error", { code: error.code, message: error.message });
     return NextResponse.json({ error: "No se pudo cargar tu biblioteca" }, { status: 500 });
   }
 
-  const rows = data ?? [];
+  const matches = matchLibraryRows(data ?? [], labels, q).slice(0, MAX_RESULTS);
 
-  // Miniaturas solo para imágenes. Firmar es una llamada por archivo, así que
-  // se hacen en paralelo y solo para las que se van a ver.
+  // Miniaturas solo para imágenes, y recién sobre lo que sobrevivió al filtro:
+  // firmar es una llamada por archivo y no se paga por filas que nadie va a ver.
   const files: LibraryFile[] = await Promise.all(
-    rows.map(async (row) => {
-      const isImage = row.mime?.startsWith("image/") ?? false;
-      const isVideo = row.mime?.startsWith("video/") ?? false;
-      const base: LibraryFile = {
-        openai_file_id: row.openai_file_id,
-        name: row.name || (isImage ? "imagen" : isVideo ? "video" : "archivo"),
-        type: isImage ? "image" : isVideo ? "video" : "document",
-        created_at: row.created_at,
-      };
-      if (!isImage || !row.storage_path) return base;
+    matches.map(async (entry) => {
+      const { row, base } = entry;
+      if (base.type !== "image" || !row.storage_path) return base;
 
       const { data: signed } = await service.storage
         .from("chat-uploads")

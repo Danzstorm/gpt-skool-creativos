@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { threadFileIds } from "./message-attachments";
+import { threadAttachmentLabels, threadFileIds } from "./message-attachments";
 
 describe("threadFileIds", () => {
   it("collects unique openai_file_id across messages", () => {
@@ -21,5 +21,64 @@ describe("threadFileIds", () => {
 
   it("returns [] for an empty thread", () => {
     expect(threadFileIds([])).toEqual([]);
+  });
+});
+
+describe("threadAttachmentLabels", () => {
+  const msg = (files: unknown) => ({ files });
+
+  it("nombra cada imagen como la nombra el modelo, por mensaje", () => {
+    const labels = threadAttachmentLabels([
+      msg([
+        { openai_file_id: "a", type: "image" },
+        { openai_file_id: "b", type: "document" },
+        { openai_file_id: "c", type: "image" },
+      ]),
+    ]);
+
+    // El documento del medio no corre la numeración: son 1 y 2, no 1 y 3.
+    expect(labels.get("a")).toBe("imagen 1");
+    expect(labels.get("c")).toBe("imagen 2");
+    expect(labels.has("b")).toBe(false);
+  });
+
+  it("numera los videos aparte de las imágenes", () => {
+    const labels = threadAttachmentLabels([
+      msg([
+        { openai_file_id: "i", type: "image" },
+        { openai_file_id: "v", type: "video" },
+      ]),
+    ]);
+
+    expect(labels.get("i")).toBe("imagen 1");
+    expect(labels.get("v")).toBe("descripción de video 1");
+  });
+
+  it("la numeración se reinicia en cada mensaje, igual que para el modelo", () => {
+    const labels = threadAttachmentLabels([
+      msg([{ openai_file_id: "a", type: "image" }]),
+      msg([{ openai_file_id: "b", type: "image" }]),
+    ]);
+
+    // Los dos son "imagen 1" y está bien: es lo que vio el modelo. En el menú
+    // los distinguen la miniatura y la fecha.
+    expect(labels.get("a")).toBe("imagen 1");
+    expect(labels.get("b")).toBe("imagen 1");
+  });
+
+  it("un archivo re-adjuntado conserva el rótulo de su primer envío", () => {
+    const labels = threadAttachmentLabels([
+      msg([{ openai_file_id: "x", type: "image" }]),
+      msg([
+        { openai_file_id: "nuevo", type: "image" },
+        { openai_file_id: "x", type: "image" },
+      ]),
+    ]);
+
+    expect(labels.get("x")).toBe("imagen 1");
+  });
+
+  it("aguanta basura sin romperse", () => {
+    expect(threadAttachmentLabels([msg(null), msg("nope"), msg([null, 7])]).size).toBe(0);
   });
 });

@@ -87,7 +87,14 @@ function FilePicker({ files, activeIndex, loading, query, onPick, onHover }: Pro
                 </span>
               )}
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm text-zinc-200">{file.name}</span>
+                {/* El rótulo del modelo manda sobre el nombre del dispositivo:
+                    para el modelo esa foto es "imagen 2" y nunca IMG_2039.jpg,
+                    así que mostrar el nombre del archivo invitaba a pedir algo
+                    que el modelo no podía entender. Los documentos no traen
+                    rótulo y caen a su nombre real, que ahí sí es información. */}
+                <span className="block truncate text-sm text-zinc-200">
+                  {file.label ?? file.name}
+                </span>
                 <span className="block text-[11px] text-zinc-500">
                   {relativeDate(file.created_at)}
                 </span>
