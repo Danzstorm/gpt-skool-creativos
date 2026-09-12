@@ -1,6 +1,6 @@
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { INITIAL_LEVEL_STATE, nextLevel, rmsOf, type LevelState } from "@/lib/audio-level";
-import { slotsForWidth, BAR_PX, GAP_PX } from "@/lib/wave-slots";
+import { slotsForWidth, GAP_PX } from "@/lib/wave-slots";
 
 // Ranuras de arranque, antes de medir. Se reemplaza en el primer layout.
 const INITIAL_SLOTS = 40;
@@ -37,10 +37,11 @@ function RecordingWave({ stream }: { stream: MediaStream }) {
   const stripRef = useRef<HTMLDivElement | null>(null);
   const [slots, setSlots] = useState(INITIAL_SLOTS);
 
-  // La cantidad de barras sale del ancho real, no de una constante: así la tira
-  // ocupa todo el composer en vez de quedarse a mitad de camino. Se remide al
-  // rotar el teléfono o al abrir/cerrar el panel lateral.
-  useEffect(() => {
+  // La cantidad de barras sale del ancho real, no de una constante. Va en
+  // useLayoutEffect y no en useEffect para medir ANTES del primer pintado: si no,
+  // se alcanza a ver un cuadro con las barras de arranque, más gruesas.
+  // Solo corre en el cliente (el componente se monta al empezar a grabar).
+  useLayoutEffect(() => {
     const el = stripRef.current;
     if (!el) return;
 
@@ -145,10 +146,14 @@ function RecordingWave({ stream }: { stream: MediaStream }) {
           }}
           aria-hidden="true"
           className="flex-1 h-6 rounded-full bg-ink origin-center will-change-transform"
-          // `slots` ya se calculó para que a BAR_PX la tira llene el ancho. El
-          // tope va 2px por encima solo para absorber el redondeo, en vez de
-          // dejar el sobrante como hueco muerto a la derecha.
-          style={{ maxWidth: BAR_PX + 2, transform: `scaleY(${FLOOR})`, opacity: 0.3 }}
+          // SIN tope de ancho, a propósito. Un `max-width` acá fue justo el bug
+          // original: las barras se topaban, la tira se quedaba a media máquina
+          // y el sobrante era hueco muerto a la derecha. Sin tope, el reparto de
+          // flex llena el ancho SIEMPRE, cualquiera sea `slots`. La medición
+          // pasa a decidir solo la densidad (barras finas o gruesas), nunca si
+          // la onda llega o no hasta el final: si fallara, se ven barras más
+          // anchas, que es un defecto cosmético y no una onda cortada al medio.
+          style={{ transform: `scaleY(${FLOOR})`, opacity: 0.3 }}
         />
       ))}
     </div>
