@@ -18,7 +18,13 @@ export async function getThreadMessages(
   if (error || !data) return [];
 
   return data.map((m) => {
-    const rawFiles = (m.files as Array<{ openai_file_id: string; type: "image" | "document" | "video"; name?: string }> | null) ?? [];
+    const rawFiles =
+      (m.files as Array<{
+        openai_file_id: string;
+        type: "image" | "document" | "video";
+        name?: string;
+        n?: number;
+      }> | null) ?? [];
     return {
       role: m.role as "user" | "assistant",
       content: m.content,
@@ -28,6 +34,10 @@ export async function getThreadMessages(
               openai_file_id: f.openai_file_id,
               type: f.type,
               name: f.name || (f.type === "image" ? "imagen" : f.type === "video" ? "video" : "archivo"),
+              // El número viaja al cliente a propósito: es el rótulo que ya
+              // escuchó el modelo. Sin él la interfaz vuelve a contar sola y
+              // muestra "imagen 1" donde el modelo entiende "imagen 3".
+              ...(typeof f.n === "number" ? { n: f.n } : {}),
             }))
           : undefined,
     };

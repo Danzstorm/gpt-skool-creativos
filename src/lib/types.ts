@@ -125,6 +125,14 @@ export interface UploadedFile {
   openai_file_id: string;
   type: "image" | "document" | "video";
   previewUrl?: string; // URL local (object URL) para vista previa de imágenes en la sesión
+  /**
+   * Número con el que se rotuló este archivo para el modelo ("imagen 3"),
+   * guardado al mandarlo. Tiene que viajar hasta el cliente: si la interfaz lo
+   * recalcula por su cuenta, muestra un número distinto del que escuchó el
+   * modelo. Ausente en lo subido en esta sesión (todavía no se mandó) y en lo
+   * anterior a que se empezara a guardar.
+   */
+  n?: number;
 }
 
 export interface Message {
