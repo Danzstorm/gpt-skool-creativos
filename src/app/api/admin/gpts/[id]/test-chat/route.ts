@@ -73,7 +73,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   const tools: Tool[] = [{ type: "code_interpreter", container: { type: "auto" } }];
-  const input = buildUserInput(message, []);
+  // El chat de prueba no adjunta archivos, así que no hay nada que numerar.
+  const input = buildUserInput(message, [], { images: new Map(), videos: new Map() });
 
   const res = runStreamResponse({
     conversationId: activeConversationId,

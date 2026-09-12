@@ -1,49 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { imageLabel, imageNumber, videoLabel, videoNumber, type AttachmentLike } from "./attachment-labels";
-
-const img: AttachmentLike = { type: "image" };
-const doc: AttachmentLike = { type: "document" };
-const vid: AttachmentLike = { type: "video" };
-
-describe("imageNumber", () => {
-  it("numera 1-based, no 0-based", () => {
-    // Es lo que ve el usuario: la primera imagen es "imagen 1".
-    expect(imageNumber([img], 0)).toBe(1);
-  });
-
-  it("cuenta solo imágenes, salteando los documentos", () => {
-    // Con [doc, img, doc, img] las etiquetas son 1 y 2 — no 2 y 4. Al usuario
-    // le da igual en qué posición del array quedaron los documentos.
-    const files = [doc, img, doc, img];
-    expect(imageNumber(files, 1)).toBe(1);
-    expect(imageNumber(files, 3)).toBe(2);
-  });
-
-  it("devuelve null para un documento", () => {
-    expect(imageNumber([img, doc], 1)).toBeNull();
-  });
-
-  it("devuelve null fuera de rango o con la lista vacía", () => {
-    expect(imageNumber([], 0)).toBeNull();
-    expect(imageNumber([img], 5)).toBeNull();
-    expect(imageNumber([img], -1)).toBeNull();
-  });
-
-  it("coincide con el cálculo que ya hacía el composer", () => {
-    // El composer contaba así (Composer.tsx:169). Este test es el que impide
-    // que la UI y el modelo se separen: si alguien cambia la función y la
-    // numeración deja de coincidir, el usuario vería "imagen 2" mientras el
-    // modelo habla de otra.
-    const files = [doc, img, img, doc, img];
-    const comoLoHaciaElComposer = (i: number) =>
-      files.filter((x, xi) => x.type === "image" && xi <= i).length;
-
-    files.forEach((file, i) => {
-      if (file.type !== "image") return;
-      expect(imageNumber(files, i)).toBe(comoLoHaciaElComposer(i));
-    });
-  });
-});
+import { assignThreadNumbers, imageLabel, videoLabel } from "./attachment-labels";
 
 describe("imageLabel", () => {
   it("es el nombre que se usa en pantalla y para el modelo", () => {
@@ -54,30 +10,80 @@ describe("imageLabel", () => {
   });
 });
 
-describe("videoNumber", () => {
-  it("numera 1-based, no 0-based", () => {
-    expect(videoNumber([vid], 0)).toBe(1);
-  });
-
-  it("cuenta solo videos, salteando imágenes y documentos", () => {
-    const files = [doc, vid, img, vid];
-    expect(videoNumber(files, 1)).toBe(1);
-    expect(videoNumber(files, 3)).toBe(2);
-  });
-
-  it("devuelve null para algo que no es video", () => {
-    expect(videoNumber([vid, doc], 1)).toBeNull();
-    expect(videoNumber([vid, img], 1)).toBeNull();
-  });
-
-  it("devuelve null fuera de rango o con la lista vacía", () => {
-    expect(videoNumber([], 0)).toBeNull();
-    expect(videoNumber([vid], 5)).toBeNull();
-  });
-});
-
 describe("videoLabel", () => {
   it("es el nombre que se usa en pantalla y para el modelo", () => {
     expect(videoLabel(1)).toBe("descripción de video 1");
+  });
+});
+
+describe("assignThreadNumbers", () => {
+  const msg = (files: unknown) => ({ files });
+  const img = (id: string) => ({ openai_file_id: id, type: "image" as const });
+
+  it("numera a lo largo de todo el hilo, sin reiniciar por mensaje", () => {
+    const { images } = assignThreadNumbers([
+      msg([img("a"), img("b")]),
+      msg([img("c")]),
+    ]);
+
+    expect([...images]).toEqual([
+      ["a", 1],
+      ["b", 2],
+      ["c", 3],
+    ]);
+  });
+
+  it("un archivo re-adjuntado conserva su número, no recibe uno nuevo", () => {
+    // Es lo que hace que referenciar funcione: si al volver a mandar la imagen
+    // 1 esta pasara a ser la 4, el número dejaría de señalar algo estable.
+    const { images } = assignThreadNumbers([
+      msg([img("a"), img("b")]),
+      msg([img("a")]),
+    ]);
+
+    expect(images.get("a")).toBe(1);
+    expect(images.size).toBe(2);
+  });
+
+  it("los archivos del mensaje saliente toman los números siguientes", () => {
+    const { images } = assignThreadNumbers([msg([img("a")])], [img("b")]);
+
+    expect(images.get("a")).toBe(1);
+    expect(images.get("b")).toBe(2);
+  });
+
+  it("videos e imágenes se cuentan aparte", () => {
+    const { images, videos } = assignThreadNumbers([
+      msg([img("i1"), { openai_file_id: "v1", type: "video" }]),
+      msg([{ openai_file_id: "v2", type: "video" }, img("i2")]),
+    ]);
+
+    expect(images.get("i1")).toBe(1);
+    expect(images.get("i2")).toBe(2);
+    expect(videos.get("v1")).toBe(1);
+    expect(videos.get("v2")).toBe(2);
+  });
+
+  it("los documentos no entran en ninguna cuenta", () => {
+    const { images, videos } = assignThreadNumbers([
+      msg([{ openai_file_id: "d", type: "document" }, img("a")]),
+    ]);
+
+    expect(images.get("a")).toBe(1); // el documento no corrió la numeración
+    expect(images.has("d")).toBe(false);
+    expect(videos.size).toBe(0);
+  });
+
+  it("aguanta filas sin adjuntos y basura de la base", () => {
+    const { images } = assignThreadNumbers([
+      {},
+      msg(null),
+      msg("nope"),
+      msg([null, 7, { type: "image" }]),
+      msg([img("a")]),
+    ]);
+
+    expect(images.get("a")).toBe(1);
+    expect(images.size).toBe(1);
   });
 });

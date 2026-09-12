@@ -1,12 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { IncomingFile } from "@/lib/chat-content";
-import {
-  imageLabel,
-  imageNumber,
-  videoLabel,
-  videoNumber,
-  type AttachmentLike,
-} from "@/lib/attachment-labels";
+import { assignThreadNumbers, imageLabel, videoLabel } from "@/lib/attachment-labels";
 
 const SCHEMA_RETRY_MS = 60_000;
 let unavailableUntil = 0;
@@ -31,14 +25,6 @@ export function threadFileIds(messages: { files: unknown }[]): string[] {
   return [...ids];
 }
 
-type StoredFile = { openai_file_id?: unknown; type?: unknown };
-
-/** El `type` guardado en messages.files, saneado. Lo desconocido cae a documento. */
-function storedType(file: unknown): AttachmentLike["type"] {
-  const t = (file as StoredFile)?.type;
-  return t === "image" || t === "video" ? t : "document";
-}
-
 /**
  * Cómo se llama cada archivo del hilo **para el modelo**: "imagen 2",
  * "descripción de video 1".
@@ -49,39 +35,20 @@ function storedType(file: unknown): AttachmentLike["type"] {
  * funcionar, porque para el modelo esa imagen es "Imagen 2". Las burbujas del
  * composer ya rotulaban bien; el menú era la última superficie sin alinear.
  *
- * La numeración es POR MENSAJE, igual que la que recibe el modelo — no se
- * renumera por hilo, porque inventar un número que el modelo nunca vio sería
- * volver a desincronizar los dos vocabularios, solo que al revés. Por eso dos
- * archivos de mensajes distintos pueden ser los dos "imagen 1": en el menú los
- * distinguen la miniatura y la fecha, que es como se los reconoce de verdad.
+ * Los números salen de assignThreadNumbers: la misma función que usa el servidor
+ * para rotular lo que recibe el modelo y el composer para las burbujas. Son
+ * únicos en todo el hilo, así que "imagen 3" señala siempre al mismo archivo y
+ * referenciarlo en el prompt funciona.
  *
  * Los DOCUMENTOS quedan fuera a propósito: ahí el nombre real sí es información
  * y es lo que el modelo recibe como `filename`.
- *
- * Con los mensajes ordenados del más viejo al más nuevo, un archivo re-adjuntado
- * conserva el rótulo de la primera vez que se mandó, que es su identidad estable.
  */
 export function threadAttachmentLabels(messages: { files: unknown }[]): Map<string, string> {
+  const { images, videos } = assignThreadNumbers(messages);
   const labels = new Map<string, string>();
 
-  for (const { files } of messages) {
-    if (!Array.isArray(files)) continue;
-    const typed: AttachmentLike[] = files.map((f) => ({ type: storedType(f) }));
-
-    files.forEach((file, index) => {
-      const id = (file as StoredFile)?.openai_file_id;
-      if (typeof id !== "string" || labels.has(id)) return;
-
-      const image = imageNumber(typed, index);
-      if (image !== null) {
-        labels.set(id, imageLabel(image));
-        return;
-      }
-
-      const video = videoNumber(typed, index);
-      if (video !== null) labels.set(id, videoLabel(video));
-    });
-  }
+  for (const [id, position] of images) labels.set(id, imageLabel(position));
+  for (const [id, position] of videos) labels.set(id, videoLabel(position));
 
   return labels;
 }

@@ -3,10 +3,16 @@ import { Copy, Check, RotateCcw, Pencil, Paperclip } from "lucide-react";
 import type { Gpt, Message } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import MessageContent from "../MessageContent";
-import { imageLabel, imageNumber } from "@/lib/attachment-labels";
+import { imageLabel, type ThreadNumbers } from "@/lib/attachment-labels";
 
 interface Props {
   message: Message;
+  /**
+   * Numeración de los adjuntos en el hilo entero — la misma que recibió el
+   * modelo. Llega por prop en vez de calcularse acá porque depende de TODA la
+   * conversación, y este componente solo ve su propio mensaje.
+   */
+  numbers: ThreadNumbers;
   index: number;
   activeGpt?: Gpt;
   isLast: boolean;
@@ -29,6 +35,7 @@ interface Props {
 // MessageContent). Así se gana altura y se quita el ruido del glyph repetido.
 function MessageBubble({
   message: msg,
+  numbers,
   index,
   isLast,
   streaming,
@@ -49,7 +56,7 @@ function MessageBubble({
         // le manda al modelo. Sin esto, la numeración desaparecía al enviar y
         // el usuario perdía la referencia justo cuando iba a usarla para
         // escribir el siguiente mensaje ("en la imagen 2…").
-        const position = imageNumber(msg.files!, fi);
+        const position = numbers.images.get(f.openai_file_id) ?? null;
         return f.type === "image" && f.previewUrl ? (
           <div key={fi} className="relative">
             {/* eslint-disable-next-line @next/next/no-img-element */}

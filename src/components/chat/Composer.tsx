@@ -3,7 +3,7 @@ import { ArrowUp, Plus, Paperclip, Mic, X, Check, Square, Video } from "lucide-r
 import type { UploadedFile } from "@/lib/types";
 import { useDismissable } from "@/lib/useDismissable";
 import RecordingWave from "./RecordingWave";
-import { imageLabel, imageNumber } from "@/lib/attachment-labels";
+import { imageLabel, type ThreadNumbers } from "@/lib/attachment-labels";
 import { mentionAt, moveIndex, removeMention, type MentionQuery } from "@/lib/file-search";
 import FilePicker from "./FilePicker";
 import type { LibraryFile } from "@/app/api/files/route";
@@ -34,6 +34,8 @@ interface Props {
   activeThreadId: string | null;
   onCancelEdit: () => void;
   attachedFiles: UploadedFile[];
+  /** Numeración del hilo entero: lo mismo que se le manda al modelo. */
+  numbers: ThreadNumbers;
   onFilesSelected: (files: File[]) => void;
   onRemoveFile: (index: number) => void;
   onSend: (text: string) => void;
@@ -45,7 +47,7 @@ interface Props {
 // Composer aislado: el texto y la grabación viven acá, no en el componente padre.
 // Así escribir no re-renderiza el resto del chat (sidebar, lista de mensajes).
 const Composer = forwardRef<ComposerHandle, Props>(function Composer(
-  { isLoading, isUploading, isUploadingVideo, videoEnabled, isEditing, activeThreadId, onCancelEdit, attachedFiles, onFilesSelected, onRemoveFile, onSend, onStop, onLibraryPick },
+  { isLoading, isUploading, isUploadingVideo, videoEnabled, isEditing, activeThreadId, onCancelEdit, attachedFiles, numbers, onFilesSelected, onRemoveFile, onSend, onStop, onLibraryPick },
   ref
 ) {
   const [input, setInput] = useState("");
@@ -291,7 +293,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             // rotular las imágenes que le manda al modelo: si se calcularan por
             // separado, el usuario vería "imagen 2" mientras el modelo habla
             // de otra.
-            const position = imageNumber(attachedFiles, i);
+            const position = numbers.images.get(f.openai_file_id) ?? null;
             return f.type === "image" ? (
               <div key={i} className="relative group/thumb">
                 {/* eslint-disable-next-line @next/next/no-img-element */}

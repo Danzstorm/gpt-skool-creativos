@@ -1,5 +1,5 @@
 import type { ResponseInputItem } from "openai/resources/responses/responses";
-import { imageLabel, imageNumber, videoLabel, videoNumber } from "@/lib/attachment-labels";
+import { imageLabel, videoLabel, type ThreadNumbers } from "@/lib/attachment-labels";
 
 export type IncomingFile = {
   openai_file_id: string;
@@ -40,14 +40,20 @@ function heading(label: string): string {
  * Los documentos llevan `filename`: ahí el nombre SÍ es información (alguien
  * dice "analizá el brief.pdf") y el tipo `ResponseInputFile` lo admite.
  */
-export function buildUserInput(message: string, files: IncomingFile[]): ResponseInputItem[] {
+export function buildUserInput(
+  message: string,
+  files: IncomingFile[],
+  numbers: ThreadNumbers
+): ResponseInputItem[] {
   const contentParts: ContentPart[] = [];
   if (message.trim()) contentParts.push({ type: "input_text", text: message.trim() });
 
-  files.forEach((f, index) => {
+  files.forEach((f) => {
     if (f.type === "image") {
-      const position = imageNumber(files, index);
-      if (position !== null) {
+      // El número sale del hilo entero, no de este mensaje: así "imagen 3"
+      // señala siempre al mismo archivo y referenciarlo después funciona.
+      const position = numbers.images.get(f.openai_file_id);
+      if (position !== undefined) {
         contentParts.push({ type: "input_text", text: `${heading(imageLabel(position))}:` });
       }
       contentParts.push({ type: "input_image", file_id: f.openai_file_id, detail: "auto" });
@@ -58,8 +64,8 @@ export function buildUserInput(message: string, files: IncomingFile[]): Response
         ...(f.name ? { filename: f.name } : {}),
       });
     } else if (f.type === "video") {
-      const position = videoNumber(files, index);
-      const label = position !== null ? videoLabel(position) : "descripción de video";
+      const position = numbers.videos.get(f.openai_file_id);
+      const label = position !== undefined ? videoLabel(position) : "descripción de video";
       contentParts.push({ type: "input_text", text: `${heading(label)}:` });
       contentParts.push({ type: "input_text", text: f.videoDescription?.trim() || "(sin descripción disponible)" });
     }

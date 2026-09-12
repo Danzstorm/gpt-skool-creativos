@@ -23,6 +23,7 @@ import {
   releaseLeaseIfNotStreamed,
   visionRejectsImages,
   VISION_DISABLED_ERROR,
+  threadAttachmentNumbers,
 } from "@/lib/chat-request";
 import { releaseThreadLease, type ThreadLease } from "@/lib/thread-lease";
 import OpenAI from "openai";
@@ -269,7 +270,9 @@ export async function POST(request: NextRequest) {
       conversationRecreated: conversationId !== thread.openai_conversation_id,
     });
 
-    const input = buildUserInput(message, incoming);
+    // Después de guardar el turno: así sus imágenes ya cuentan en la historia.
+    const numbers = await threadAttachmentNumbers(serviceClient, threadId, user.id);
+    const input = buildUserInput(message, incoming, numbers);
     const messageLabel = message.trim() || messageAttachmentLabel(incoming);
     const runtimeConfig = await getGptRuntimeConfig(serviceClient, gptId, {
       system_prompt: gpt.system_prompt,

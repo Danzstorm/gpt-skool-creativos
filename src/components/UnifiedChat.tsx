@@ -10,6 +10,7 @@ import MessageBubble from "./chat/MessageBubble";
 import Composer, { type ComposerHandle } from "./chat/Composer";
 import GptChatsModal from "./chat/GptChatsModal";
 import ProjectInstructionsModal from "./chat/ProjectInstructionsModal";
+import { assignThreadNumbers } from "@/lib/attachment-labels";
 import { consumeSSE } from "@/lib/stream-client";
 import ThinkingIndicator from "./chat/ThinkingIndicator";
 import {
@@ -145,6 +146,17 @@ export default function UnifiedChat({ gpts, threads, initialProjects, initialThr
   const instructionsProject = useMemo(
     () => (instructionsProjectId ? projects.find((p) => p.id === instructionsProjectId) : undefined),
     [instructionsProjectId, projects]
+  );
+
+  // Numeración de los adjuntos del hilo, calculada UNA vez y compartida por las
+  // burbujas de los mensajes y las del composer. Es la misma función que corre
+  // el servidor antes de rotular lo que ve el modelo: si cada superficie contara
+  // por su lado, el usuario leería "imagen 3" mientras el modelo habla de otra.
+  // Los archivos que se están por mandar entran al final, así toman los números
+  // siguientes sin pisar los que ya existen.
+  const attachmentNumbers = useMemo(
+    () => assignThreadNumbers(messages, attachedFiles),
+    [messages, attachedFiles]
   );
 
   useEffect(() => {
@@ -850,6 +862,7 @@ export default function UnifiedChat({ gpts, threads, initialProjects, initialThr
                     key={i}
                     index={i}
                     message={msg}
+                    numbers={attachmentNumbers}
                     activeGpt={activeGpt}
                     isLast={isLast}
                     streaming={streaming}
@@ -908,6 +921,7 @@ export default function UnifiedChat({ gpts, threads, initialProjects, initialThr
             isLoading={isLoading}
             videoEnabled={videoEnabled}
             onLibraryPick={attachFromLibrary}
+            numbers={attachmentNumbers}
             activeThreadId={activeThreadId}
             isUploading={pendingUploads > 0}
             isUploadingVideo={uploadingVideo}

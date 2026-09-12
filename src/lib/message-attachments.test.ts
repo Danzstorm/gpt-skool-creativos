@@ -54,16 +54,24 @@ describe("threadAttachmentLabels", () => {
     expect(labels.get("v")).toBe("descripción de video 1");
   });
 
-  it("la numeración se reinicia en cada mensaje, igual que para el modelo", () => {
+  it("la numeración NO se reinicia entre mensajes", () => {
+    // EL PUNTO DEL CAMBIO. Antes se contaba por mensaje, así que en un chat con
+    // varias tandas de imágenes había tres "imagen 1" distintas y pedir "usá la
+    // imagen 1" no identificaba ninguna.
     const labels = threadAttachmentLabels([
       msg([{ openai_file_id: "a", type: "image" }]),
       msg([{ openai_file_id: "b", type: "image" }]),
+      msg([
+        { openai_file_id: "c", type: "image" },
+        { openai_file_id: "d", type: "image" },
+      ]),
     ]);
 
-    // Los dos son "imagen 1" y está bien: es lo que vio el modelo. En el menú
-    // los distinguen la miniatura y la fecha.
     expect(labels.get("a")).toBe("imagen 1");
-    expect(labels.get("b")).toBe("imagen 1");
+    expect(labels.get("b")).toBe("imagen 2");
+    expect(labels.get("c")).toBe("imagen 3");
+    expect(labels.get("d")).toBe("imagen 4");
+    expect(new Set(labels.values()).size).toBe(4); // ninguno se repite
   });
 
   it("un archivo re-adjuntado conserva el rótulo de su primer envío", () => {

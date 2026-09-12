@@ -16,6 +16,7 @@ import {
   releaseLeaseIfNotStreamed,
   visionRejectsImages,
   VISION_DISABLED_ERROR,
+  threadAttachmentNumbers,
 } from "@/lib/chat-request";
 import { releaseThreadLease, type ThreadLease } from "@/lib/thread-lease";
 import OpenAI from "openai";
@@ -189,7 +190,10 @@ export async function POST(request: NextRequest) {
       conversationRecreated: conversationId !== storedConversationId,
     });
 
-    const input = buildUserInput(lastUserMessage.content, incoming);
+    // El turno del usuario sigue guardado (regenerar solo borra la respuesta),
+    // así que la numeración sale igual que en /api/chat y no se corre.
+    const numbers = await threadAttachmentNumbers(serviceClient, threadId, user.id);
+    const input = buildUserInput(lastUserMessage.content, incoming, numbers);
     const response = runStreamResponse({
       conversationId,
       model: gpt.model || "gpt-4.1-mini",

@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import type { Tool } from "openai/resources/responses/responses";
 import { keepAvailableFiles } from "@/lib/conversation-sync";
 import { type IncomingFile } from "@/lib/chat-content";
+import { assignThreadNumbers, type ThreadNumbers } from "@/lib/attachment-labels";
 import {
   acquireThreadLease,
   releaseThreadLease,
@@ -180,4 +181,38 @@ export async function releaseLeaseIfNotStreamed(
   if (!handedToStream) {
     await releaseThreadLease(supabase, threadId, lease);
   }
+}
+
+/**
+ * Números de los adjuntos de un hilo, listos para rotular lo que ve el modelo.
+ *
+ * Se lee el hilo entero porque la numeración es por primera aparición: "imagen
+ * 3" tiene que seguir siendo la misma imagen tres mensajes después, y eso solo
+ * se sabe mirando lo que ya se mandó. Es una consulta por turno sobre un índice
+ * de `thread_id`.
+ *
+ * Se llama DESPUÉS de guardar el turno del usuario, así sus archivos ya están
+ * en la historia y toman los números siguientes sin tratarlos aparte.
+ */
+export async function threadAttachmentNumbers(
+  service: SupabaseClient,
+  threadId: string,
+  userId: string
+): Promise<ThreadNumbers> {
+  const { data, error } = await service
+    .from("messages")
+    .select("files, created_at")
+    .eq("thread_id", threadId)
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+
+  // Sin historia no se puede numerar bien, pero tirar el turno sería peor: el
+  // mensaje se manda igual y las imágenes quedan sin rótulo, como antes de que
+  // esto existiera.
+  if (error) {
+    console.error("thread attachment numbers error", { code: error.code, message: error.message });
+    return { images: new Map(), videos: new Map() };
+  }
+
+  return assignThreadNumbers(data ?? []);
 }
