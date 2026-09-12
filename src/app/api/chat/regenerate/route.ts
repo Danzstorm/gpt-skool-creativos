@@ -7,18 +7,18 @@ import { buildUserInput, type IncomingFile } from "@/lib/chat-content";
 import { estimateCost } from "@/lib/pricing";
 import { getGptRuntimeConfig } from "@/lib/gpt-runtime-config";
 import { projectInstructionsOf, syncProjectContext } from "@/lib/project-instructions";
+import { ensureThreadConversation, needsConversationCheck } from "@/lib/conversation-sync";
 import {
-  ensureThreadConversation,
-  keepAvailableFiles,
-  needsConversationCheck,
-} from "@/lib/conversation-sync";
-import {
-  acquireThreadLease,
-  releaseThreadLease,
-  type ThreadLease,
-} from "@/lib/thread-lease";
+  acquireRouteThreadLease,
+  applyOpenAiAttachmentPolicy,
+  buildCodeInterpreterTools,
+  loadOwnedIncomingFiles,
+  releaseLeaseIfNotStreamed,
+  visionRejectsImages,
+  VISION_DISABLED_ERROR,
+} from "@/lib/chat-request";
+import { releaseThreadLease, type ThreadLease } from "@/lib/thread-lease";
 import OpenAI from "openai";
-import type { Tool } from "openai/resources/responses/responses";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
   const [gptRes, threadRes] = await Promise.all([
     serviceClient
       .from("gpts")
-      .select("system_prompt, model")
+      .select("system_prompt, model, vision_enabled")
       .eq("id", gptId)
       .eq("is_active", true)
       .single(),
@@ -76,34 +76,17 @@ export async function POST(request: NextRequest) {
   if (threadRes.error || !threadRes.data?.openai_conversation_id) {
     return NextResponse.json({ error: "Conversación no encontrada" }, { status: 404 });
   }
-  const gpt = await getGptRuntimeConfig(serviceClient, gptId, gptRes.data);
+  const gptRow = gptRes.data;
+  const gpt = await getGptRuntimeConfig(serviceClient, gptId, gptRow);
   const projectInstructions = projectInstructionsOf(threadRes.data);
   const storedConversationId = threadRes.data.openai_conversation_id;
   // Thread heredado de otra API key: su Conversation y sus adjuntos pueden vivir
   // en un proyecto de OpenAI que esta cuenta no ve (ver conversation-sync.ts).
-  const isLegacyThread = needsConversationCheck(
-    threadRes.data.conversation_key_fingerprint
-  );
+  const isLegacyThread = needsConversationCheck(threadRes.data.conversation_key_fingerprint);
 
-  let lease: ThreadLease | null;
-  try {
-    lease = await acquireThreadLease(supabase, threadId);
-  } catch (lockError) {
-    console.error("regenerate lock error", {
-      code:
-        lockError && typeof lockError === "object" && "code" in lockError
-          ? lockError.code
-          : undefined,
-      message: lockError instanceof Error ? lockError.message : String(lockError),
-    });
-    return NextResponse.json({ error: "No se pudo iniciar la respuesta" }, { status: 500 });
-  }
-  if (!lease) {
-    return NextResponse.json(
-      { error: "Ya hay una respuesta en curso para esta conversación." },
-      { status: 409 }
-    );
-  }
+  const leaseResult = await acquireRouteThreadLease(supabase, threadId, "regenerate");
+  if (!leaseResult.ok) return leaseResult.response;
+  const lease: ThreadLease = leaseResult.lease;
 
   let handedToStream = false;
   try {
@@ -133,46 +116,28 @@ export async function POST(request: NextRequest) {
 
     let incoming: IncomingFile[] = [];
     if (fileIds.length > 0) {
-      const { data: ownedFiles, error: ownedFilesError } = await serviceClient
-        .from("uploaded_files")
-        .select("openai_file_id, mime, name, video_description")
-        .eq("user_id", user.id)
-        .in("openai_file_id", fileIds);
-      if (ownedFilesError) throw ownedFilesError;
-      const byId = new Map((ownedFiles ?? []).map((file) => [file.openai_file_id, file]));
-      if (byId.size !== fileIds.length) {
+      const owned = await loadOwnedIncomingFiles(serviceClient, user.id, fileIds);
+      if (!owned.ok) {
+        if (owned.error.kind === "lookup") throw owned.error.cause;
         return NextResponse.json(
           { error: "Uno de los adjuntos ya no está disponible para regenerar" },
           { status: 400 }
         );
       }
-      incoming = fileIds.map((id) => {
-        const row = byId.get(id);
-        const isImage = row?.mime?.startsWith("image/") ?? false;
-        const isVideo = row?.mime?.startsWith("video/") ?? false;
-        const type = isImage ? "image" : isVideo ? "video" : "document";
-        return {
-          openai_file_id: id,
-          type,
-          // El nombre real solo se guarda para documentos y videos (ver
-          // chat/route.ts para el porqué); las imágenes nunca lo llevan.
-          ...(type === "document" || type === "video" ? { name: row?.name ?? null } : {}),
-          ...(type === "video" ? { videoDescription: row?.video_description ?? null } : {}),
-        } satisfies IncomingFile;
-      });
+      incoming = owned.files;
+      if (visionRejectsImages(gptRow.vision_enabled, owned.files)) {
+        return NextResponse.json({ error: VISION_DISABLED_ERROR }, { status: 400 });
+      }
       if (isLegacyThread) {
         // Reenviar un file_id de la cuenta anterior tumba la regeneración
         // entera con "No such File object". Se omite el adjunto perdido: el
         // usuario sigue viendo su miniatura (sale de Storage) y el turno corre.
-        //
-        // Los videos NUNCA existieron en OpenAI (openai_file_id sintético, ver
-        // /api/upload/register): comprobarlos ahí siempre daría 404 y los
-        // descartaría, así que se excluyen de esta verificación.
-        const openaiBacked = incoming.filter((file) => file.type !== "video");
-        const availableIds = new Set(
-          (await keepAvailableFiles(openai, openaiBacked)).map((file) => file.openai_file_id)
+        const availability = await applyOpenAiAttachmentPolicy(
+          openai,
+          owned.files,
+          "filter_unavailable"
         );
-        incoming = incoming.filter((file) => file.type === "video" || availableIds.has(file.openai_file_id));
+        if (availability.ok) incoming = availability.files;
       }
     }
 
@@ -208,18 +173,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const docFileIds = incoming
-      .filter((file) => file.type === "document")
-      .map((file) => file.openai_file_id);
-    const tools: Tool[] = [
-      {
-        type: "code_interpreter",
-        container: {
-          type: "auto",
-          ...(docFileIds.length > 0 && { file_ids: docFileIds }),
-        },
-      },
-    ];
+    const tools = buildCodeInterpreterTools(incoming);
     // Casi siempre no hay nada que hacer: el contexto de la carpeta ya vive en
     // la Conversation. Importa cuando el texto cambió desde la última respuesta
     // —regenerar tiene que usar el nuevo, no el que se está reemplazando— y
@@ -284,8 +238,6 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   } finally {
-    if (!handedToStream) {
-      await releaseThreadLease(supabase, threadId, lease);
-    }
+    await releaseLeaseIfNotStreamed(handedToStream, supabase, threadId, lease);
   }
 }

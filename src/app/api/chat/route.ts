@@ -13,28 +13,25 @@ import { generateThreadTitle } from "@/lib/thread-title";
 import {
   CONVERSATION_KEY_FINGERPRINT,
   ensureThreadConversation,
-  keepAvailableFiles,
 } from "@/lib/conversation-sync";
 import {
-  acquireThreadLease,
-  releaseThreadLease,
-  type ThreadLease,
-} from "@/lib/thread-lease";
+  acquireRouteThreadLease,
+  applyOpenAiAttachmentPolicy,
+  buildCodeInterpreterTools,
+  loadOwnedIncomingFiles,
+  messageAttachmentLabel,
+  releaseLeaseIfNotStreamed,
+  visionRejectsImages,
+  VISION_DISABLED_ERROR,
+} from "@/lib/chat-request";
+import { releaseThreadLease, type ThreadLease } from "@/lib/thread-lease";
 import OpenAI from "openai";
-import type { Tool } from "openai/resources/responses/responses";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // Los turnos con varias imágenes pueden superar el límite normal de una
 // función serverless antes de producir el primer token.
 export const maxDuration = 300;
-
-function attachmentLabel(files: IncomingFile[]): string {
-  if (files.length === 1) return files[0].type === "image" ? "Imagen adjunta" : "Archivo adjunto";
-  return files.every((file) => file.type === "image")
-    ? `${files.length} imágenes adjuntas`
-    : `${files.length} archivos adjuntos`;
-}
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -137,100 +134,45 @@ export async function POST(request: NextRequest) {
   }
   const projectInstructions = projectInstructionsOf(thread);
 
-  // Nunca confiar en el `type` enviado por el navegador: el mapa server-side
-  // acredita ownership y contiene el MIME detectado durante el registro.
   let incoming: IncomingFile[] = [];
   if (requestedIds.length > 0) {
-    const { data: ownedFiles, error: ownedFilesError } = await serviceClient
-      .from("uploaded_files")
-      .select("openai_file_id, mime, name, video_description")
-      .eq("user_id", user.id)
-      .in("openai_file_id", requestedIds);
-    if (ownedFilesError) {
-      console.error("chat attachment lookup error", {
-        code: ownedFilesError.code,
-        message: ownedFilesError.message,
-      });
-      return NextResponse.json({ error: "No se pudieron validar los adjuntos" }, { status: 500 });
-    }
-
-    const byId = new Map((ownedFiles ?? []).map((file) => [file.openai_file_id, file]));
-    if (byId.size !== requestedIds.length) {
+    const owned = await loadOwnedIncomingFiles(serviceClient, user.id, requestedIds);
+    if (!owned.ok) {
+      if (owned.error.kind === "lookup") {
+        console.error("chat attachment lookup error", {
+          code:
+            owned.error.cause &&
+            typeof owned.error.cause === "object" &&
+            "code" in owned.error.cause
+              ? owned.error.cause.code
+              : undefined,
+          message:
+            owned.error.cause instanceof Error
+              ? owned.error.cause.message
+              : String(owned.error.cause),
+        });
+        return NextResponse.json({ error: "No se pudieron validar los adjuntos" }, { status: 500 });
+      }
       return NextResponse.json(
         { error: "Uno de los adjuntos no existe o no pertenece a tu cuenta" },
         { status: 400 }
       );
     }
-    incoming = requestedIds.map((id) => {
-      const row = byId.get(id);
-      const isImage = row?.mime?.startsWith("image/") ?? false;
-      const isVideo = row?.mime?.startsWith("video/") ?? false;
-      const type = isImage ? "image" : isVideo ? "video" : "document";
-      return {
-        openai_file_id: id,
-        type,
-        // El nombre real solo se guarda para documentos y videos: el de una
-        // imagen no se manda nunca (ver openaiImageName en upload-file.ts). El
-        // video nunca lleva su nombre al modelo (chat-content.ts no lo usa),
-        // esto es solo para que la miniatura/chip conserve el nombre real.
-        ...(type === "document" || type === "video" ? { name: row?.name ?? null } : {}),
-        ...(type === "video" ? { videoDescription: row?.video_description ?? null } : {}),
-      } satisfies IncomingFile;
-    });
-    if (!gpt.vision_enabled && incoming.some((file) => file.type === "image")) {
-      return NextResponse.json({ error: "Este GPT no admite imágenes" }, { status: 400 });
+    incoming = owned.files;
+    if (visionRejectsImages(gpt.vision_enabled, owned.files)) {
+      return NextResponse.json({ error: VISION_DISABLED_ERROR }, { status: 400 });
     }
 
-    // Un archivo puede existir en nuestra base y ya no en OpenAI: la key se
-    // rotó (los file_id pertenecen a la cuenta que los subió) o alguien lo
-    // borró allá. Pasa sobre todo con archivos elegidos desde la biblioteca
-    // con `@`, que pueden ser de hace meses.
-    //
-    // Sin esta comprobación, OpenAI responde "No such File object" a mitad del
-    // stream y el usuario ve un error crudo en inglés. Los bytes siguen en
-    // Storage, así que re-subirlos es posible — pero no es trivial: el índice
-    // único (user_id, storage_path) impide crear otra fila para el mismo
-    // objeto, y la FK de message_attachments impide cambiarle el id a uno ya
-    // referenciado. Queda como trabajo aparte; por ahora se avisa claro.
-    //
-    // Los videos NUNCA llegaron a OpenAI (su openai_file_id es sintético, ver
-    // /api/upload/register): comprobarlos ahí siempre daría 404 y los
-    // descartaría en silencio, así que se excluyen de esta verificación.
-    const openaiBacked = incoming.filter((file) => file.type !== "video");
-    const availableIds = new Set(
-      (await keepAvailableFiles(openai, openaiBacked)).map((file) => file.openai_file_id)
-    );
-    if (availableIds.size !== openaiBacked.length) {
-      return NextResponse.json(
-        {
-          error:
-            "Uno de los archivos ya no está disponible. Vuelve a subirlo desde el botón de adjuntar.",
-        },
-        { status: 400 }
-      );
+    const availability = await applyOpenAiAttachmentPolicy(openai, owned.files, "strict");
+    if (!availability.ok) {
+      return NextResponse.json({ error: availability.error }, { status: 400 });
     }
-    incoming = incoming.filter((file) => file.type === "video" || availableIds.has(file.openai_file_id));
+    incoming = availability.files;
   }
 
-  let lease: ThreadLease | null;
-  try {
-    lease = await acquireThreadLease(supabase, threadId);
-  } catch (lockError) {
-    console.error("chat lock error", {
-      code:
-        lockError && typeof lockError === "object" && "code" in lockError
-          ? lockError.code
-          : undefined,
-      message: lockError instanceof Error ? lockError.message : String(lockError),
-    });
-    return NextResponse.json({ error: "No se pudo iniciar la respuesta" }, { status: 500 });
-  }
-  if (!lease) {
-    return NextResponse.json(
-      { error: "Ya hay una respuesta en curso para esta conversación." },
-      { status: 409 }
-    );
-  }
+  const leaseResult = await acquireRouteThreadLease(supabase, threadId, "chat");
+  if (!leaseResult.ok) return leaseResult.response;
+  const lease: ThreadLease = leaseResult.lease;
 
   // runStreamResponse libera el lock al terminar el stream. Si algo falla
   // antes de entregárselo, este finally cubre ese camino.
@@ -263,18 +205,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const docFileIds = incoming
-      .filter((file) => file.type === "document")
-      .map((file) => file.openai_file_id);
-    const tools: Tool[] = [
-      {
-        type: "code_interpreter",
-        container: {
-          type: "auto",
-          ...(docFileIds.length > 0 && { file_ids: docFileIds }),
-        },
-      },
-    ];
+    const tools = buildCodeInterpreterTools(incoming);
 
     if (replaceLast) {
       const recentItems = await openai.conversations.items.list(conversationId, {
@@ -339,7 +270,7 @@ export async function POST(request: NextRequest) {
     });
 
     const input = buildUserInput(message, incoming);
-    const messageLabel = message.trim() || attachmentLabel(incoming);
+    const messageLabel = message.trim() || messageAttachmentLabel(incoming);
     const runtimeConfig = await getGptRuntimeConfig(serviceClient, gptId, {
       system_prompt: gpt.system_prompt,
       model: gpt.model,
@@ -424,8 +355,6 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   } finally {
-    if (!handedToStream) {
-      await releaseThreadLease(supabase, threadId, lease);
-    }
+    await releaseLeaseIfNotStreamed(handedToStream, supabase, threadId, lease);
   }
 }

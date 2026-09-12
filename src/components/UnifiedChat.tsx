@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import type { Gpt, Message, Project, UploadedFile, ThreadSummary, Theme } from "@/lib/types";
+import type { Gpt, Message, Project, ThreadSummary, Theme } from "@/lib/types";
 import { Menu, ArrowDown, ChevronDown, Folder, PanelLeftOpen, SquarePen } from "lucide-react";
 import Sparkle from "./Sparkle";
 import GptGlyph from "./chat/GptGlyph";
@@ -12,24 +12,14 @@ import GptChatsModal from "./chat/GptChatsModal";
 import ProjectInstructionsModal from "./chat/ProjectInstructionsModal";
 import { consumeSSE } from "@/lib/stream-client";
 import ThinkingIndicator from "./chat/ThinkingIndicator";
-import type { LibraryFile } from "@/app/api/files/route";
 import {
   countAttachments,
   EMPTY_ATTACHMENTS,
   type Phase,
   type ThinkingAttachments,
 } from "@/lib/thinking-phrases";
-import { downscaleImage } from "@/lib/image-resize";
-import { createClient } from "@/lib/supabase/client";
-import { MAX_FILES_PER_MESSAGE } from "@/lib/upload-file";
-import { MAX_SIZE_BYTES, MAX_SIZE_MB, MAX_VIDEO_SIZE_BYTES, MAX_VIDEO_SIZE_MB } from "@/lib/upload-limits";
-
-// Solo se usa para subir adjuntos a Storage con URL firmada; el resto de los
-// datos del chat viaja por las rutas de /api.
-const supabase = createClient();
-
-const SIDEBAR_COLLAPSED_KEY = "chat_sidebar_collapsed";
-const OPEN_PROJECTS_KEY = "chat_open_projects";
+import { useChatUploads } from "@/lib/useChatUploads";
+import { useChatSidebar } from "@/lib/useChatSidebar";
 
 /** Cartel del proyecto donde va a nacer el chat que todavía no se creó. */
 function ProjectDestination({ name }: { name: string }) {
@@ -76,23 +66,12 @@ export default function UnifiedChat({ gpts, threads, initialProjects, initialThr
   // empieza y termina un turno.
   const [phase, setPhase] = useState<Phase>("thinking");
   const [thinkingStartedAt, setThinkingStartedAt] = useState(0);
-  const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>([]);
-  const [pendingUploads, setPendingUploads] = useState(0);
-  // Solo para el placeholder del composer ("Analizando video..."): el análisis
-  // con Gemini tarda bastante más que subir una imagen o un documento.
-  const [uploadingVideo, setUploadingVideo] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
-  const [chatSearch, setChatSearch] = useState("");
   const [gptChatsModalId, setGptChatsModalId] = useState<string | null>(null);
   const [theme, setTheme] = useState<Theme>(profile.theme);
   const [projects, setProjects] = useState<Project[]>(initialProjects);
-  const [openProjectIds, setOpenProjectIds] = useState<string[]>([]);
   const [renamingProjectId, setRenamingProjectId] = useState<string | null>(null);
   const [projectRenameValue, setProjectRenameValue] = useState("");
   // El chat se crea recién con el primer mensaje: hasta entonces la carpeta
@@ -112,47 +91,19 @@ export default function UnifiedChat({ gpts, threads, initialProjects, initialThr
     }).catch(() => {});
   }, []);
 
-  // Aplicado post-montaje (no en el estado inicial) para que el SSR/primer
-  // render coincida siempre con "expandido" y no genere hydration mismatch;
-  // leer localStorage en el lazy initializer de useState rompería esa paridad.
-  useEffect(() => {
-    if (localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1") setSidebarCollapsed(true);
-    try {
-      const saved = JSON.parse(localStorage.getItem(OPEN_PROJECTS_KEY) ?? "[]");
-      if (Array.isArray(saved)) setOpenProjectIds(saved.filter((id) => typeof id === "string"));
-    } catch {
-      // Valor corrupto: arrancar con todo plegado es preferible a romper el chat.
-    }
-  }, []);
-
-  const toggleSidebarCollapsed = useCallback(() => {
-    setSidebarCollapsed((prev) => {
-      const next = !prev;
-      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? "1" : "0");
-      return next;
-    });
-  }, []);
-
-  const persistOpenProjects = useCallback((ids: string[]) => {
-    localStorage.setItem(OPEN_PROJECTS_KEY, JSON.stringify(ids));
-    return ids;
-  }, []);
-
-  const toggleProject = useCallback(
-    (id: string) => {
-      setOpenProjectIds((prev) =>
-        persistOpenProjects(prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id])
-      );
-    },
-    [persistOpenProjects]
-  );
-
-  const openProject = useCallback(
-    (id: string) => {
-      setOpenProjectIds((prev) => (prev.includes(id) ? prev : persistOpenProjects([...prev, id])));
-    },
-    [persistOpenProjects]
-  );
+  const {
+    sidebarOpen,
+    openSidebar,
+    closeSidebar,
+    sidebarCollapsed,
+    toggleSidebarCollapsed,
+    openProjectIds,
+    toggleProject,
+    openProject,
+    chatSearch,
+    onSearchChange,
+    clearSearch,
+  } = useChatSidebar();
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -164,6 +115,22 @@ export default function UnifiedChat({ gpts, threads, initialProjects, initialThr
   }, [messages]);
 
   const activeGpt = useMemo(() => gpts.find((g) => g.id === activeGptId), [gpts, activeGptId]);
+  const {
+    attachedFiles,
+    pendingUploads,
+    uploadingVideo,
+    uploadError,
+    isDragging,
+    dismissUploadError,
+    clearAttachments,
+    restoreAttachments,
+    uploadFiles,
+    attachFromLibrary,
+    removeAttached,
+    onDragOver,
+    onDragLeave,
+    onDrop,
+  } = useChatUploads(!!activeGpt);
 
   // Carpeta a la que irá a parar el chat que todavía no existe. La pantalla de
   // "nuevo chat" es idéntica con y sin destino, así que sin este cartel el
@@ -218,17 +185,17 @@ export default function UnifiedChat({ gpts, threads, initialProjects, initialThr
   }
 
   const selectGpt = useCallback((gptId: string) => {
-    setSidebarOpen(false);
+    closeSidebar();
     setActiveGptId(gptId);
     setActiveThreadId(null);
     setMessages([]);
     pushUrl(`?gpt=${gptId}`);
-  }, []);
+  }, [closeSidebar]);
 
   const selectThread = useCallback(
     (t: ThreadSummary) => {
       if (t.id === activeThreadId || isLoadingHistory) return;
-      setSidebarOpen(false);
+      closeSidebar();
       // Abrir una conversación existente cancela el "nuevo chat en la carpeta"
       // que hubiera quedado pendiente. Sin esto el destino sobrevive invisible
       // y el próximo chat que se cree desde un GPT cae en un proyecto que el
@@ -239,19 +206,18 @@ export default function UnifiedChat({ gpts, threads, initialProjects, initialThr
       pushUrl(`?c=${t.id}`);
       loadHistory(t.id);
     },
-    [activeThreadId, isLoadingHistory]
+    [activeThreadId, closeSidebar, isLoadingHistory]
   );
 
   const newChat = useCallback(() => {
-    setSidebarOpen(false);
+    closeSidebar();
     setPendingProjectId(null);
     setActiveThreadId(null);
     setActiveGptId(null);
     setMessages([]);
     pushUrl("");
-  }, []);
+  }, [closeSidebar]);
 
-  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
   const startRename = useCallback((t: ThreadSummary) => {
     setRenamingId(t.id);
     setRenameValue(t.title);
@@ -339,14 +305,14 @@ export default function UnifiedChat({ gpts, threads, initialProjects, initialThr
       // Con una búsqueda activa, "Nuevo proyecto" casi nunca matchea: la carpeta
       // recién creada no se pintaría y el chat que se acaba de mover parecería
       // haber desaparecido del sidebar (ya no está en la lista suelta).
-      setChatSearch("");
+      clearSearch();
       // Rename inline activo de una: una carpeta recién creada se llama "Nuevo
       // proyecto" y nadie la deja así — pedir un click más para bautizarla es
       // fricción gratis.
       setRenamingProjectId(created.id);
       setProjectRenameValue(created.name);
     },
-    [openProject]
+    [clearSearch, openProject]
   );
 
   const startProjectRename = useCallback((project: Project) => {
@@ -406,156 +372,13 @@ export default function UnifiedChat({ gpts, threads, initialProjects, initialThr
   }, []);
 
   const newChatInProject = useCallback((projectId: string) => {
-    setSidebarOpen(false);
+    closeSidebar();
     setPendingProjectId(projectId);
     setActiveThreadId(null);
     setActiveGptId(null);
     setMessages([]);
     pushUrl("");
-  }, []);
-
-  const uploadFiles = useCallback(async (files: File[]) => {
-    setUploadError(null);
-    if (pendingUploads > 0) {
-      setUploadError("Espera a que termine la subida actual antes de adjuntar más archivos.");
-      return;
-    }
-
-    const remaining = MAX_FILES_PER_MESSAGE - attachedFiles.length;
-    if (remaining <= 0) {
-      setUploadError(`Puedes adjuntar hasta ${MAX_FILES_PER_MESSAGE} archivos por mensaje.`);
-      return;
-    }
-    const batch = files.slice(0, remaining);
-    const skippedCount = files.length - batch.length;
-    setPendingUploads(batch.length);
-    setUploadingVideo(batch.some((f) => f.type.startsWith("video/")));
-
-    // En paralelo: antes iban de a uno y adjuntar 3 imágenes tardaba el triple.
-    const results = await Promise.all(
-      batch.map(async (original) => {
-        const fail = (msg: string) => ({ error: `${original.name}: ${msg}` });
-        try {
-          const isVideo = original.type.startsWith("video/");
-          const sizeCapBytes = isVideo ? MAX_VIDEO_SIZE_BYTES : MAX_SIZE_BYTES;
-          const sizeCapMb = isVideo ? MAX_VIDEO_SIZE_MB : MAX_SIZE_MB;
-          if (original.size > sizeCapBytes) {
-            return fail(`supera el límite de ${sizeCapMb}MB`);
-          }
-          // Las imágenes se achican igual: no por el límite (ya no aplica) sino
-          // porque subir 8MB de foto no mejora la respuesta y se siente lento.
-          const file = await downscaleImage(original);
-
-          // Subida en dos pasos para saltar el techo de 4.5MB que Vercel impone
-          // al body de sus funciones: el archivo va del navegador directo a
-          // Supabase Storage, y el servidor solo lo copia a OpenAI después.
-          const signRes = await fetch("/api/upload/sign", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name: file.name, type: file.type, size: file.size }),
-          });
-          if (!signRes.ok) {
-            return fail((await signRes.json().catch(() => null))?.error ?? "no se pudo subir");
-          }
-          const { path, token } = await signRes.json();
-
-          const { error: upErr } = await supabase.storage
-            .from("chat-uploads")
-            .uploadToSignedUrl(path, token, file);
-          if (upErr) return fail("falló la subida, revisa tu conexión");
-
-          const regRes = await fetch("/api/upload/register", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ path, name: file.name, type: file.type }),
-          });
-          if (!regRes.ok) {
-            return fail((await regRes.json().catch(() => null))?.error ?? "no se pudo procesar");
-          }
-
-          const data = await regRes.json();
-          const kind = data.kind as UploadedFile["type"];
-          const uploadedAsImage = kind === "image";
-          const previewBlob =
-            uploadedAsImage && !file.type && data.mime
-              ? new Blob([file], { type: data.mime })
-              : file;
-          return {
-            file: {
-              name: original.name,
-              openai_file_id: data.file_id,
-              type: kind,
-              previewUrl: uploadedAsImage ? URL.createObjectURL(previewBlob) : undefined,
-            },
-          };
-        } catch {
-          return fail("no se pudo subir");
-        }
-      })
-    );
-
-    setPendingUploads(0);
-    setUploadingVideo(false);
-
-    const ok = results.flatMap((r) => ("file" in r && r.file ? [r.file] : []));
-    if (ok.length > 0) setAttachedFiles((prev) => [...prev, ...ok]);
-
-    // Antes los fallos se descartaban en silencio y el archivo simplemente no
-    // aparecía, sin ninguna pista de por qué.
-    const errors = [
-      ...(skippedCount > 0
-        ? [`Se omitieron ${skippedCount} archivos: máximo ${MAX_FILES_PER_MESSAGE} por mensaje.`]
-        : []),
-      ...results.flatMap((r) => ("error" in r && r.error ? [r.error] : [])),
-    ];
-    if (errors.length > 0) setUploadError(errors.join(" · "));
-  }, [attachedFiles.length, pendingUploads]);
-
-  /**
-   * Adjunta un archivo que ya vive en la biblioteca del usuario.
-   *
-   * No sube nada: reusa el `openai_file_id` que ya existe, que es el punto
-   * entero de la función. Se ignora si ya está adjunto para que elegirlo dos
-   * veces no lo duplique.
-   */
-  const attachFromLibrary = useCallback((file: LibraryFile) => {
-    setUploadError(null);
-    setAttachedFiles((prev) => {
-      if (prev.some((f) => f.openai_file_id === file.openai_file_id)) return prev;
-      // El mismo tope que aplica al subir. Sin esto se podían elegir 11
-      // archivos de la biblioteca, y el rechazo llegaba del servidor DESPUÉS
-      // de que el composer ya había vaciado los adjuntos al enviar: el usuario
-      // veía un error y encima perdía lo que había adjuntado.
-      if (prev.length >= MAX_FILES_PER_MESSAGE) {
-        setUploadError(`Puedes adjuntar hasta ${MAX_FILES_PER_MESSAGE} archivos por mensaje.`);
-        return prev;
-      }
-      return [
-        ...prev,
-        {
-          name: file.name,
-          openai_file_id: file.openai_file_id,
-          type: file.type,
-          previewUrl: file.previewUrl,
-        },
-      ];
-    });
-  }, []);
-
-  const removeAttached = useCallback((index: number) => {
-    setAttachedFiles((prev) => {
-      const f = prev[index];
-      if (f?.previewUrl) URL.revokeObjectURL(f.previewUrl);
-      return prev.filter((_, idx) => idx !== index);
-    });
-  }, []);
-
-  function handleDrop(e: React.DragEvent) {
-    e.preventDefault();
-    setIsDragging(false);
-    const files = Array.from(e.dataTransfer.files);
-    if (files.length > 0) uploadFiles(files);
-  }
+  }, [closeSidebar]);
 
   const stopStreaming = useCallback(() => {
     abortRef.current?.abort();
@@ -690,7 +513,7 @@ export default function UnifiedChat({ gpts, threads, initialProjects, initialThr
       };
 
       setMessages((prev) => [...prev, userMessage]);
-      setAttachedFiles([]);
+      clearAttachments();
       setShowScrollBtn(false);
 
       // Creación diferida: si no hay conversación aún, crearla al primer mensaje
@@ -771,7 +594,7 @@ export default function UnifiedChat({ gpts, threads, initialProjects, initialThr
     // runAssistant es estable en comportamiento (solo cierra sobre setState/refs); omitirla
     // evita que sendMessage cambie de referencia en cada token streameado.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeGptId, activeThreadId, attachedFiles, isEditing, isLoading, pendingProjectId, pendingUploads]
+    [activeGptId, activeThreadId, attachedFiles, clearAttachments, isEditing, isLoading, pendingProjectId, pendingUploads]
   );
 
   const regenerate = useCallback(async () => {
@@ -791,10 +614,10 @@ export default function UnifiedChat({ gpts, threads, initialProjects, initialThr
     // Editar debe conservar las imágenes/documentos del turno. El backend
     // borra el turno anterior completo antes de reponerlo; enviarlo sin estos
     // archivos cambiaba silenciosamente el contexto del modelo.
-    setAttachedFiles(m.files ? [...m.files] : []);
+    restoreAttachments(m.files);
     setMessages((prev) => prev.slice(0, index));
     setIsEditing(true);
-  }, []);
+  }, [restoreAttachments]);
 
   const cancelEdit = useCallback(() => setIsEditing(false), []);
 
@@ -849,7 +672,7 @@ export default function UnifiedChat({ gpts, threads, initialProjects, initialThr
         theme={theme}
         onThemeChange={changeTheme}
         chatSearch={chatSearch}
-        onSearchChange={setChatSearch}
+        onSearchChange={onSearchChange}
         onSelectGpt={selectGpt}
         onSelectThread={selectThread}
         onNewChat={newChat}
@@ -879,21 +702,9 @@ export default function UnifiedChat({ gpts, threads, initialProjects, initialThr
       {/* Área principal */}
       <div
         className="flex flex-col flex-1 min-w-0 relative"
-        onDragOver={(e) => {
-          // preventDefault siempre: si no, sin GPT activo el navegador abre el
-          // archivo soltado en vez de ignorarlo.
-          e.preventDefault();
-          // Arrastrar un chat del sidebar también dispara esto; sin el filtro,
-          // mover una conversación encendía el overlay de "soltá tus archivos".
-          if (showComposer && e.dataTransfer.types.includes("Files")) setIsDragging(true);
-        }}
-        onDragLeave={(e) => {
-          if (e.currentTarget === e.target) setIsDragging(false);
-        }}
-        onDrop={(e) => {
-          e.preventDefault();
-          if (showComposer) handleDrop(e);
-        }}
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
       >
         {isDragging && showComposer && (
           <div className="absolute inset-0 z-10 bg-zinc-800/40 border-2 border-dashed border-zinc-600 rounded-2xl m-2 flex items-center justify-center pointer-events-none">
@@ -903,7 +714,7 @@ export default function UnifiedChat({ gpts, threads, initialProjects, initialThr
         {/* Header */}
         <div className="border-b border-zinc-800/80 px-4 py-2.5 bg-zinc-950/80 backdrop-blur-xl flex items-center gap-3">
           <button
-            onClick={() => setSidebarOpen(true)}
+            onClick={openSidebar}
             className="text-zinc-400 hover:text-ink transition md:hidden"
             aria-label="Abrir panel"
           >
@@ -1081,7 +892,7 @@ export default function UnifiedChat({ gpts, threads, initialProjects, initialThr
               <span className="flex-1">{uploadError}</span>
               <button
                 type="button"
-                onClick={() => setUploadError(null)}
+                onClick={dismissUploadError}
                 className="shrink-0 text-red-400/70 transition hover:text-red-300"
                 aria-label="Cerrar aviso"
               >

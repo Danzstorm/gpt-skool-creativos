@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { apiAccessForPath } from "@/lib/api-access-policy";
 import { logAuthEvent } from "@/lib/auth-events";
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -96,12 +97,19 @@ export async function proxy(request: NextRequest) {
     "/opengraph-image",
   ];
   const isPublic = pathname === "/" || publicPaths.some((p) => pathname.startsWith(p));
-  const isApi = pathname.startsWith("/api/");
+  const apiAccess = apiAccessForPath(pathname);
+  const isApi = apiAccess !== "not-api";
+  const publicApi = apiAccess === "session-exempt";
 
-  // APIs que deben responder sin sesión (el webhook se autentica con su propio
-  // secreto; check-email corre antes del login).
-  const publicApi =
-    pathname.startsWith("/api/webhooks/") || pathname.startsWith("/api/auth/check-email");
+  // Default-deny para APIs: una ruta nueva queda protegida aunque su handler
+  // olvide comprobar la sesión. Las únicas excepciones explícitas viven en
+  // api-access-policy.ts (pre-login y webhooks con secreto propio).
+  if (!user && apiAccess === "authenticated") {
+    return withCookies(
+      NextResponse.json({ error: "No autenticado" }, { status: 401 }),
+      supabaseResponse
+    );
+  }
 
   if (!user && !isPublic && !isApi) {
     const url = request.nextUrl.clone();

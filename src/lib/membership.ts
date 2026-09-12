@@ -1,4 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type MembershipCheck =
   | { ok: true }
@@ -38,19 +39,26 @@ function canonical(email: string): string {
 
 type MemberRow = { email: string; is_active: boolean | null };
 
+export type MembershipServiceClient = SupabaseClient;
+
+export type MembershipDeps = {
+  service: MembershipServiceClient;
+};
+
 /**
  * Estado de acceso de un email. Fuente única de verdad del gate (magic link y OAuth).
  */
-export async function checkMembership(
-  email: string | null | undefined
+export async function checkMembershipWithDeps(
+  email: string | null | undefined,
+  deps: MembershipDeps
 ): Promise<MembershipCheck> {
   if (!email) return { ok: false, kind: "not_member" };
 
   const normalized = normalizeEmail(email);
-  const service = createServiceClient();
+  if (!normalized) return { ok: false, kind: "not_member" };
 
   try {
-    const { data, error } = await service
+    const { data, error } = await deps.service
       .from("allowed_members")
       .select("email, is_active")
       .eq("email", normalized)
@@ -62,7 +70,7 @@ export async function checkMembership(
     // Sin fila exacta. Antes de declarar "no eres miembro" —el mensaje más
     // desmoralizante que puede recibir alguien que sí pagó— se busca si hay una
     // membresía que evidentemente es suya bajo otra dirección.
-    const match = await findLikelyMember(service, normalized);
+    const match = await findLikelyMember(deps.service, normalized);
     if (match) return { ok: false, kind: "email_mismatch", memberEmail: match };
 
     return { ok: false, kind: "not_member" };
@@ -73,6 +81,15 @@ export async function checkMembership(
       error: err instanceof Error ? err.message : String(err),
     };
   }
+}
+
+export async function checkMembership(
+  email: string | null | undefined
+): Promise<MembershipCheck> {
+  if (!email || !normalizeEmail(email)) {
+    return { ok: false, kind: "not_member" };
+  }
+  return checkMembershipWithDeps(email, { service: createServiceClient() });
 }
 
 /**
@@ -88,13 +105,11 @@ export async function isAllowedMember(
   return (await checkMembership(email)).ok;
 }
 
-type ServiceClient = ReturnType<typeof createServiceClient>;
-
 // Corre SOLO en el camino de rechazo (raro), así que puede permitirse traer un
 // puñado de filas y comparar en JS: no hay índice posible sobre la forma
 // canónica sin agregar una columna generada.
 async function findLikelyMember(
-  service: ServiceClient,
+  service: MembershipServiceClient,
   normalized: string
 ): Promise<string | null> {
   const at = normalized.lastIndexOf("@");
