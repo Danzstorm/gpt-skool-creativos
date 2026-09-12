@@ -12,8 +12,16 @@
 
 export type AttachmentLike = { type: "image" | "document" | "video" };
 
-/** Un adjunto identificable: lo mínimo para poder numerarlo dentro del hilo. */
-export type IdentifiedAttachment = AttachmentLike & { openai_file_id: string };
+/**
+ * Un adjunto identificable: lo mínimo para poder numerarlo dentro del hilo.
+ *
+ * `n` es el número que YA se le dijo al modelo, guardado junto al archivo en
+ * `messages.files` al mandarlo. Existe porque deducir el rótulo y esperar que
+ * coincida no alcanza: el historial del modelo vive en OpenAI y no se puede
+ * reescribir, así que cualquier cambio en cómo se cuenta desincroniza lo que ve
+ * el usuario de lo que el modelo escuchó. Registrado, el rótulo es un hecho.
+ */
+export type IdentifiedAttachment = AttachmentLike & { openai_file_id: string; n?: number };
 
 /** Número de cada archivo dentro del hilo. Imágenes y videos cuentan aparte. */
 export interface ThreadNumbers {
@@ -27,7 +35,12 @@ function readStored(file: unknown): IdentifiedAttachment | null {
   const id = (file as { openai_file_id?: unknown }).openai_file_id;
   if (typeof id !== "string") return null;
   const type = (file as { type?: unknown }).type;
-  return { openai_file_id: id, type: type === "image" || type === "video" ? type : "document" };
+  const n = (file as { n?: unknown }).n;
+  return {
+    openai_file_id: id,
+    type: type === "image" || type === "video" ? type : "document",
+    ...(typeof n === "number" && Number.isInteger(n) && n > 0 ? { n } : {}),
+  };
 }
 
 /**
@@ -43,11 +56,20 @@ function readStored(file: unknown): IdentifiedAttachment | null {
  * conserva el número con el que ya se lo conoce en vez de recibir uno nuevo
  * cada vez que se lo vuelve a mandar. Es lo que hace que referenciarlo funcione.
  *
+ * QUÉ PASA CON LO QUE YA EXISTÍA. Los mensajes mandados antes de que esto
+ * existiera no tienen `n` guardado, y su historial en OpenAI lleva grabada la
+ * numeración vieja, que era por mensaje y se reiniciaba. Ese historial no se
+ * puede reescribir, así que para esos archivos se reconstruye la cuenta POR
+ * MENSAJE: es la única que coincide con lo que el modelo realmente escuchó.
+ * Inventarles un número nuevo haría que el menú prometa una referencia que el
+ * modelo no puede resolver.
+ *
+ * Los números nuevos arrancan por encima del total de archivos del hilo, que es
+ * una cota superior de cualquier rótulo viejo — así nunca chocan con uno.
+ *
  * `history` va del mensaje más viejo al más nuevo, y `outgoing` es el mensaje
- * que se está por mandar (sus archivos nuevos toman los números siguientes).
- * La misma función la usan el servidor para rotular lo que recibe el modelo, el
- * composer para las burbujas y el menú `@`: si cada uno contara por su lado,
- * cualquier cambio los desincroniza y el usuario ve un número y el modelo otro.
+ * que se está por mandar. La misma función la usan el servidor para rotular lo
+ * que recibe el modelo, el composer para las burbujas y el menú `@`.
  */
 export function assignThreadNumbers(
   // `files` opcional: los mensajes del cliente (`Message`) no la traen cuando
@@ -57,21 +79,50 @@ export function assignThreadNumbers(
 ): ThreadNumbers {
   const images = new Map<string, number>();
   const videos = new Map<string, number>();
-
-  const take = (file: IdentifiedAttachment | null) => {
-    if (!file) return;
-    if (file.type === "image") {
-      if (!images.has(file.openai_file_id)) images.set(file.openai_file_id, images.size + 1);
-    } else if (file.type === "video") {
-      if (!videos.has(file.openai_file_id)) videos.set(file.openai_file_id, videos.size + 1);
-    }
-  };
+  let totalImages = 0;
+  let totalVideos = 0;
+  let maxImage = 0;
+  let maxVideo = 0;
 
   for (const { files } of history) {
     if (!Array.isArray(files)) continue;
-    for (const file of files) take(readStored(file));
+    // Contadores del mensaje: el respaldo para lo mandado antes de que se
+    // guardara `n`, porque reproducen la numeración que recibió el modelo.
+    let legacyImage = 0;
+    let legacyVideo = 0;
+
+    for (const raw of files) {
+      const file = readStored(raw);
+      if (!file) continue;
+
+      if (file.type === "image") {
+        totalImages++;
+        const n = file.n ?? ++legacyImage;
+        if (!images.has(file.openai_file_id)) images.set(file.openai_file_id, n);
+        maxImage = Math.max(maxImage, n);
+      } else if (file.type === "video") {
+        totalVideos++;
+        const n = file.n ?? ++legacyVideo;
+        if (!videos.has(file.openai_file_id)) videos.set(file.openai_file_id, n);
+        maxVideo = Math.max(maxVideo, n);
+      }
+    }
   }
-  for (const file of outgoing) take(file);
+
+  let nextImage = Math.max(maxImage, totalImages) + 1;
+  let nextVideo = Math.max(maxVideo, totalVideos) + 1;
+
+  for (const file of outgoing) {
+    if (file.type === "image") {
+      if (!images.has(file.openai_file_id)) {
+        images.set(file.openai_file_id, file.n ?? nextImage++);
+      }
+    } else if (file.type === "video") {
+      if (!videos.has(file.openai_file_id)) {
+        videos.set(file.openai_file_id, file.n ?? nextVideo++);
+      }
+    }
+  }
 
   return { images, videos };
 }

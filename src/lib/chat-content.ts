@@ -4,6 +4,8 @@ import { imageLabel, videoLabel, type ThreadNumbers } from "@/lib/attachment-lab
 export type IncomingFile = {
   openai_file_id: string;
   type: "image" | "document" | "video";
+  /** Número ya asignado en el hilo, guardado junto al archivo al mandarlo. */
+  n?: number;
   /** Nombre real del documento. Las imágenes no lo usan (ver abajo). */
   name?: string | null;
   /**

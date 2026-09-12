@@ -57,13 +57,14 @@ describe("threadAttachmentLabels", () => {
   it("la numeración NO se reinicia entre mensajes", () => {
     // EL PUNTO DEL CAMBIO. Antes se contaba por mensaje, así que en un chat con
     // varias tandas de imágenes había tres "imagen 1" distintas y pedir "usá la
-    // imagen 1" no identificaba ninguna.
+    // imagen 1" no identificaba ninguna. El número viaja guardado con el
+    // archivo, así que el menú repite lo que escuchó el modelo.
     const labels = threadAttachmentLabels([
-      msg([{ openai_file_id: "a", type: "image" }]),
-      msg([{ openai_file_id: "b", type: "image" }]),
+      msg([{ openai_file_id: "a", type: "image", n: 1 }]),
+      msg([{ openai_file_id: "b", type: "image", n: 2 }]),
       msg([
-        { openai_file_id: "c", type: "image" },
-        { openai_file_id: "d", type: "image" },
+        { openai_file_id: "c", type: "image", n: 3 },
+        { openai_file_id: "d", type: "image", n: 4 },
       ]),
     ]);
 
@@ -74,12 +75,25 @@ describe("threadAttachmentLabels", () => {
     expect(new Set(labels.values()).size).toBe(4); // ninguno se repite
   });
 
+  it("en un hilo viejo muestra el rótulo que el modelo realmente escuchó", () => {
+    // Sin `n` guardado, el menú NO puede inventar una numeración corrida: el
+    // historial en OpenAI lleva la vieja y no se puede reescribir. Mostrar otra
+    // cosa sería ofrecer una referencia que el modelo no resuelve.
+    const labels = threadAttachmentLabels([
+      msg([{ openai_file_id: "a", type: "image" }]),
+      msg([{ openai_file_id: "b", type: "image" }]),
+    ]);
+
+    expect(labels.get("a")).toBe("imagen 1");
+    expect(labels.get("b")).toBe("imagen 1");
+  });
+
   it("un archivo re-adjuntado conserva el rótulo de su primer envío", () => {
     const labels = threadAttachmentLabels([
-      msg([{ openai_file_id: "x", type: "image" }]),
+      msg([{ openai_file_id: "x", type: "image", n: 1 }]),
       msg([
-        { openai_file_id: "nuevo", type: "image" },
-        { openai_file_id: "x", type: "image" },
+        { openai_file_id: "nuevo", type: "image", n: 2 },
+        { openai_file_id: "x", type: "image", n: 1 },
       ]),
     ]);
 

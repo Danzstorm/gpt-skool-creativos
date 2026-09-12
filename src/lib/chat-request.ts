@@ -197,7 +197,8 @@ export async function releaseLeaseIfNotStreamed(
 export async function threadAttachmentNumbers(
   service: SupabaseClient,
   threadId: string,
-  userId: string
+  userId: string,
+  outgoing: IncomingFile[] = []
 ): Promise<ThreadNumbers> {
   const { data, error } = await service
     .from("messages")
@@ -214,5 +215,5 @@ export async function threadAttachmentNumbers(
     return { images: new Map(), videos: new Map() };
   }
 
-  return assignThreadNumbers(data ?? []);
+  return assignThreadNumbers(data ?? [], outgoing);
 }

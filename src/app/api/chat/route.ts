@@ -240,6 +240,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Los números se resuelven ANTES de guardar y se guardan con el archivo:
+    // el rótulo que escucha el modelo queda registrado en vez de deducirse
+    // después. Deducirlo obligaba a que la cuenta diera siempre igual, y el
+    // historial del modelo vive en OpenAI, donde no se puede corregir.
+    const numbers = await threadAttachmentNumbers(serviceClient, threadId, user.id, incoming);
+    const storedFiles = incoming.map((file) => {
+      const n =
+        file.type === "image"
+          ? numbers.images.get(file.openai_file_id)
+          : file.type === "video"
+            ? numbers.videos.get(file.openai_file_id)
+            : undefined;
+      return n === undefined ? file : { ...file, n };
+    });
+
     const { data: userMessage, error: userMessageError } = await serviceClient
       .from("messages")
       .insert({
@@ -247,7 +262,7 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         role: "user",
         content: message.trim(),
-        files: incoming.length > 0 ? incoming : null,
+        files: storedFiles.length > 0 ? storedFiles : null,
       })
       .select("id")
       .single();
@@ -270,8 +285,6 @@ export async function POST(request: NextRequest) {
       conversationRecreated: conversationId !== thread.openai_conversation_id,
     });
 
-    // Después de guardar el turno: así sus imágenes ya cuentan en la historia.
-    const numbers = await threadAttachmentNumbers(serviceClient, threadId, user.id);
     const input = buildUserInput(message, incoming, numbers);
     const messageLabel = message.trim() || messageAttachmentLabel(incoming);
     const runtimeConfig = await getGptRuntimeConfig(serviceClient, gptId, {
