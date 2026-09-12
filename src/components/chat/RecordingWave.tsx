@@ -1,9 +1,9 @@
-import { memo, useEffect, useRef } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { INITIAL_LEVEL_STATE, nextLevel, rmsOf, type LevelState } from "@/lib/audio-level";
+import { slotsForWidth, BAR_PX, GAP_PX } from "@/lib/wave-slots";
 
-// Menos barras y más anchas que la versión anterior (eran 96 de 3px con 2px de
-// separación, que a esa densidad se lee como una trama y no como una onda).
-const SLOTS = 40;
+// Ranuras de arranque, antes de medir. Se reemplaza en el primer layout.
+const INITIAL_SLOTS = 40;
 
 // Cada cuánto ENTRA una muestra nueva al historial. El dibujado no depende de
 // esto: corre por requestAnimationFrame y va interpolando entre muestras, así
@@ -34,6 +34,24 @@ const FLOOR = 0.08; // alto de una ranura vacía: el "puntito"
  */
 function RecordingWave({ stream }: { stream: MediaStream }) {
   const barsRef = useRef<(HTMLSpanElement | null)[]>([]);
+  const stripRef = useRef<HTMLDivElement | null>(null);
+  const [slots, setSlots] = useState(INITIAL_SLOTS);
+
+  // La cantidad de barras sale del ancho real, no de una constante: así la tira
+  // ocupa todo el composer en vez de quedarse a mitad de camino. Se remide al
+  // rotar el teléfono o al abrir/cerrar el panel lateral.
+  useEffect(() => {
+    const el = stripRef.current;
+    if (!el) return;
+
+    const measure = () => setSlots(slotsForWidth(el.clientWidth));
+    measure();
+
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     const ctx = new AudioContext();
@@ -55,7 +73,11 @@ function RecordingWave({ stream }: { stream: MediaStream }) {
     const history: number[] = [];
     // Lo que se está mostrando ahora mismo, que persigue a `history`. Son dos
     // cosas distintas: el historial salta cada SAMPLE_MS, esto se desliza.
-    const shown = new Float32Array(SLOTS);
+    const shown = new Float32Array(slots);
+
+    // Al achicarse la tira quedan refs de barras que ya no se renderizan; sin
+    // esto el array seguiría reteniendo nodos sueltos.
+    barsRef.current.length = slots;
 
     let levelState: LevelState = INITIAL_LEVEL_STATE;
     let lastSampleAt = 0;
@@ -73,12 +95,12 @@ function RecordingWave({ stream }: { stream: MediaStream }) {
         levelState = advanced.state;
 
         history.push(advanced.level);
-        if (history.length > SLOTS) history.shift();
+        if (history.length > slots) history.shift();
       }
 
       // Anclado a la derecha: la muestra más nueva ocupa la última ranura.
-      const offset = SLOTS - history.length;
-      for (let i = 0; i < SLOTS; i++) {
+      const offset = slots - history.length;
+      for (let i = 0; i < slots; i++) {
         const el = barsRef.current[i];
         if (!el) continue;
         const recorded = i >= offset;
@@ -102,21 +124,31 @@ function RecordingWave({ stream }: { stream: MediaStream }) {
       source.disconnect();
       void ctx.close();
     };
-  }, [stream]);
+    // `slots` entra en las dependencias a propósito: el bucle de dibujado lo
+    // captura, así que sin esto una remedida dejaría la animación escribiendo
+    // sobre un `shown` del tamaño viejo.
+  }, [stream, slots]);
 
   return (
-    <div className="flex flex-1 items-center gap-[3px] h-9 min-w-0 px-1">
+    <div
+      ref={stripRef}
+      className="flex flex-1 items-center h-9 min-w-0 px-1"
+      style={{ gap: GAP_PX }}
+    >
       {/* Decorativa para lectores de pantalla: el estado lo anuncia el
           aria-live del composer. */}
-      {Array.from({ length: SLOTS }, (_, i) => (
+      {Array.from({ length: slots }, (_, i) => (
         <span
           key={i}
           ref={(el) => {
             barsRef.current[i] = el;
           }}
           aria-hidden="true"
-          className="flex-1 max-w-[4px] h-6 rounded-full bg-ink origin-center will-change-transform"
-          style={{ transform: `scaleY(${FLOOR})`, opacity: 0.3 }}
+          className="flex-1 h-6 rounded-full bg-ink origin-center will-change-transform"
+          // `slots` ya se calculó para que a BAR_PX la tira llene el ancho. El
+          // tope va 2px por encima solo para absorber el redondeo, en vez de
+          // dejar el sobrante como hueco muerto a la derecha.
+          style={{ maxWidth: BAR_PX + 2, transform: `scaleY(${FLOOR})`, opacity: 0.3 }}
         />
       ))}
     </div>
