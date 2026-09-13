@@ -148,6 +148,53 @@ UPSTASH_REDIS_REST_TOKEN=...
 
 El esquema de base de datos vive en `supabase/migrations/` (fuente de verdad — `schema.sql` es solo un snapshot histórico congelado).
 
+### Dónde viven las credenciales, y cómo recuperarlas
+
+**Vercel es el sistema de registro.** Las once variables de producción están cargadas y cifradas en el proyecto, dentro de la cuenta del cliente. No hay que guardarlas en ningún otro lado: sobreviven a cualquier computadora, y si alguien pierde su copia local se recuperan desde ahí.
+
+Ver qué hay cargado, sin exponer ningún valor:
+
+```bash
+npx vercel env ls production --scope creativos-skool
+```
+
+Traerlas a un archivo local (pide `VERCEL_TOKEN` en el entorno):
+
+```bash
+# Escribe .env.production.local con TODAS las de producción.
+npx vercel env pull .env.production.local --environment=production --scope creativos-skool
+```
+
+> Ojo con el nombre del archivo: `vercel env pull` sin argumento escribe sobre `.env.local` y **pisa lo que tengas ahí**. Pasando un nombre distinto, tu archivo de trabajo queda intacto y comparas con calma. Ambos están en `.gitignore`.
+
+Recuperar una sola:
+
+```bash
+npx vercel env pull .env.tmp --environment=production --scope creativos-skool
+grep GEMINI_API_KEY .env.tmp && rm .env.tmp
+```
+
+**Lo que NO hay que hacer:** copiar estos valores a la guía, al README, a un archivo de notas o a un chat. Cualquiera de esos termina en git, en una sincronización a la nube o en el historial de una herramienta, y ahí ya no se sabe quién los tiene. Si necesitas una copia fuera de Vercel, que sea en un gestor de contraseñas.
+
+**Si una credencial se filtra**, se rota en su origen y se recarga acá — no hace falta tocar código:
+
+| Credencial | Dónde se rota | Después |
+|---|---|---|
+| `OPENAI_API_KEY` | platform.openai.com → API keys | Recargar en Vercel y redesplegar. Ojo: las Conversations creadas con la key vieja se recrean solas (ver `conversation-sync.ts`) |
+| `GEMINI_API_KEY` | aistudio.google.com/apikey | Recargar y redesplegar |
+| `UPSTASH_REDIS_REST_TOKEN` | consola de Upstash, en la base | Recargar y redesplegar; se pierden los contadores en curso, nada más |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API | Recargar y redesplegar |
+| `SKOOL_WEBHOOK_SECRET` | lo generas tú (`openssl rand -hex 24`) | Recargar acá **y** actualizar el Zap en Zapier, o las altas dejan de entrar |
+
+Para recargar cualquiera:
+
+```bash
+npx vercel env rm NOMBRE production --scope creativos-skool
+npx vercel env add NOMBRE production --scope creativos-skool
+```
+
+Las variables no toman efecto hasta el siguiente despliegue: un push a `master` alcanza.
+
 ---
 
 ## 5. Qué necesita el cliente para tener su propia instancia

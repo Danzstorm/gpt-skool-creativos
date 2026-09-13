@@ -87,13 +87,38 @@ function getLimiter(limit: number, windowMs: number): Ratelimit {
   return rl;
 }
 
+// Para no llenar los logs cuando Redis está caído: un aviso por minuto alcanza
+// para enterarse, y el resto de los fallos ya quedan representados por ese.
+let lastRedisFailureLog = 0;
+
 async function checkUpstash(key: string, limit: number, windowMs: number): Promise<RateLimitResult> {
-  const { success, remaining, reset } = await getLimiter(limit, windowMs).limit(key);
-  return {
-    ok: success,
-    remaining,
-    retryAfterSec: success ? 0 : Math.max(0, Math.ceil((reset - Date.now()) / 1000)),
-  };
+  try {
+    const { success, remaining, reset } = await getLimiter(limit, windowMs).limit(key);
+    return {
+      ok: success,
+      remaining,
+      retryAfterSec: success ? 0 : Math.max(0, Math.ceil((reset - Date.now()) / 1000)),
+    };
+  } catch (error) {
+    // Sin esto, un Redis sin cuota o caído tiraba la petición entera: la llamada
+    // vive antes del try/catch de las rutas, así que la excepción llegaba como
+    // 500 y el chat dejaba de responder. Un límite que al fallar mata lo que
+    // estaba protegiendo es peor que no tenerlo.
+    //
+    // Se cae al contador en memoria, que es exactamente lo que había antes de
+    // conectar Redis: sigue limitando, solo que por instancia. Degradar a una
+    // protección más débil es preferible a quedarse sin aplicación, y también a
+    // dejar pasar todo sin tope.
+    const now = Date.now();
+    if (now - lastRedisFailureLog > 60_000) {
+      lastRedisFailureLog = now;
+      console.error(
+        "rate-limit: Redis no respondió, se usa el contador en memoria (tope por instancia). " +
+          (error instanceof Error ? error.message : String(error))
+      );
+    }
+    return checkInMemory(key, limit, windowMs);
+  }
 }
 
 /**
