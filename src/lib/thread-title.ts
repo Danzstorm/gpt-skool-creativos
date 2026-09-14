@@ -21,9 +21,14 @@ const TITLE_INSTRUCTIONS = [
   "del historial de un chat.",
   "",
   "A partir del mensaje del usuario y la respuesta del asistente, devolvé",
-  "ÚNICAMENTE un título de 3 a 6 palabras que resuma el tema central.",
-  "En español, sin comillas, sin punto final, sin explicar nada más.",
+  "ÚNICAMENTE un título de 2 a 5 palabras (máximo 40 caracteres) que",
+  "resuma el tema central. En español, sin comillas, sin punto final, sin",
+  "explicar nada más.",
 ].join("\n");
+
+// Techo del título: el sidebar lo recorta con `truncate` (CSS) a unos 30-35
+// caracteres visibles, así que más largo que esto ya pierde la cola igual.
+const MAX_TITLE_CHARS = 40;
 
 function clip(text: string): string {
   return text.length > MAX_INPUT_CHARS ? `${text.slice(0, MAX_INPUT_CHARS)}…` : text;
@@ -31,15 +36,19 @@ function clip(text: string): string {
 
 /**
  * Saca comillas y puntuación final que el modelo a veces agrega igual pese a
- * la instrucción, y pone un techo defensivo de largo.
+ * la instrucción, y pone un techo de largo cortando en límite de palabra
+ * (no a mitad de una). También sirve para el fallback con el mensaje crudo.
  */
 export function cleanGeneratedTitle(raw: string): string {
-  return raw
+  const cleaned = raw
     .trim()
     .replace(/^["'“”‘’]+|["'“”‘’]+$/g, "")
     .replace(/[.!?]+$/g, "")
-    .trim()
-    .slice(0, 60);
+    .trim();
+  if (cleaned.length <= MAX_TITLE_CHARS) return cleaned;
+  const cut = cleaned.slice(0, MAX_TITLE_CHARS);
+  const lastSpace = cut.lastIndexOf(" ");
+  return (lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trim();
 }
 
 export interface ThreadTitleResult {

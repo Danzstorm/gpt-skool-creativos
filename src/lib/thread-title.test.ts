@@ -15,9 +15,13 @@ describe("cleanGeneratedTitle", () => {
     expect(cleanGeneratedTitle("“Plan de viaje a Río”")).toBe("Plan de viaje a Río");
   });
 
-  it("clamps to 60 chars as a defensive cap", () => {
-    const long = "a".repeat(100);
-    expect(cleanGeneratedTitle(long)).toHaveLength(60);
+  it("clamps to 40 chars cutting at a word boundary", () => {
+    const long = "Estrategia de contenido para redes sociales de marca personal";
+    expect(cleanGeneratedTitle(long)).toBe("Estrategia de contenido para redes");
+  });
+
+  it("hard-clamps to 40 chars when there is no space to cut at", () => {
+    expect(cleanGeneratedTitle("a".repeat(100))).toHaveLength(40);
   });
 
   it("returns empty string for empty or whitespace-only input", () => {

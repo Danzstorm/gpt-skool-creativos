@@ -9,7 +9,7 @@ import { MAX_FILES_PER_MESSAGE } from "@/lib/upload-file";
 import { getGptRuntimeConfig } from "@/lib/gpt-runtime-config";
 import { recordMessageAttachments } from "@/lib/message-attachments";
 import { projectInstructionsOf, syncProjectContext } from "@/lib/project-instructions";
-import { generateThreadTitle } from "@/lib/thread-title";
+import { cleanGeneratedTitle, generateThreadTitle } from "@/lib/thread-title";
 import {
   CONVERSATION_KEY_FINGERPRINT,
   ensureThreadConversation,
@@ -319,7 +319,9 @@ export async function POST(request: NextRequest) {
         let titleTokensOut = 0;
         let titleCost = 0;
         if (thread.title === "Nueva conversación") {
-          let title = messageLabel.slice(0, 40);
+          // El limpiador puede vaciar un mensaje de pura puntuación ("...", "!!!");
+          // ahí se cae al corte crudo para nunca persistir un título vacío.
+          let title = cleanGeneratedTitle(messageLabel) || messageLabel.slice(0, 40);
           try {
             const generated = await generateThreadTitle(openai, messageLabel, meta.text);
             if (generated) {
