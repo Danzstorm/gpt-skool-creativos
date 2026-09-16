@@ -415,7 +415,7 @@ export default function UnifiedChat({ gpts, threads, initialProjects, initialThr
   }
 
   // Consume el SSE y va agregando texto al último mensaje (asistente) del estado
-  async function consumeStream(res: Response) {
+  async function consumeStream(res: Response, threadId: string | null) {
     if (res.status === 429) {
       throw new Error("Demasiados mensajes seguidos. Espera unos segundos e intenta de nuevo.");
     }
@@ -440,6 +440,7 @@ export default function UnifiedChat({ gpts, threads, initialProjects, initialThr
       throw new Error(data?.error || "Error al enviar mensaje");
     }
 
+    let streamUnlocked = false;
     await consumeSSE(
       res,
       (text) => {
@@ -455,18 +456,36 @@ export default function UnifiedChat({ gpts, threads, initialProjects, initialThr
       // El servidor puede mandar una fase que este cliente todavía no conozca
       // (si un deploy va antes que el otro). phraseFor cae al relleno sola, así
       // que no hace falta validar acá.
-      (next) => setPhase(next as Phase)
+      (next) => setPhase(next as Phase),
+      {
+        onDone: () => {
+          if (streamUnlocked) return;
+          streamUnlocked = true;
+          abortRef.current = null;
+          setIsLoading(false);
+        },
+        onThreadTitle: (title) => {
+          if (!threadId) return;
+          setThreadList((prev) =>
+            prev.map((t) => (t.id === threadId ? { ...t, title } : t))
+          );
+        },
+      }
     );
+    return streamUnlocked;
   }
 
   // Agrega un placeholder de asistente y streamea la respuesta desde `url`
-  async function runAssistant(url: string, body: object) {
+  async function runAssistant(url: string, body: Record<string, unknown>) {
     setIsLoading(true);
     setPhase("thinking");
     setThinkingStartedAt(Date.now());
     setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
     const controller = new AbortController();
     abortRef.current = controller;
+    const threadId =
+      typeof body.threadId === "string" ? body.threadId : activeThreadId;
+    let streamUnlocked = false;
     try {
       const res = await fetch(url, {
         method: "POST",
@@ -474,7 +493,7 @@ export default function UnifiedChat({ gpts, threads, initialProjects, initialThr
         signal: controller.signal,
         body: JSON.stringify(body),
       });
-      await consumeStream(res);
+      streamUnlocked = (await consumeStream(res, threadId)) ?? false;
     } catch (err) {
       const aborted = err instanceof DOMException && err.name === "AbortError";
       setMessages((prev) => {
@@ -491,8 +510,10 @@ export default function UnifiedChat({ gpts, threads, initialProjects, initialThr
         return updated;
       });
     } finally {
-      abortRef.current = null;
-      setIsLoading(false);
+      if (!streamUnlocked) {
+        abortRef.current = null;
+        setIsLoading(false);
+      }
     }
   }
 

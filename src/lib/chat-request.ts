@@ -16,7 +16,25 @@ export type UploadedFileRow = {
   mime: string | null;
   name: string | null;
   video_description: string | null;
+  created_at?: string | null;
 };
+
+/** Tras /upload/register el archivo ya existe en OpenAI; evitar retrieve redundante. */
+export const RECENTLY_REGISTERED_MS = 120_000;
+
+export function recentlyRegisteredFileIds(
+  rows: Pick<UploadedFileRow, "openai_file_id" | "created_at">[],
+  now = Date.now()
+): Set<string> {
+  return new Set(
+    rows.flatMap((row) => {
+      if (!row.created_at) return [];
+      const age = now - new Date(row.created_at).getTime();
+      if (age < 0 || age > RECENTLY_REGISTERED_MS) return [];
+      return [row.openai_file_id];
+    })
+  );
+}
 
 /** Etiqueta corta cuando el turno no tiene texto pero sí adjuntos. */
 export function messageAttachmentLabel(files: IncomingFile[]): string {
@@ -59,20 +77,21 @@ export type OwnedAttachmentsError =
   | { kind: "lookup"; cause: unknown }
   | { kind: "not_owned" };
 
+export type OwnedIncomingFilesResult =
+  | { ok: true; files: IncomingFile[]; skipOpenAiVerifyIds: Set<string> }
+  | { ok: false; error: OwnedAttachmentsError };
+
 /** Resuelve ownership server-side y devuelve adjuntos tipados en el orden pedido. */
 export async function loadOwnedIncomingFiles(
   serviceClient: SupabaseClient,
   userId: string,
   fileIds: string[]
-): Promise<
-  | { ok: true; files: IncomingFile[] }
-  | { ok: false; error: OwnedAttachmentsError }
-> {
-  if (fileIds.length === 0) return { ok: true, files: [] };
+): Promise<OwnedIncomingFilesResult> {
+  if (fileIds.length === 0) return { ok: true, files: [], skipOpenAiVerifyIds: new Set() };
 
   const { data: ownedFiles, error: ownedFilesError } = await serviceClient
     .from("uploaded_files")
-    .select("openai_file_id, mime, name, video_description")
+    .select("openai_file_id, mime, name, video_description, created_at")
     .eq("user_id", userId)
     .in("openai_file_id", fileIds);
   if (ownedFilesError) {
@@ -84,7 +103,12 @@ export async function loadOwnedIncomingFiles(
     return { ok: false, error: { kind: "not_owned" } };
   }
 
-  return { ok: true, files: mapUploadedRowsToIncoming(fileIds, ownedFiles ?? []) };
+  const rows = ownedFiles ?? [];
+  return {
+    ok: true,
+    files: mapUploadedRowsToIncoming(fileIds, rows),
+    skipOpenAiVerifyIds: recentlyRegisteredFileIds(rows),
+  };
 }
 
 export const VISION_DISABLED_ERROR = "Este GPT no admite imágenes";
@@ -105,13 +129,18 @@ export const OPENAI_ATTACHMENT_UNAVAILABLE_ERROR =
 export async function applyOpenAiAttachmentPolicy(
   openai: OpenAI,
   incoming: IncomingFile[],
-  policy: OpenAiAttachmentPolicy
+  policy: OpenAiAttachmentPolicy,
+  options?: { skipOpenAiVerifyIds?: ReadonlySet<string> }
 ): Promise<{ ok: true; files: IncomingFile[] } | { ok: false; error: string }> {
   const openaiBacked = incoming.filter((file) => file.type !== "video");
   if (openaiBacked.length === 0) return { ok: true, files: incoming };
 
   const availableIds = new Set(
-    (await keepAvailableFiles(openai, openaiBacked)).map((file) => file.openai_file_id)
+    (
+      await keepAvailableFiles(openai, openaiBacked, {
+        trustIds: options?.skipOpenAiVerifyIds,
+      })
+    ).map((file) => file.openai_file_id)
   );
   if (policy === "strict" && availableIds.size !== openaiBacked.length) {
     return { ok: false, error: OPENAI_ATTACHMENT_UNAVAILABLE_ERROR };
@@ -186,10 +215,8 @@ export async function releaseLeaseIfNotStreamed(
 /**
  * Números de los adjuntos de un hilo, listos para rotular lo que ve el modelo.
  *
- * Se lee el hilo entero porque la numeración es por primera aparición: "imagen
- * 3" tiene que seguir siendo la misma imagen tres mensajes después, y eso solo
- * se sabe mirando lo que ya se mandó. Es una consulta por turno sobre un índice
- * de `thread_id`.
+ * Solo se leen mensajes con adjuntos: los turnos de solo texto no influyen en
+ * la numeración (legacy incluida, que reinicia por mensaje con archivos).
  *
  * Se llama DESPUÉS de guardar el turno del usuario, así sus archivos ya están
  * en la historia y toman los números siguientes sin tratarlos aparte.
@@ -205,6 +232,7 @@ export async function threadAttachmentNumbers(
     .select("files, created_at")
     .eq("thread_id", threadId)
     .eq("user_id", userId)
+    .not("files", "is", null)
     .order("created_at", { ascending: true });
 
   // Sin historia no se puede numerar bien, pero tirar el turno sería peor: el

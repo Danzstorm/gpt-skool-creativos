@@ -168,11 +168,14 @@ export async function ensureThreadConversation({
  */
 export async function keepAvailableFiles<T extends { openai_file_id: string }>(
   openai: OpenAI,
-  files: T[]
+  files: T[],
+  options?: { trustIds?: ReadonlySet<string> }
 ): Promise<T[]> {
   if (files.length === 0) return files;
+  const trusted = options?.trustIds ?? new Set<string>();
   const checks = await Promise.all(
     files.map(async (file) => {
+      if (trusted.has(file.openai_file_id)) return true;
       try {
         await openai.files.retrieve(file.openai_file_id);
         return true;

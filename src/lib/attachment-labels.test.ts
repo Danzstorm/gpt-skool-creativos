@@ -117,6 +117,24 @@ describe("assignThreadNumbers", () => {
     expect(images.get("b")).toBe(2);
   });
 
+  it("replaceLast: sin el mensaje borrado, los salientes siguen la secuencia", () => {
+    // Editar el último turno borra ese mensaje antes de numerar; lo que queda
+    // del hilo más los archivos nuevos deben continuar la cuenta.
+    const { images } = assignThreadNumbers([msg([img("a", 1), img("b", 2)])], [img("c")]);
+
+    expect(images.get("a")).toBe(1);
+    expect(images.get("b")).toBe(2);
+    expect(images.get("c")).toBe(3);
+  });
+
+  it("regenerar: el turno user guardado ya está en la historia", () => {
+    const { images } = assignThreadNumbers([msg([img("a", 1), img("b", 2)])]);
+
+    expect(images.get("a")).toBe(1);
+    expect(images.get("b")).toBe(2);
+    expect(images.size).toBe(2);
+  });
+
   it("aguanta filas sin adjuntos y basura de la base", () => {
     const { images } = assignThreadNumbers([
       {},

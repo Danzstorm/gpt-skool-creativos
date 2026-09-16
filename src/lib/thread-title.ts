@@ -9,11 +9,10 @@ const TITLE_MODEL = "gpt-4.1-nano";
 // respuesta larguísima.
 const MAX_INPUT_CHARS = 600;
 
-// Es una llamada auxiliar y cosmética que corre DENTRO de onComplete, antes
-// de que el stream emita [DONE] y el composer del usuario se desbloquee. Un
-// colgue de red hacia OpenAI acá no puede demorar indefinidamente un turno
-// que, para el usuario, ya terminó — de ahí el timeout corto y cero reintentos
-// (un reintento del SDK duplicaría el peor caso).
+// Es una llamada auxiliar y cosmética que corre tras [DONE] (onAfterDone), sin
+// retener el SSE ni el composer. Un colgue de red hacia OpenAI acá no puede
+// demorar indefinidamente un turno que, para el usuario, ya terminó — de ahí
+// el timeout corto y cero reintentos (un reintento del SDK duplicaría el peor caso).
 const TITLE_REQUEST_OPTIONS = { timeout: 5_000, maxRetries: 0 };
 
 const TITLE_INSTRUCTIONS = [

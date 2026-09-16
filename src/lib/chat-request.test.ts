@@ -7,13 +7,21 @@ import {
   mapUploadedRowsToIncoming,
   messageAttachmentLabel,
   OPENAI_ATTACHMENT_UNAVAILABLE_ERROR,
+  recentlyRegisteredFileIds,
+  RECENTLY_REGISTERED_MS,
   visionRejectsImages,
   VISION_DISABLED_ERROR,
 } from "./chat-request";
 import type { IncomingFile } from "./chat-content";
 
 vi.mock("./conversation-sync", () => ({
-  keepAvailableFiles: vi.fn(async (files: Array<{ openai_file_id: string }>) => files.slice(0, 1)),
+  keepAvailableFiles: vi.fn(
+    async (
+      _openai: OpenAI,
+      files: Array<{ openai_file_id: string }>,
+      _options?: { trustIds?: ReadonlySet<string> }
+    ) => files.slice(0, 1)
+  ),
 }));
 
 import { keepAvailableFiles } from "./conversation-sync";
@@ -90,8 +98,40 @@ describe("buildCodeInterpreterTools", () => {
   });
 });
 
+describe("recentlyRegisteredFileIds", () => {
+  const now = Date.parse("2026-09-15T12:00:00.000Z");
+
+  it("incluye archivos registrados hace poco", () => {
+    const ids = recentlyRegisteredFileIds(
+      [
+        {
+          openai_file_id: "fresh",
+          created_at: new Date(now - 30_000).toISOString(),
+        },
+        {
+          openai_file_id: "old",
+          created_at: new Date(now - RECENTLY_REGISTERED_MS - 1).toISOString(),
+        },
+      ],
+      now
+    );
+    expect([...ids]).toEqual(["fresh"]);
+  });
+});
+
 describe("applyOpenAiAttachmentPolicy", () => {
   const openai = {} as OpenAI;
+
+  it("omite retrieve para adjuntos recién registrados", async () => {
+    vi.mocked(keepAvailableFiles).mockImplementationOnce(async (_openai, files, options?) => {
+      expect(options?.trustIds).toEqual(new Set(["fresh-doc"]));
+      return files;
+    });
+    const result = await applyOpenAiAttachmentPolicy(openai, [doc], "strict", {
+      skipOpenAiVerifyIds: new Set(["fresh-doc"]),
+    });
+    expect(result).toEqual({ ok: true, files: [doc] });
+  });
 
   it("deja pasar videos sin consultar OpenAI", async () => {
     const result = await applyOpenAiAttachmentPolicy(openai, [vid], "strict");

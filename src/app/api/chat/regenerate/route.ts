@@ -210,7 +210,7 @@ export async function POST(request: NextRequest) {
         });
         if (error) throw error;
       },
-      onComplete: async (meta) => {
+      onAfterDone: async (meta) => {
         const { error } = await serviceClient.from("usage_events").insert({
           user_id: user.id,
           gpt_id: gptId,

@@ -113,3 +113,34 @@ describe("consumeSSE — bugs de producción ya arreglados que no pueden volver"
     expect(tokens.join("")).toBe("sigue vivo");
   });
 });
+
+describe("consumeSSE — [DONE] y título diferido", () => {
+  it("desbloquea con onDone al recibir [DONE] y sigue leyendo thread_title", async () => {
+    const tokens: string[] = [];
+    const titles: string[] = [];
+    let doneAt = -1;
+
+    await consumeSSE(
+      sseResponse([
+        frame({ text: "hola" }),
+        "data: [DONE]\n\n",
+        frame({ thread_title: "Brief de logo" }),
+      ]),
+      (t) => {
+        if (doneAt >= 0) throw new Error("onToken después de onDone");
+        tokens.push(t);
+      },
+      undefined,
+      {
+        onDone: () => {
+          doneAt = tokens.length;
+        },
+        onThreadTitle: (title) => titles.push(title),
+      }
+    );
+
+    expect(tokens.join("")).toBe("hola");
+    expect(doneAt).toBe(1);
+    expect(titles).toEqual(["Brief de logo"]);
+  });
+});

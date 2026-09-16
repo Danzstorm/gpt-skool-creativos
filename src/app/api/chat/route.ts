@@ -164,7 +164,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: VISION_DISABLED_ERROR }, { status: 400 });
     }
 
-    const availability = await applyOpenAiAttachmentPolicy(openai, owned.files, "strict");
+    const availability = await applyOpenAiAttachmentPolicy(openai, owned.files, "strict", {
+      skipOpenAiVerifyIds: owned.skipOpenAiVerifyIds,
+    });
     if (!availability.ok) {
       return NextResponse.json({ error: availability.error }, { status: 400 });
     }
@@ -309,7 +311,7 @@ export async function POST(request: NextRequest) {
         });
         if (assistantMessageError) throw assistantMessageError;
       },
-      onComplete: async (meta) => {
+      onAfterDone: async (meta, emit) => {
         // Costo del título fusionado en el ÚNICO usage_events de este turno
         // (no una fila aparte): admin_top_users/admin_stats_summary cuentan
         // filas de esta tabla como "mensajes" (ver migración
@@ -337,7 +339,19 @@ export async function POST(request: NextRequest) {
               error: titleError instanceof Error ? titleError.message : String(titleError),
             });
           }
-          await supabase.from("threads").update({ title }).eq("id", threadId);
+          const { error: titleUpdateError } = await supabase
+            .from("threads")
+            .update({ title })
+            .eq("id", threadId)
+            .eq("title", "Nueva conversación");
+          if (titleUpdateError) {
+            console.error("thread title persist error", {
+              code: titleUpdateError.code,
+              message: titleUpdateError.message,
+            });
+          } else {
+            emit({ thread_title: title });
+          }
         }
         const { error: usageError } = await serviceClient.from("usage_events").insert({
           user_id: user.id,

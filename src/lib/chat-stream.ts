@@ -28,7 +28,17 @@ export interface RunStreamParams {
   input: ResponseInputItem[];
   tools?: Tool[];
   onAssistantText?: (text: string) => Promise<void> | void;
+  /** @deprecated Preferir onAfterDone: corre antes de [DONE] y retiene el SSE. */
   onComplete?: (meta: RunMeta) => Promise<void>;
+  /**
+   * Trabajo diferido tras emitir [DONE] (p. ej. título del hilo). Puede mandar
+   * frames SSE extra con `emit` antes de que el stream cierre; el cliente ya se
+   * desbloquea al recibir [DONE].
+   */
+  onAfterDone?: (
+    meta: RunMeta,
+    emit: (payload: Record<string, unknown>) => void
+  ) => Promise<void>;
   // Se ejecuta siempre al final (éxito o error) — para liberar el lock del thread.
   onSettled?: () => Promise<void>;
   // AbortSignal de la request entrante (route.ts la recibe como segundo
@@ -120,7 +130,19 @@ const ATTACHMENT_RULES = [
 ].join("\n");
 
 export function runStreamResponse(params: RunStreamParams): Response {
-  const { conversationId, model, instructions, hasAttachments, input, tools, onAssistantText, onComplete, onSettled, signal } = params;
+  const {
+    conversationId,
+    model,
+    instructions,
+    hasAttachments,
+    input,
+    tools,
+    onAssistantText,
+    onComplete,
+    onAfterDone,
+    onSettled,
+    signal,
+  } = params;
   const fullInstructions = hasAttachments ? `${instructions}${ATTACHMENT_RULES}` : instructions;
   const encoder = new TextEncoder();
 
@@ -146,6 +168,18 @@ export function runStreamResponse(params: RunStreamParams): Response {
             model,
             ...safeErrorDetails(error),
           });
+        }
+      };
+      const emitFrame = (payload: Record<string, unknown>) => {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
+      };
+      const finishTurn = async (meta: RunMeta) => {
+        await persistOnce(fullText);
+        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+        if (onAfterDone) {
+          await onAfterDone(meta, emitFrame);
+        } else if (onComplete) {
+          await onComplete(meta);
         }
       };
       const emitTerminalWarning = async (warning: string) => {
@@ -243,9 +277,7 @@ export function runStreamResponse(params: RunStreamParams): Response {
               tokensOut: usage?.output_tokens ?? 0,
               text: fullText,
             };
-            await persistOnce(fullText);
-            if (onComplete) await onComplete(meta);
-            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+            await finishTurn(meta);
           }
 
           // GAP encontrado 2026-07-24: una Response puede terminar "incompleta"
@@ -285,9 +317,7 @@ export function runStreamResponse(params: RunStreamParams): Response {
               tokensOut: usage?.output_tokens ?? 0,
               text: fullText,
             };
-            await persistOnce(fullText);
-            if (onComplete) await onComplete(meta);
-            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+            await finishTurn(meta);
           }
 
           if (event.type === "response.failed") {
