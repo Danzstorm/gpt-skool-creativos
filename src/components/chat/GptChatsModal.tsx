@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { SquarePen, X } from "lucide-react";
 import type { Gpt, ThreadSummary } from "@/lib/types";
-import { useDismissable } from "@/lib/useDismissable";
+import { useDismissable } from "@/hooks/useDismissable";
 import GptGlyph from "./GptGlyph";
 import ThreadListItem from "./ThreadListItem";
 

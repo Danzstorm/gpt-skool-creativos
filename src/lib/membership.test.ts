@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  checkMembershipCached,
   checkMembershipWithDeps,
+  isActiveForProxy,
   isAllowedMember,
   normalizeEmail,
+  PROXY_MEMBERSHIP_TTL_MS,
+  type MembershipCache,
+  type MembershipCheck,
   type MembershipDeps,
 } from "./membership";
 
@@ -237,5 +242,185 @@ describe("isAllowedMember", () => {
     await expect(isAllowedMember(null)).resolves.toBe(false);
     await expect(isAllowedMember(undefined)).resolves.toBe(false);
     await expect(isAllowedMember("   ")).resolves.toBe(false);
+  });
+});
+
+describe("isActiveForProxy", () => {
+  it("autoriza miembro activo", () => {
+    expect(isActiveForProxy({ ok: true })).toBe(true);
+  });
+
+  it("fail-open ante check_failed", () => {
+    expect(isActiveForProxy({ ok: false, kind: "check_failed", error: "timeout" })).toBe(
+      true
+    );
+  });
+
+  it("bloquea revoked, not_member y email_mismatch", () => {
+    const cases: MembershipCheck[] = [
+      { ok: false, kind: "revoked" },
+      { ok: false, kind: "not_member" },
+      { ok: false, kind: "email_mismatch", memberEmail: "juan@empresa.com" },
+    ];
+    for (const check of cases) {
+      expect(isActiveForProxy(check)).toBe(false);
+    }
+  });
+});
+
+describe("checkMembershipCached", () => {
+  it("devuelve false para email vacío sin consultar", async () => {
+    const { client, calls } = fakeMembershipService({});
+    const cache: MembershipCache = new Map();
+
+    await expect(
+      checkMembershipCached(null, membershipDeps(client), { cache })
+    ).resolves.toBe(false);
+    await expect(
+      checkMembershipCached("   ", membershipDeps(client), { cache })
+    ).resolves.toBe(false);
+    expect(calls).toHaveLength(0);
+    expect(cache.size).toBe(0);
+  });
+
+  it("fail-open ante check_failed sin cachear", async () => {
+    let lookups = 0;
+    const { client } = fakeMembershipService({
+      allowed_members: () => {
+        lookups += 1;
+        return { data: null, error: { message: "upstream timeout" } };
+      },
+    });
+    const cache: MembershipCache = new Map();
+    const now = 1_000;
+
+    await expect(
+      checkMembershipCached("ana@empresa.com", membershipDeps(client), {
+        cache,
+        now: () => now,
+      })
+    ).resolves.toBe(true);
+    await expect(
+      checkMembershipCached("ana@empresa.com", membershipDeps(client), {
+        cache,
+        now: () => now,
+      })
+    ).resolves.toBe(true);
+
+    expect(lookups).toBe(2);
+    expect(cache.size).toBe(0);
+  });
+
+  it("bloquea revoked y not_member cacheando el deny", async () => {
+    let lookups = 0;
+    const { client } = fakeMembershipService({
+      allowed_members: () => {
+        lookups += 1;
+        return { data: { email: "ana@empresa.com", is_active: false } };
+      },
+    });
+    const cache: MembershipCache = new Map();
+    let now = 5_000;
+
+    await expect(
+      checkMembershipCached("ana@empresa.com", membershipDeps(client), {
+        cache,
+        ttlMs: PROXY_MEMBERSHIP_TTL_MS,
+        now: () => now,
+      })
+    ).resolves.toBe(false);
+    now += PROXY_MEMBERSHIP_TTL_MS - 1;
+    await expect(
+      checkMembershipCached("ana@empresa.com", membershipDeps(client), {
+        cache,
+        ttlMs: PROXY_MEMBERSHIP_TTL_MS,
+        now: () => now,
+      })
+    ).resolves.toBe(false);
+
+    expect(lookups).toBe(1);
+  });
+
+  it("bloquea not_member y cachea el deny", async () => {
+    let lookups = 0;
+    const { client } = fakeMembershipService({
+      allowed_members: () => {
+        lookups += 1;
+        return { data: null };
+      },
+    });
+    const cache: MembershipCache = new Map();
+    let now = 8_000;
+
+    await expect(
+      checkMembershipCached("nadie@empresa.com", membershipDeps(client), {
+        cache,
+        ttlMs: PROXY_MEMBERSHIP_TTL_MS,
+        now: () => now,
+      })
+    ).resolves.toBe(false);
+    const afterFirst = lookups;
+    now += PROXY_MEMBERSHIP_TTL_MS - 1;
+    await expect(
+      checkMembershipCached("nadie@empresa.com", membershipDeps(client), {
+        cache,
+        ttlMs: PROXY_MEMBERSHIP_TTL_MS,
+        now: () => now,
+      })
+    ).resolves.toBe(false);
+
+    expect(lookups).toBe(afterFirst);
+    expect(cache.get("nadie@empresa.com")?.active).toBe(false);
+  });
+
+  it("expira la caché tras el TTL", async () => {
+    let lookups = 0;
+    const { client } = fakeMembershipService({
+      allowed_members: () => {
+        lookups += 1;
+        return { data: { email: "ana@empresa.com", is_active: true } };
+      },
+    });
+    const cache: MembershipCache = new Map();
+    let now = 10_000;
+
+    await expect(
+      checkMembershipCached("ana@empresa.com", membershipDeps(client), {
+        cache,
+        ttlMs: PROXY_MEMBERSHIP_TTL_MS,
+        now: () => now,
+      })
+    ).resolves.toBe(true);
+
+    now += PROXY_MEMBERSHIP_TTL_MS;
+    await expect(
+      checkMembershipCached("ana@empresa.com", membershipDeps(client), {
+        cache,
+        ttlMs: PROXY_MEMBERSHIP_TTL_MS,
+        now: () => now,
+      })
+    ).resolves.toBe(true);
+
+    expect(lookups).toBe(2);
+  });
+
+  it("no autoriza email_mismatch aunque exista alias activo", async () => {
+    let lookup = 0;
+    const { client } = fakeMembershipService({
+      allowed_members: (ctx) => {
+        lookup += 1;
+        if (lookup === 1) return { data: null };
+        if (ctx.filters.email === "juan@empresa.com") {
+          return { data: { email: "juan@empresa.com", is_active: true } };
+        }
+        return { data: null };
+      },
+    });
+    const cache: MembershipCache = new Map();
+
+    await expect(
+      checkMembershipCached("juan+skool@empresa.com", membershipDeps(client), { cache })
+    ).resolves.toBe(false);
+    expect(cache.get("juan+skool@empresa.com")?.active).toBe(false);
   });
 });

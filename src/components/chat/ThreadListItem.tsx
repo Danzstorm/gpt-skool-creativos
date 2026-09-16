@@ -2,7 +2,7 @@ import { memo, useCallback, useState } from "react";
 import { FolderInput, FolderPlus, FolderMinus, Pencil, Trash2 } from "lucide-react";
 import type { Project, ThreadSummary } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { useDismissable } from "@/lib/useDismissable";
+import { useDismissable } from "@/hooks/useDismissable";
 
 // Tipo propio en el dataTransfer: durante dragover el navegador solo deja leer
 // `types`, no el contenido, así que sin un tipo distinguible no se puede saber

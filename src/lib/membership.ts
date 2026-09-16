@@ -105,6 +105,75 @@ export async function isAllowedMember(
   return (await checkMembership(email)).ok;
 }
 
+/** TTL de caché en memoria (por instancia) para el gate del proxy. */
+export const PROXY_MEMBERSHIP_TTL_MS = 60_000;
+
+export type MembershipCacheEntry = { active: boolean; exp: number };
+
+export type MembershipCache = Map<string, MembershipCacheEntry>;
+
+const proxyMembershipCache: MembershipCache = new Map();
+
+/**
+ * Traduce un `MembershipCheck` a allow/deny para el proxy.
+ * Fail-open solo ante `check_failed`; alias (`email_mismatch`) nunca autoriza.
+ */
+export function isActiveForProxy(check: MembershipCheck): boolean {
+  if (check.ok) return true;
+  if (check.kind === "check_failed") return true;
+  return false;
+}
+
+export type CheckMembershipCachedOptions = {
+  cache?: MembershipCache;
+  ttlMs?: number;
+  now?: () => number;
+  onCheckFailed?: (error: string) => void;
+};
+
+/**
+ * Gate del proxy: consulta membresía con caché TTL por email.
+ * No cachea fallos transitorios (fail-open en cada request hasta que responda).
+ */
+export async function checkMembershipCached(
+  email: string | null | undefined,
+  deps: MembershipDeps,
+  options: CheckMembershipCachedOptions = {}
+): Promise<boolean> {
+  if (!email) return false;
+  const key = normalizeEmail(email);
+  if (!key) return false;
+
+  const cache = options.cache ?? proxyMembershipCache;
+  const ttlMs = options.ttlMs ?? PROXY_MEMBERSHIP_TTL_MS;
+  const now = options.now?.() ?? Date.now();
+
+  const cached = cache.get(key);
+  if (cached && cached.exp > now) return cached.active;
+
+  const check = await checkMembershipWithDeps(email, deps);
+
+  if (!check.ok && check.kind === "check_failed") {
+    options.onCheckFailed?.(check.error);
+    return true;
+  }
+
+  const active = isActiveForProxy(check);
+  cache.set(key, { active, exp: now + ttlMs });
+  return active;
+}
+
+/** Wrapper de producción para `src/proxy.ts`. */
+export async function isActiveMemberForProxy(
+  email: string | null | undefined
+): Promise<boolean> {
+  return checkMembershipCached(email, { service: createServiceClient() }, {
+    onCheckFailed: (error) => {
+      console.error("isActiveMemberForProxy: fallo de consulta, fail-open", error);
+    },
+  });
+}
+
 // Corre SOLO en el camino de rechazo (raro), así que puede permitirse traer un
 // puñado de filas y comparar en JS: no hay índice posible sobre la forma
 // canónica sin agregar una columna generada.

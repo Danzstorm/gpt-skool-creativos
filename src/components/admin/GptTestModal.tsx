@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { X, Send } from "lucide-react";
 import { consumeSSE } from "@/lib/stream-client";
-import { useDismissable } from "@/lib/useDismissable";
+import { useDismissable } from "@/hooks/useDismissable";
 import { cn } from "@/lib/utils";
 
 interface Props {

@@ -1,60 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { apiAccessForPath } from "@/lib/api-access-policy";
 import { logAuthEvent } from "@/lib/auth-events";
+import { isActiveMemberForProxy } from "@/lib/membership";
 import { NextResponse, type NextRequest } from "next/server";
-
-// El gate de membresía corre en CADA request (páginas, API y prefetches). Sin
-// caché eso es un viaje a Supabase por request — el cuello de botella de latencia.
-// Caché en memoria (por instancia) de 60s: la revocación tarda como máximo 60s
-// en propagarse en vez de ser instantánea, a cambio de quitar ese viaje de la
-// gran mayoría de requests. Es memoria del servidor, no una cookie → no se puede
-// falsificar para saltarse la revocación.
-const MEMBERSHIP_TTL_MS = 60_000;
-const membershipCache = new Map<string, { active: boolean; exp: number }>();
-
-async function isActiveMember(email: string | null | undefined): Promise<boolean> {
-  if (!email) return false;
-  const key = email.toLowerCase().trim();
-
-  const cached = membershipCache.get(key);
-  const now = Date.now();
-  if (cached && cached.exp > now) return cached.active;
-
-  const service = createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-
-  // Fail-open ante cualquier fallo de la consulta (timeout, 500 de PostgREST,
-  // proyecto pausado — el free tier de Supabase se pausa por inactividad).
-  // Sin esto, un blip de infra cerraba la sesión de miembros reales y el
-  // resultado se cacheaba 60s, así que el efecto persistía. Solo se revoca
-  // cuando la consulta responde con éxito y confirma is_active=false — nunca
-  // porque no se pudo comprobar. El try/catch además cubre el caso de que el
-  // fetch mismo lance (red caída), que antes tumbaba el proxy entero con 500.
-  try {
-    const { data, error } = await service
-      .from("allowed_members")
-      .select("is_active")
-      .eq("email", key)
-      .maybeSingle();
-
-    if (error) {
-      console.error("isActiveMember: fallo de consulta, fail-open", error.message);
-      return true;
-    }
-
-    // maybeSingle() da data=null si el email no está en allowed_members: es un
-    // "no" confirmado (nunca fue miembro o su fila no existe), no un fallo.
-    const active = !!data?.is_active;
-    membershipCache.set(key, { active, exp: now + MEMBERSHIP_TTL_MS });
-    return active;
-  } catch (err) {
-    console.error("isActiveMember: excepción de red, fail-open", err);
-    return true;
-  }
-}
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -122,7 +70,7 @@ export async function proxy(request: NextRequest) {
   // acceso al instante —sin depender de recargar una página protegida— y se cierra
   // la sesión. Cubre login, refresh y llamadas directas a la API.
   if (user && !isPublic && !publicApi) {
-    const isMember = await isActiveMember(user.email);
+    const isMember = await isActiveMemberForProxy(user.email);
     if (!isMember) {
       // Auditar ANTES de cerrar: sin este registro, un cierre de sesión es
       // indistinguible de un bug y solo se puede reconstruir leyendo logs

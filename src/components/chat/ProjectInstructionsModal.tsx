@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { Folder, X } from "lucide-react";
 import type { Project } from "@/lib/types";
 import { MAX_PROJECT_INSTRUCTIONS_CHARS } from "@/lib/project-instructions";
-import { useDismissable } from "@/lib/useDismissable";
+import { useDismissable } from "@/hooks/useDismissable";
 
 interface Props {
   project: Project;

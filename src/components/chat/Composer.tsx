@@ -1,7 +1,7 @@
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { ArrowUp, Plus, Paperclip, Mic, X, Check, Square, Video } from "lucide-react";
 import type { UploadedFile } from "@/lib/types";
-import { useDismissable } from "@/lib/useDismissable";
+import { useDismissable } from "@/hooks/useDismissable";
 import RecordingWave from "./RecordingWave";
 import { imageLabel, type ThreadNumbers } from "@/lib/attachment-labels";
 import { mentionAt, moveIndex, removeMention, type MentionQuery } from "@/lib/file-search";

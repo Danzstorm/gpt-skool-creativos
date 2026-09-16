@@ -16,8 +16,7 @@ import {
  * en el lazy initializer de useState desfasaría el HTML del servidor y
  * rompería la hidratación. El efecto de montaje aplica lo persistido después.
  *
- * No dueña threadList ni pendingProjectId: sendMessage y el move optimista
- * siguen escribiendo esas listas en UnifiedChat.
+ * No dueña threadList ni pendingProjectId: eso vive en useThreadWorkspace.
  */
 export function useChatSidebar() {
   const [sidebarOpen, setSidebarOpen] = useState(false);

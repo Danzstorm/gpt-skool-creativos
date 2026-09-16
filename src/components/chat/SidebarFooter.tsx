@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { LayoutGrid, ShieldCheck, LogOut, ChevronUp, Palette, Check, X } from "lucide-react";
-import { useDismissable } from "@/lib/useDismissable";
+import { useDismissable } from "@/hooks/useDismissable";
 import type { Theme } from "@/lib/types";
 
 interface Props {
