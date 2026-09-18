@@ -2,10 +2,11 @@ import { redirect } from "next/navigation";
 import { createServiceClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/require-admin";
 import Link from "next/link";
-import { Bot, Users, MessageSquare, Activity, DollarSign, RefreshCw } from "lucide-react";
+import { Bot, Users, MessageSquare, Activity, DollarSign, RefreshCw, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const RANGES = {
+  "1d": { label: "24 h", days: 1 },
   "7d": { label: "7 días", days: 7 },
   "30d": { label: "30 días", days: 30 },
   "90d": { label: "90 días", days: 90 },
@@ -41,6 +42,24 @@ interface StatsSummaryRow {
   total_cost: number;
   active_users: number;
 }
+
+interface SignupRow {
+  email: string;
+  full_name: string | null;
+  joined_at: string;
+  first_login_at: string | null;
+  first_message_at: string | null;
+}
+
+interface SignupSummaryRow {
+  joined_skool: number;
+  entered_web: number;
+  used_chat: number;
+}
+
+// Cuántas altas de Zapier se listan con nombre; el resto queda en el conteo y
+// en la actividad de integración de /admin/members.
+const SIGNUPS_SHOWN = 8;
 
 // Aislado del render: este componente de servidor corre una vez por request
 // (no hay re-render idempotente que preservar), pero el linter de pureza de
@@ -84,6 +103,9 @@ export default async function AdminDashboard({ searchParams }: Props) {
     { data: gptSummary },
     { data: topUsers },
     { data: statsSummary },
+    { data: signupRows },
+    { data: signupSummary },
+    { data: firstWebLogins },
   ] = await Promise.all([
     supabase.from("gpts").select("*", { count: "exact", head: true }),
     supabase.from("allowed_members").select("*", { count: "exact", head: true }).eq("is_active", true),
@@ -91,7 +113,20 @@ export default async function AdminDashboard({ searchParams }: Props) {
     supabase.rpc("admin_usage_summary", { since, until }),
     supabase.rpc("admin_top_users", { since, until, result_limit: 15 }),
     supabase.rpc("admin_stats_summary", { since, until }),
+    supabase.rpc("admin_skool_signups", { since, until, result_limit: SIGNUPS_SHOWN }),
+    supabase.rpc("admin_skool_signups_summary", { since, until }),
+    supabase.rpc("admin_first_web_logins", { since, until }),
   ]);
+
+  // Embudo de altas: Zapier avisa que alguien PAGÓ en Skool, no que entró acá.
+  // Estos tres números son la diferencia entre "tengo 40 miembros nuevos" y
+  // "de esos 40, 12 abrieron la plataforma y 5 la usaron".
+  const signups = (signupRows as SignupRow[] | null) ?? [];
+  const funnel = (signupSummary as SignupSummaryRow[] | null)?.[0];
+  const joinedSkool = Number(funnel?.joined_skool ?? 0);
+  const enteredWeb = Number(funnel?.entered_web ?? 0);
+  const usedChat = Number(funnel?.used_chat ?? 0);
+  const pct = (n: number) => (joinedSkool ? ` · ${Math.round((n / joinedSkool) * 100)}%` : "");
 
   // Las altas llegan solas por Zapier, pero las BAJAS solo se aplican cuando
   // alguien sube el CSV completo de Skool. Si eso se deja de hacer nada falla de
@@ -208,6 +243,74 @@ export default async function AdminDashboard({ searchParams }: Props) {
             <div key={label}>{card}</div>
           );
         })}
+      </div>
+
+      {/* Nuevos miembros: lo que Zapier dio de alta vs. quién llegó a usar la web */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 mb-6">
+        <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+          <h2 className="text-white font-semibold flex items-center gap-2">
+            <UserPlus size={18} className="text-violet-400" />
+            Nuevos miembros · {RANGES[rangeKey].label}
+          </h2>
+          <span className="text-xs text-zinc-500">
+            {Number(firstWebLogins ?? 0)} entraron a la web por primera vez (incluye miembros antiguos)
+          </span>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3 mb-5">
+          {[
+            { label: "Entraron a Skool (Zapier)", value: joinedSkool, hint: "" },
+            { label: "Ya abrieron la web", value: enteredWeb, hint: pct(enteredWeb) },
+            { label: "Ya chatearon", value: usedChat, hint: pct(usedChat) },
+          ].map((s) => (
+            <div key={s.label} className="rounded-xl bg-zinc-950/60 border border-zinc-800 px-4 py-3">
+              <div className="text-2xl font-bold text-white tabular-nums">
+                {s.value}
+                <span className="text-sm font-medium text-zinc-500">{s.hint}</span>
+              </div>
+              <div className="text-xs text-zinc-400 mt-0.5">{s.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {signups.length === 0 ? (
+          <p className="text-zinc-500 text-sm">Zapier no dio de alta a nadie en este período.</p>
+        ) : (
+          <>
+            <ul className="divide-y divide-zinc-800">
+              {signups.map((s) => {
+                const status = s.first_message_at
+                  ? { text: "Chateó", tone: "bg-green-900/30 text-green-400" }
+                  : s.first_login_at
+                    ? { text: "Entró", tone: "bg-violet-900/30 text-violet-300" }
+                    : { text: "Sin entrar", tone: "bg-zinc-800 text-zinc-400" };
+                const days = daysSince(s.joined_at) ?? 0;
+                return (
+                  <li key={s.email} className="flex items-center gap-3 py-2 text-sm">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-zinc-200 truncate">{s.full_name || s.email}</div>
+                      {s.full_name && <div className="text-xs text-zinc-500 truncate">{s.email}</div>}
+                    </div>
+                    <span className="text-xs text-zinc-500 tabular-nums whitespace-nowrap">
+                      {days === 0 ? "hoy" : days === 1 ? "ayer" : `hace ${days} días`}
+                    </span>
+                    <span className={cn("rounded-full px-2 py-0.5 text-xs whitespace-nowrap", status.tone)}>
+                      {status.text}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+            {joinedSkool > SIGNUPS_SHOWN && (
+              <Link
+                href="/admin/members"
+                className="mt-3 inline-block text-xs text-violet-300 hover:text-violet-200"
+              >
+                Ver las {joinedSkool} altas en Miembros → Actividad de integración
+              </Link>
+            )}
+          </>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
