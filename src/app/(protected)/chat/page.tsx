@@ -54,7 +54,7 @@ export default async function ChatPage({ searchParams }: Props) {
         email: user?.email ?? null,
         // Foto de Google: Supabase la guarda en user_metadata al entrar por
         // OAuth. Se lee de la sesión y no de `profiles` a propósito — la URL
-        // caduca/cambia, y quien entra por magic link no la tiene nunca.
+        // caduca/cambia. Puede faltar en cuentas creadas antes, por magic link.
         avatarUrl:
           (user?.user_metadata?.avatar_url as string | undefined) ??
           (user?.user_metadata?.picture as string | undefined) ??

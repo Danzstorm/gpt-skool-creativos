@@ -8,10 +8,11 @@ Plataforma web privada de GPTs para una comunidad de Skool. Cada miembro tiene s
 
 **Solo entran miembros de Skool.** No hay registro abierto. El puente entre Skool y la app es la **lista blanca** (`allowed_members`), que se llena vía CSV manual, import automático o webhook (ver §3). Una persona solo puede entrar si su email está en esa lista y está activo.
 
-Formas de ingresar (ambas se validan contra la lista):
+Forma de ingresar (única, validada contra la lista):
 
-- **Enlace mágico (magic link):** metes tu email → si estás en la lista, te llega un enlace al correo → clic → entras. Sin contraseñas.
-- **Google:** botón "Continuar con Google". Tras autenticarte, si tu email no está en la lista, se cierra la sesión y no entras. Requiere configuración propia por cliente (ver §5).
+- **Google:** botón "Continuar con Google". Google muestra siempre el selector de cuentas; tras autenticarte, si tu email no está en la lista, se cierra la sesión y no entras. El primer login crea la cuenta (no hay registro aparte). Requiere configuración propia por cliente (ver §5).
+- El **enlace mágico por correo se retiró**: a mucha gente no le llegaba o lo abría en otro navegador y no funcionaba. Las cuentas creadas antes por magic link siguen funcionando: al entrar con Google con el mismo correo, Supabase enlaza la identidad al mismo usuario y conservan sus conversaciones.
+- Google **no permite** iniciar sesión desde el navegador embebido de Instagram/Facebook/TikTok; el login lo detecta y pide abrir la página en Chrome/Safari.
 
 Si tu email no está en la lista, verás un mensaje para unirte al Skool.
 
@@ -208,11 +209,11 @@ Esta plataforma es **single-tenant por diseño**: cada cliente corre su propia c
 | **Supabase** (proyecto nuevo) | Auth, base de datos, storage de iconos/archivos | El cliente (o tú, a su nombre) |
 | **OpenAI** (API key propia) | Todos los mensajes de chat se facturan a esta cuenta | El cliente — **importante**: es su costo, no el tuyo |
 | **Vercel** (proyecto) | Hosting del sitio | El cliente o tu agencia |
-| **Google Cloud Console** (OAuth Client) | Solo si quiere login con Google | El cliente — **solo necesario si usa Google login**; el magic link por email no lo requiere |
+| **Google Cloud Console** (OAuth Client) | Login con Google — la única forma de entrar, **bloqueante para lanzar** | El cliente |
 | **Google AI Studio** (`GEMINI_API_KEY`) | Describir los videos que se adjuntan al chat — [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | El cliente — es su costo, igual que OpenAI. **Solo necesario si quiere adjuntar video**; sin la key el resto del chat funciona igual (ver abajo qué pasa exactamente) |
 | **Zapier** (o Make) | Automatizar altas/bajas desde Skool | El cliente (ya lo tienen, según mencionaste) |
 | **Upstash** (Redis, capa gratis alcanza) | Rate limiting compartido en producción | Recomendado, no bloqueante para lanzar |
-| **Resend** (SMTP) | Que el magic link llegue de verdad — ver §7, **bloqueante para lanzar** | El cliente (dominio propio necesario) |
+| **Resend** (SMTP) | Ya no hace falta: sin magic link, el login no manda correos — ver §7 | — |
 
 #### Qué pasa exactamente sin `GEMINI_API_KEY`
 
@@ -238,17 +239,16 @@ En este orden. Los pasos 4 y 5 son los que más fallos de login causan si se sal
      creas el bucket a mano **después** de correr `db push` se queda en el default de
      Supabase y el video falla aunque `GEMINI_API_KEY` esté bien cargada. Tiene que
      coincidir con `MAX_VIDEO_SIZE_MB` de `src/lib/upload-limits.ts`.
-4. **SMTP propio antes de abrir el acceso** (Auth → SMTP Settings). El default de
-   Supabase manda 2 correos/hora y solo a direcciones pre-autorizadas — con el
-   acceso por magic link, cada login es un correo, así que una comunidad de
-   varios cientos lo revienta en la primera hora del anuncio. Ver §7.
+4. **Google OAuth** (Auth → Providers → Google) con el Client ID/Secret de Google
+   Cloud — ver "Pasos de setup (Google OAuth)" más abajo. Sin esto no hay forma
+   de entrar.
 5. **Auth → URL Configuration** con el dominio real:
    - Site URL: `https://<dominio>`
    - Redirect URLs: `https://<dominio>/auth/callback`
 
    Si no coinciden, Supabase rechaza el redirect y el login falla con
    `?error=auth_failed` sin más pistas.
-6. Auth → Providers → Email: habilitar magic link.
+6. Auth → Providers → Email: puede quedar deshabilitado; el login ya no lo usa.
 7. Crear el primer admin (ver §3):
    `node --env-file=.env.local scripts/bootstrap-admin.mjs admin@cliente.com`
 8. Copiar URL + anon key + service role key a las env vars de Vercel — junto con el
@@ -262,28 +262,26 @@ Antes de invitar a nadie, comprobar los tres caminos desde el dominio real:
 
 | Prueba | Esperado |
 |---|---|
-| Magic link con un correo **que está** en `allowed_members` | Llega el correo, el enlace entra a `/chat` |
-| Magic link con un correo **que no está** | Mensaje de "no tienes acceso" + link a Skool, sin enviar correo |
-| Abrir un enlace ya usado | `/login` con el aviso de enlace vencido (no una pantalla muda) |
+| Google con un correo **que está** en `allowed_members` | Entra a `/chat` |
+| Google con un correo **que no está** | `/unauthorized` con "tu correo no está en la lista" + link a Skool |
+| Cancelar en el selector de cuentas de Google | `/login` con el aviso de acceso cancelado (no una pantalla muda) |
 
 Después, en **Miembros → Accesos** del panel deben aparecer esos intentos con su
 motivo. Si esa lista está vacía tras las pruebas, la auditoría no está llegando y
 conviene revisarlo antes de lanzar: es lo único que permite depurar un "no puedo
 entrar" en producción.
 
-### Pasos de setup (Google OAuth) — solo si lo quieren
+### Pasos de setup (Google OAuth) — obligatorio
 1. En Google Cloud Console: crear proyecto → APIs & Services → Credentials → **OAuth 2.0 Client ID** (tipo *Web application*).
 2. **Authorized redirect URI**: `https://<project-ref>.supabase.co/auth/v1/callback` (lo da Supabase, no tu dominio).
 3. Copiar Client ID + Secret a Supabase → Auth → Providers → Google.
-4. Sin esto, el botón "Continuar con Google" del login falla — pero el magic link funciona igual sin ningún paso extra.
+4. En la pantalla de consentimiento de Google Cloud, publicar la app (estado *In production*); en *Testing* solo entran los correos de prueba listados y el resto ve un error de Google.
 
 ### Deploy en Vercel — recomendaciones
 1. **Plan**: Hobby alcanza. Las rutas de chat declaran `maxDuration = 300` (respuestas largas de streaming) y con **Fluid Compute** activo ese tope se respeta también en Hobby — verificado en el proyecto (`fluid: true`, `functionDefaultTimeout: 300`). Pro solo aporta el auto-deploy nativo por push, que este proyecto resuelve por GitHub Actions (ver README → Deploy).
 2. Cargar todas las env vars de §4 en Vercel (Production + Preview si se va a probar Zapier en preview).
-3. Dominio propio → actualizar en Supabase Auth: Site URL + Redirect URLs allowlist al dominio real (si no, el magic link redirige mal).
+3. Dominio propio → actualizar en Supabase Auth: Site URL + Redirect URLs allowlist al dominio real (si no, Google devuelve al dominio equivocado y el login falla).
 4. Activar **Upstash Redis** (integración nativa de Vercel, un clic) y cargar `UPSTASH_REDIS_REST_URL`/`TOKEN` — sin esto el rate limiting es por instancia serverless, no global, y en tráfico real dos instancias distintas no comparten el contador.
-5. SMTP propio (Resend/Postmark) en Supabase Auth → Email — el default de Supabase tiene un límite bajo y a veces cae en spam.
-
 ### Chats en paralelo y contexto — cómo funciona (para que quede claro)
 - **Cada conversación (thread) tiene su propia Conversation de OpenAI** (`openai_conversation_id`). El contexto completo de esa conversación **vive del lado de OpenAI**, no en nuestra base de datos — la tabla `messages` local es solo una caché para pintar la UI al instante sin re-pedir todo el historial. Por eso nunca se "pierde contexto": cada vez que se envía un mensaje, se manda a la misma Conversation y OpenAI ya sabe todo lo anterior.
 - **Concurrencia entre usuarios**: cada request es una función serverless independiente en Vercel — dos alumnos distintos chateando al mismo tiempo no se bloquean entre sí, escalan horizontalmente sin configuración extra.
@@ -312,37 +310,12 @@ entrar" en producción.
 
 ---
 
-## 7. Conectar Resend (SMTP) — bloqueante para lanzar
+## 7. Correo (SMTP) — ya no es bloqueante
 
-**Por qué es obligatorio, no "recomendado":** el login es 100% magic link (sin contraseña). El SMTP default de Supabase está limitado a **2 correos/hora y solo a direcciones pre-autorizadas** (miembros del proyecto Supabase) — está pensado únicamente para pruebas internas, no para usuarios reales. Sin SMTP propio, un miembro de Skool que no seas tú literalmente no puede recibir el enlace de acceso.
-
-### Qué se le pide al cliente (mínimo, sin compartir credenciales sensibles)
-
-El cliente **no necesita darte acceso a su cuenta de Resend ni a su dominio** — solo:
-
-1. Que él (o su equipo técnico) cree una cuenta gratis en [resend.com](https://resend.com) — capa gratis: 3.000 correos/mes, **100/día**, 1 dominio.
-
-   > ⚠️ **El tope de 100/día NO alcanza para el día del anuncio.** Cada login manda un correo (el acceso es magic link), así que una comunidad de ~600 miembros supera las 100 en las primeras horas: del correo 101 en adelante Resend rechaza y esos miembros no pueden entrar. Contratar **Pro (US$20/mes, 50.000 correos)** antes de anunciar. El límite mensual de 3.000 no es el problema; el diario sí.
-2. Que agregue su dominio en Resend → copia los 3 registros DNS que Resend le da (SPF, DKIM, DMARC) → los pega en el proveedor donde tiene el DNS de su dominio (Namecheap, GoDaddy, Cloudflare, el registrador de Skool, etc.). Verificación suele tardar minutos, a veces hasta 24-48h por propagación DNS.
-3. Que te pase **solo el API key** (Resend → API Keys → Create). Eso es lo único que toca nuestra configuración — no necesita su contraseña de cuenta ni acceso al dominio en sí.
-
-### Qué hacemos nosotros con ese API key
-
-1. Supabase → **Authentication → Emails → SMTP Settings** → activar "Enable Custom SMTP":
-   ```
-   Host:     smtp.resend.com
-   Port:     465
-   Username: resend
-   Password: <el API key del cliente>
-   Sender email: soporte@<dominio-del-cliente>   (o el que definan en Ajustes → Correo de soporte)
-   Sender name:  <nombre de la comunidad>
-   ```
-2. Guardar. Supabase pasa automáticamente de 2/hora a 30/hora de base (ajustable después en Auth → Rate Limits si hace falta más).
-3. Probar con un login real (magic link) a un correo fuera del proyecto Supabase — antes de esto ni siquiera se puede probar con un correo ajeno.
-4. Cargar las mismas env vars en Vercel si se referencian ahí (no aplica si el SMTP se configura solo del lado de Supabase — no requiere env var propia del proyecto).
-
-### Se puede dejar todo listo sin esperar al cliente
-
-Todo lo de arriba (dónde se pega qué, qué formato) ya está fijo y no depende de qué dominio use el cliente — lo único pendiente al llegar a este punto es pegar un API key y un correo remitente. Si se quiere validar el cableado end-to-end antes de tener el dominio del cliente, se puede usar temporalmente el dominio sandbox de Resend (`onboarding@resend.dev`, sin verificar dominio) contra el proyecto de Supabase de test — mismo procedimiento, cero cambios de código.
-
-> Al entregar: pide el API key por un canal seguro (no email plano), y bórralo de tu gestor de contraseñas una vez confirmado que quedó guardado en las env vars/config del cliente — no hace falta que quede duplicado en dos lados.
+El login es solo con Google y no manda correos, así que el SMTP propio (Resend)
+dejó de ser requisito para lanzar. El SMTP default de Supabase (2 correos/hora)
+alcanza para lo único que queda: nada, hoy. Si más adelante se vuelve a usar
+algún correo de Auth, configurar Resend en Supabase → Authentication → Emails →
+SMTP Settings (host `smtp.resend.com`, puerto 465, usuario `resend`, contraseña
+= API key). Las plantillas en `supabase/email-templates/` y
+`scripts/apply-email-templates.mjs` quedan por si se retoma.

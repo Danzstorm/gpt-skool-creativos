@@ -46,7 +46,7 @@ export type MembershipDeps = {
 };
 
 /**
- * Estado de acceso de un email. Fuente única de verdad del gate (magic link y OAuth).
+ * Estado de acceso de un email. Fuente única de verdad del gate (login con Google y proxy).
  */
 export async function checkMembershipWithDeps(
   email: string | null | undefined,

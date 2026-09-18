@@ -162,7 +162,7 @@ enabled = true
 # versionada. Al montar una instancia para un cliente nuevo hay que fijar ahí:
 #   Site URL:      https://<dominio-del-cliente>
 #   Redirect URLs: https://<dominio-del-cliente>/auth/callback
-# Si no coinciden, el magic link redirige mal y el login falla sin motivo visible
+# Si no coinciden, Google devuelve al dominio equivocado y el login falla sin motivo visible
 # — el callback recibe un error de "redirect_to no permitido".
 site_url = "http://127.0.0.1:3000"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
@@ -327,9 +327,8 @@ max_frequency = "5s"
 # Use an external OAuth provider. The full list of providers are: `apple`, `azure`, `bitbucket`,
 # `discord`, `facebook`, `github`, `gitlab`, `google`, `keycloak`, `linkedin_oidc`, `notion`, `twitch`,
 # `twitter`, `x`, `slack`, `spotify`, `workos`, `zoom`.
-# Google es el segundo camino de entrada (el primero es el magic link). El flag
-# NEXT_PUBLIC_GOOGLE_AUTH_ENABLED de la app controla si se muestra el botón; este
-# bloque es lo que lo hace funcionar de verdad.
+# Google es la ÚNICA forma de entrar (el magic link se retiró). Sin este bloque
+# configurado nadie puede iniciar sesión.
 #
 # En el proyecto hosted se configura en el dashboard, y el redirect URI que hay
 # que registrar en Google Cloud es el de SUPABASE, no el dominio propio:

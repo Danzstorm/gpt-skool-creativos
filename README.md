@@ -19,12 +19,14 @@ La verificación confirmó 9 configuraciones privadas para 9 GPTs, 446 adjuntos 
 Es la parte que más confusión genera, así que en corto:
 
 1. **`allowed_members` es la única fuente de verdad.** Si tu correo no está ahí y activo, no entras. No hay registro abierto.
-2. **Hay dos formas de entrar**: enlace por correo (magic link) y Google. Ambas terminan en el mismo sitio y ambas pasan por el mismo filtro.
+2. **Solo se entra con Google.** El enlace por correo (magic link) se retiró: a mucha gente no le llegaba o lo abría en otro navegador y no funcionaba. El primer login con Google crea la cuenta; no hay un "registro" aparte.
 3. **El filtro corre en cada petición, no solo al entrar.** Si alguien se da de baja de Skool, pierde el acceso en menos de un minuto aunque tuviera la sesión abierta. Esto es a propósito.
 
 > **Estar en la base de datos no es un pase permanente.** Es una confusión habitual: el acceso se comprueba continuamente contra `allowed_members`, no una sola vez al iniciar sesión.
 
-**Con Google hay un detalle importante:** Google autentica *antes* de que podamos comprobar la membresía. Si entras con una cuenta de Google cuyo correo no es el que tienes en Skool, el sistema te lo dirá nombrando el correo correcto — pero no te dejará pasar. Usa la cuenta con el mismo correo, o entra por enlace al correo.
+**Con Google hay un detalle importante:** Google autentica *antes* de que podamos comprobar la membresía. Si entras con una cuenta de Google cuyo correo no es el que tienes en Skool, el sistema te lo dirá nombrando el correo correcto — pero no te dejará pasar. El botón fuerza el selector de cuentas de Google en cada intento, así que basta con elegir la cuenta correcta. Si el correo de Skool no es de Google (ni Gmail ni Workspace), la salida es añadir su correo de Google a `allowed_members`.
+
+**Dos cosas que Google no permite y que generan tickets:** iniciar sesión desde el navegador embebido de Instagram/Facebook/TikTok (error `403 disallowed_useragent`; el login lo detecta y pide abrir la página en Chrome/Safari), y terminar el flujo en un navegador distinto al que lo empezó.
 
 ---
 
@@ -54,8 +56,8 @@ Si la sección Accesos está **vacía pese a haber logins reales**, la auditorí
 | **Supabase** | Auth, base de datos, storage | Sí |
 | **OpenAI** | Chat (se factura a esta cuenta) | Sí |
 | **Vercel** | Hosting | Sí. **Hobby alcanza**: con Fluid Compute activo el tope por función es 300s también en Hobby (verificado en el proyecto: `fluid: true`, `functionDefaultTimeout: 300`), que es lo que necesitan las rutas de chat. Pro solo hace falta si se quiere recuperar el auto-deploy por push (ver Deploy) |
-| **Resend** (u otro SMTP) | Que el magic link llegue de verdad | Sí para lanzar — ver guía §7 |
-| **Google Cloud** (OAuth) | Login con Google | Solo si se quiere; el magic link no lo necesita |
+| **Google Cloud** (OAuth) | Login con Google — la única forma de entrar | Sí |
+| **Resend** (u otro SMTP) | Correos de Supabase Auth | Ya no: sin magic link, el login no manda correos |
 | **Google AI Studio** (Gemini) | Describir los videos que se adjuntan (se factura a esta cuenta) | Solo si se quiere adjuntar video. Sin la key el resto del chat funciona igual — ver `GEMINI_API_KEY` más abajo |
 | **Zapier / Make** | Automatizar altas/bajas desde Skool | Recomendado |
 | **Upstash Redis** | Rate limiting global en serverless | Recomendado, no bloqueante |
@@ -95,7 +97,6 @@ Ver [`.env.example`](.env.example) para la lista completa con comentarios.
 | `NEXT_PUBLIC_SKOOL_URL` | ✅ | Link público del Skool |
 | `SKOOL_WEBHOOK_SECRET` | ✅ | Secreto del webhook de altas/bajas |
 | `GEMINI_API_KEY` | ➖ | Habilita adjuntar video ([AI Studio](https://aistudio.google.com/apikey); se factura a esa cuenta). Sin ella el botón `+` sigue ahí: el selector deja de listar videos y `/api/upload/sign` los rechaza antes de firmar. El resto del chat funciona igual. Ver guía §5 |
-| `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED` | ➖ | `"true"` solo si Google está configurado en Supabase; si no, el botón falla |
 | `UPSTASH_REDIS_REST_URL` / `_TOKEN` | ➖ | Recomendado en prod |
 | `NEXT_PUBLIC_SITE_URL` | ➖ | Dominio propio (canonical/OG) |
 
@@ -179,7 +180,7 @@ Configuración de la primera vez:
 1. Cargar **todas las env vars** en Vercel (Production, y Preview si se prueba Zapier ahí).
 2. Verificar que **Fluid Compute** esté activo en el proyecto: es lo que permite `maxDuration = 300` en las rutas de chat y subida. Sin él, el techo vuelve a 60s y se cortan los turnos con varias imágenes sobre threads largos.
 3. Dominio propio → en Supabase **Auth → URL Configuration**: `Site URL` y `Redirect URLs` (`https://<dominio>/auth/callback`) apuntando al dominio real. Si no coinciden, el login falla sin más pista que un error genérico.
-4. **SMTP propio** (Resend) en Supabase Auth → Email. Bloqueante: el SMTP por defecto manda 2 correos/hora, y como cada login es un correo, una comunidad de varios cientos lo agota en la primera hora.
+4. **Google OAuth** en Supabase Auth → Providers → Google, con el Client ID/Secret de Google Cloud y el redirect URI de Supabase (`https://<project-ref>.supabase.co/auth/v1/callback`) registrado en Google Cloud. Sin esto no hay forma de entrar.
 5. Activar **Upstash Redis** (integración nativa de Vercel) y cargar sus dos vars.
 
 Después de cada deploy, verificar el dominio real, login, una ruta protegida sin sesión y una conversación con imagen usando una cuenta de prueba.
@@ -205,9 +206,9 @@ Desde el dominio real, en un navegador:
 
 | Prueba | Esperado |
 |---|---|
-| Enlace por correo con un correo **de la lista** | Llega el correo y entra a `/chat` |
-| Enlace por correo con uno **que no está** | Mensaje de "no tienes acceso" + link a Skool, sin enviar correo |
-| Abrir un enlace ya usado | `/login` avisa que venció — nunca una pantalla en blanco |
+| Google con un correo **de la lista** | Entra a `/chat` |
+| Google con uno **que no está** | `/unauthorized` con "tu correo no está en la lista" + link a Skool |
+| Cancelar en el selector de cuentas de Google | `/login` avisa que se canceló — nunca una pantalla en blanco |
 
 Después, esos tres intentos deben aparecer en **`/admin/members` → Accesos**.
 

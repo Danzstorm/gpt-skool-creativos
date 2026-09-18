@@ -3,7 +3,6 @@ export type ApiAccess = "not-api" | "session-exempt" | "authenticated";
 // Excepciones explícitas al default-deny de /api. Añadir una ruta aquí requiere
 // decidir y documentar qué la autentica; el resto exige sesión automáticamente.
 const SESSION_EXEMPT_API_PATHS = new Set([
-  "/api/auth/check-email",
   "/api/auth/signout",
   "/api/webhooks/skool",
   "/api/webhooks/skool/bulk",

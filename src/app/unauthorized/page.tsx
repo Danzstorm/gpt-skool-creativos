@@ -81,8 +81,7 @@ export default async function UnauthorizedPage({
               <span className="font-medium text-violet-300">{member}</span>.
             </p>
             <p>
-              Entra con esa cuenta, o pide un enlace de acceso a ese correo — llegas al
-              mismo sitio.
+              Vuelve a intentar y, en el selector de Google, elige la cuenta de ese correo.
             </p>
           </div>
         )}

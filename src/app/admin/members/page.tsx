@@ -12,7 +12,7 @@ const AUTH_EVENT_LABELS: Record<string, { text: string; tone: string }> = {
   login_rejected_not_member: { text: "No está en la lista", tone: "bg-amber-900/30 text-amber-400" },
   login_rejected_revoked: { text: "Revocado", tone: "bg-red-900/30 text-red-400" },
   login_rejected_email_mismatch: { text: "Otro correo", tone: "bg-amber-900/30 text-amber-400" },
-  callback_error: { text: "Error de enlace", tone: "bg-red-900/30 text-red-400" },
+  callback_error: { text: "Error de acceso", tone: "bg-red-900/30 text-red-400" },
   signout_user: { text: "Cerró sesión", tone: "bg-zinc-800 text-zinc-400" },
   signout_gate_revoked: { text: "Expulsado", tone: "bg-red-900/30 text-red-400" },
   session_expired: { text: "Sesión caducada", tone: "bg-zinc-800 text-zinc-400" },

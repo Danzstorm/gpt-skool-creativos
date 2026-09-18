@@ -10,9 +10,8 @@ export function cn(...inputs: ClassValue[]) {
  *
  * Se usa al explicar un rechazo de acceso. Esos mensajes se pintan en páginas
  * sin sesión, así que mostrar el email entero convertiría la pantalla en un
- * oráculo para confirmar quién es miembro — justo lo que /api/auth/check-email
- * evita con su mensaje genérico. Con la máscara, quien ya conoce su propia
- * dirección la reconoce y nadie más aprende nada.
+ * oráculo para confirmar quién es miembro. Con la máscara, quien ya conoce su
+ * propia dirección la reconoce y nadie más aprende nada.
  */
 export function maskEmail(email: string): string {
   const at = email.lastIndexOf("@");
