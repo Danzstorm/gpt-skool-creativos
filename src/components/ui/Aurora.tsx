@@ -1,4 +1,4 @@
-// Luz ambiental de marca: dos manchas rojo/rosa, muy desenfocadas.
+// Luz ambiental mínima: un soplo de rojo de marca, no un muro magenta.
 // Solo en login/unauthorized — el chat es una herramienta y va sobre negro.
 export default function Aurora() {
   return (
@@ -6,24 +6,12 @@ export default function Aurora() {
       <div
         className="aurora-a absolute rounded-full blur-[140px]"
         style={{
-          width: "42%",
+          width: "32%",
           aspectRatio: "1",
-          top: "-12%",
-          left: "-10%",
+          top: "-16%",
+          left: "-8%",
           background: "#FF003C",
-          opacity: 0.08,
-          willChange: "transform",
-        }}
-      />
-      <div
-        className="aurora-b absolute rounded-full blur-[140px]"
-        style={{
-          width: "38%",
-          aspectRatio: "1",
-          top: "28%",
-          right: "-14%",
-          background: "#F80092",
-          opacity: 0.06,
+          opacity: 0.035,
           willChange: "transform",
         }}
       />

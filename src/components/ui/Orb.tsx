@@ -3,9 +3,9 @@ import { cn } from "@/lib/utils";
 // Sombra y highlight a escala: el desplazamiento de md/xl aplastaría la
 // esfera de 20px del sidebar.
 const SIZES = {
-  xs: { px: 20, mark: "C" },
-  md: { px: 104, mark: "CREATIVOS" },
-  xl: { px: 168, mark: "CREATIVOS" },
+  xs: 20,
+  md: 104,
+  xl: 168,
 } as const;
 
 interface Props {
@@ -13,11 +13,11 @@ interface Props {
   className?: string;
 }
 
-// Firma de marca: esfera de vidrio con el wordmark. Halo rojo contenido,
-// no un bloom magenta a media pantalla. Motion solo sin reduce-motion.
+// Firma: esfera de vidrio líquido con el wordmark oficial. Nunca una C.
+// En xs el lockup del sidebar ya lleva "CREATIVOS" al lado — la gema va sola.
 export default function Orb({ size, className }: Props) {
-  const { px, mark } = SIZES[size];
-  const compact = size === "xs";
+  const px = SIZES[size];
+  const word = size === "xs" ? null : "CREATIVOS";
 
   return (
     <div
@@ -28,15 +28,13 @@ export default function Orb({ size, className }: Props) {
       <div className="orb-halo orb-breathe" />
       <div className="orb-sphere">
         <div className="orb-atmosphere" />
-        <div className="orb-caustic orb-spin" />
-        <span
-          className={cn(
-            "orb-mark font-display italic uppercase font-extrabold",
-            compact ? "orb-mark-glyph" : "orb-mark-word"
-          )}
-        >
-          {mark}
-        </span>
+        <div className="orb-caustic orb-water" />
+        <div className="orb-refract orb-refract-drift" />
+        {word && (
+          <span className="orb-mark orb-mark-word font-display italic uppercase font-extrabold">
+            {word}
+          </span>
+        )}
         <div className="orb-film" />
         <div className="orb-highlight orb-shimmer" />
         <div className="orb-shade" />

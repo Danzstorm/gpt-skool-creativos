@@ -34,7 +34,7 @@ export default function GptMark({ kind, letter = "G", size = "xl", className, ch
       <div className="gpt-mark-halo gpt-mark-breathe" />
       <div className="gpt-mark-sphere">
         <div className="gpt-mark-atmosphere" />
-        <div className="gpt-mark-caustic gpt-mark-spin" />
+        <div className="gpt-mark-caustic gpt-mark-water" />
         <span className="gpt-mark-emblem">
           {children ? (
             <span className="relative block h-full w-full overflow-hidden">{children}</span>
