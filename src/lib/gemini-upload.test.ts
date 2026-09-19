@@ -1,5 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
-import { describeVideo, estimateGeminiCost, uploadVideo, worstCaseVideoCost } from "./gemini-upload";
+import {
+  DESCRIPTION_INSTRUCTION,
+  VIDEO_MAX_OUTPUT_TOKENS,
+  VIDEO_MEDIA_RESOLUTION,
+  VIDEO_SAMPLE_FPS,
+  buildDescribeVideoRequest,
+  describeVideo,
+  estimateGeminiCost,
+  parseDescribeVideoResponse,
+  uploadVideo,
+  worstCaseVideoCost,
+} from "./gemini-upload";
 
 describe("estimateGeminiCost", () => {
   it("returns 0 for a call with no tokens", () => {
@@ -18,10 +29,50 @@ describe("worstCaseVideoCost", () => {
   it("is a positive, small constant (reservation ceiling, not a real bill)", () => {
     const cost = worstCaseVideoCost();
     expect(cost).toBeGreaterThan(0);
-    // 180s * 300 tok/s in + 2000 tok out, at $0.1/$0.4 per 1M — sanity bound
-    // well above what a real short reference-video description costs, well
-    // below "this reservation could ever look like a billing bug".
+    // 180s * ~550 tok/s (2 FPS + HIGH) in + 8192 tok out, at $0.1/$0.4 per 1M.
     expect(cost).toBeLessThan(0.05);
+  });
+});
+
+describe("buildDescribeVideoRequest", () => {
+  it("pide cronología completa, no un prompt de generación", () => {
+    expect(DESCRIPTION_INSTRUCTION).toMatch(/ENTIRE video/i);
+    expect(DESCRIPTION_INSTRUCTION).toMatch(/Chronology/i);
+    expect(DESCRIPTION_INSTRUCTION).toMatch(/MM:SS/);
+    expect(DESCRIPTION_INSTRUCTION).toMatch(/transcribe/i);
+    expect(DESCRIPTION_INSTRUCTION).toMatch(/on-screen text/i);
+    expect(DESCRIPTION_INSTRUCTION).not.toMatch(/write an image\/video generation prompt from it/i);
+  });
+
+  it("fija fps, techo de salida y resolución alta en el body", () => {
+    const body = buildDescribeVideoRequest("https://.../files/abc", "video/mp4");
+    const videoPart = body.contents[0].parts[0] as {
+      file_data: { file_uri: string; mime_type: string };
+      video_metadata: { fps: number };
+      media_resolution: { level: string };
+    };
+    expect(videoPart.file_data).toEqual({ file_uri: "https://.../files/abc", mime_type: "video/mp4" });
+    expect(videoPart.video_metadata.fps).toBe(VIDEO_SAMPLE_FPS);
+    expect(videoPart.media_resolution.level).toBe(VIDEO_MEDIA_RESOLUTION);
+    expect(body.generationConfig.maxOutputTokens).toBe(VIDEO_MAX_OUTPUT_TOKENS);
+    expect(body.contents[0].parts[1]).toEqual({ text: DESCRIPTION_INSTRUCTION });
+  });
+});
+
+describe("parseDescribeVideoResponse", () => {
+  it("concatena solo las partes de texto, no los thoughts", () => {
+    expect(
+      parseDescribeVideoResponse({
+        candidates: [
+          {
+            content: {
+              parts: [{ thought: true, text: "navigating..." }, { text: "Plano 1" }, { text: " y plano 2." }],
+            },
+          },
+        ],
+        usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 4 },
+      })
+    ).toEqual({ text: "Plano 1 y plano 2.", tokensIn: 10, tokensOut: 4 });
   });
 });
 
@@ -106,6 +157,8 @@ describe("describeVideo (DI, no real network)", () => {
       file_uri: "https://generativelanguage.googleapis.com/v1beta/files/abc123",
       mime_type: "video/mp4",
     });
+    expect(body.contents[0].parts[0].video_metadata.fps).toBe(VIDEO_SAMPLE_FPS);
+    expect(body.generationConfig.maxOutputTokens).toBe(VIDEO_MAX_OUTPUT_TOKENS);
   });
 
   it("throws instead of returning a degraded description when generateContent fails", async () => {

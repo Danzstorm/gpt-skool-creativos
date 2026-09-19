@@ -20,13 +20,55 @@ const MIN_DESCRIPTION_CHARS = 80;
 // pricing must not silently start covering Gemini calls).
 const GEMINI_PRICE_PER_1M_TOKENS = { in: 0.1, out: 0.4 };
 
+export const VIDEO_SAMPLE_FPS = 2;
+export const VIDEO_MAX_OUTPUT_TOKENS = 8_192;
+export const VIDEO_MEDIA_RESOLUTION = "MEDIA_RESOLUTION_HIGH";
+
 export const DESCRIPTION_INSTRUCTION = [
-  "Describe this reference video in detail for someone who will write an",
-  "image/video generation prompt from it. Cover: composition and framing,",
-  "camera movement, subject(s), visual style, any on-screen text, and spoken",
-  "dialogue if present. If there is no dialogue or narration, still describe",
-  "composition, movement, subject, and style fully from the visuals alone.",
+  "Analyze this ENTIRE video from the first frame to the last. Do not write a short summary",
+  "and do not write an image/video generation prompt.",
+  "Reply in Spanish. Use this structure:",
+  "1) Overview: approximate duration, number of shots, and whether there is spoken dialogue,",
+  "narration, music, or only sound effects.",
+  "2) Chronology: for every shot or action change, a MM:SS timestamp plus what is on screen",
+  "(subjects, wardrobe, props, framing, camera move, lighting, and any on-screen text quoted",
+  "verbatim).",
+  "3) Audio: transcribe every audible line of dialogue or voice-over verbatim in the original",
+  "language. If nobody speaks, say so. Describe relevant music and sound effects.",
+  "4) Do not invent scenes, text, or dialogue. If something is unreadable or inaudible, say so.",
+  "This is a complete shot-by-shot log for someone who cannot open the file.",
 ].join(" ");
+
+export function buildDescribeVideoRequest(fileUri, mimeType) {
+  return {
+    contents: [
+      {
+        role: "user",
+        parts: [
+          {
+            file_data: { file_uri: fileUri, mime_type: mimeType },
+            video_metadata: { fps: VIDEO_SAMPLE_FPS },
+            media_resolution: { level: VIDEO_MEDIA_RESOLUTION },
+          },
+          { text: DESCRIPTION_INSTRUCTION },
+        ],
+      },
+    ],
+    generationConfig: { maxOutputTokens: VIDEO_MAX_OUTPUT_TOKENS, temperature: 0.2 },
+  };
+}
+
+export function parseDescribeVideoResponse(data) {
+  const text = (data.candidates?.[0]?.content?.parts ?? [])
+    .filter((part) => !part.thought)
+    .map((part) => part.text ?? "")
+    .join("");
+  return {
+    text,
+    tokensIn: data.usageMetadata?.promptTokenCount ?? 0,
+    tokensOut: data.usageMetadata?.candidatesTokenCount ?? 0,
+  };
+}
 
 /**
  * Reject reason, or null. A non-finite durationSeconds REJECTS: an
@@ -137,23 +179,10 @@ export async function describeVideo(fetchFn, apiKey, { fileUri, mimeType }) {
   const response = await fetchFn(`${GEMINI_API_BASE}/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      contents: [
-        {
-          role: "user",
-          parts: [{ file_data: { file_uri: fileUri, mime_type: mimeType } }, { text: DESCRIPTION_INSTRUCTION }],
-        },
-      ],
-    }),
+    body: JSON.stringify(buildDescribeVideoRequest(fileUri, mimeType)),
   });
   if (!response.ok) {
     throw new Error(`Gemini generateContent failed: ${response.status} ${await response.text()}`);
   }
-  const data = await response.json();
-  const text = (data.candidates?.[0]?.content?.parts ?? []).map((part) => part.text ?? "").join("");
-  return {
-    text,
-    tokensIn: data.usageMetadata?.promptTokenCount ?? 0,
-    tokensOut: data.usageMetadata?.candidatesTokenCount ?? 0,
-  };
+  return parseDescribeVideoResponse(await response.json());
 }

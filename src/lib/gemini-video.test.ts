@@ -6,12 +6,18 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 // Lives in a .mjs because the pilot script that consumes it runs as bare Node
 // (no Next build, no `@/` alias) — see scripts/lib/gemini-video.mjs header.
 import {
+  DESCRIPTION_INSTRUCTION,
   MAX_VIDEO_MB,
   MAX_VIDEO_SECONDS,
+  VIDEO_MAX_OUTPUT_TOKENS,
+  VIDEO_MEDIA_RESOLUTION,
+  VIDEO_SAMPLE_FPS,
+  buildDescribeVideoRequest,
   describeVideo,
   descriptionRejectReason,
   estimateGeminiCost,
   ffprobeArgs,
+  parseDescribeVideoResponse,
   parseFfprobeDuration,
   probeDurationSeconds,
   uploadVideo,
@@ -102,6 +108,29 @@ describe("descriptionRejectReason", () => {
       "A wide static shot of a kitchen at dawn. A woman in a blue robe walks in, opens the " +
       "fridge, and pours orange juice while narrating her morning routine in a calm voice.";
     expect(descriptionRejectReason(long)).toBeNull();
+  });
+});
+
+describe("buildDescribeVideoRequest", () => {
+  it("pide cronología completa y fija fps, techo de salida y resolución", () => {
+    expect(DESCRIPTION_INSTRUCTION).toMatch(/Chronology/i);
+    expect(DESCRIPTION_INSTRUCTION).toMatch(/transcribe/i);
+    const body = buildDescribeVideoRequest("https://.../files/abc", "video/mp4");
+    const videoPart = body.contents[0]?.parts[0];
+    expect(videoPart?.video_metadata?.fps).toBe(VIDEO_SAMPLE_FPS);
+    expect(videoPart?.media_resolution?.level).toBe(VIDEO_MEDIA_RESOLUTION);
+    expect(body.generationConfig.maxOutputTokens).toBe(VIDEO_MAX_OUTPUT_TOKENS);
+  });
+});
+
+describe("parseDescribeVideoResponse", () => {
+  it("omite partes thought y concatena el texto útil", () => {
+    expect(
+      parseDescribeVideoResponse({
+        candidates: [{ content: { parts: [{ thought: true, text: "x" }, { text: "Plano 1." }] } }],
+        usageMetadata: { promptTokenCount: 3, candidatesTokenCount: 2 },
+      })
+    ).toEqual({ text: "Plano 1.", tokensIn: 3, tokensOut: 2 });
   });
 });
 
@@ -238,6 +267,8 @@ describe("uploadVideo / describeVideo (DI, no real network)", () => {
       file_uri: "https://generativelanguage.googleapis.com/v1beta/files/abc123",
       mime_type: "video/mp4",
     });
+    expect(body.contents[0].parts[0].video_metadata.fps).toBe(VIDEO_SAMPLE_FPS);
+    expect(body.generationConfig.maxOutputTokens).toBe(VIDEO_MAX_OUTPUT_TOKENS);
   });
 
   it("throws instead of returning a degraded description when generateContent fails", async () => {

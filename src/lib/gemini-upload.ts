@@ -3,9 +3,9 @@
 // bare Node; acá el video ya llegó como blob de Supabase Storage, así que
 // uploadVideo recibe los bytes en memoria en vez de un filePath.
 //
-// Modelo y precio por token copiados tal cual del piloto (no inventar
-// números): scripts/lib/gemini-video.mjs no se toca, este archivo es la ruta
-// nueva de producción (usada por /api/upload/register).
+// Modelo, prompt y caps de sample deben coincidir con
+// scripts/lib/gemini-video.mjs (el piloto). Este archivo es la ruta de
+// producción (usada por /api/upload/register).
 //
 // A propósito en su propio módulo y no en src/lib/pricing.ts: ese archivo es
 // precios de OpenAI (USD por 1M de tokens de los modelos de chat) y Gemini no
@@ -23,15 +23,18 @@ export function estimateGeminiCost(tokensIn: number, tokensOut: number): number 
 // que worstCaseAudioCost en src/lib/pricing.ts para Whisper): sin duración
 // conocida (no hay ffprobe en serverless — ver upload-limits.ts), se asume la
 // misma duración "razonable" que el piloto usaba como tope de validación
-// local (MAX_VIDEO_SECONDS = 180s en scripts/lib/gemini-video.mjs) y la tasa
-// pública de Gemini de ~300 tokens/segundo de video a resolución por defecto.
-// No es una cota matemáticamente absoluta (un video de 100MB en muy baja
-// resolución puede durar más de 180s), pero es conservadora para el caso real
-// de uso (referencias cortas) y evita complicar esto con un parser de
-// metadata de video. Ajustar si Gemini cambia su tasa o el tope de duración.
+// local (MAX_VIDEO_SECONDS = 180s en scripts/lib/gemini-video.mjs).
+//
+// La tasa ya no es el default de Gemini (~100 tok/s a 1 FPS + resolución baja).
+// Pedimos 2 FPS y MEDIA_RESOLUTION_HIGH (~258 tok/frame + 32 tok/s de audio
+// ≈ 550 tok/s). Ajustar si cambia el sample o el precio.
 const WORST_CASE_DURATION_SECONDS = 180;
-const GEMINI_VIDEO_TOKENS_PER_SECOND = 300;
-const WORST_CASE_OUTPUT_TOKENS = 2_000;
+const GEMINI_VIDEO_TOKENS_PER_SECOND = 550;
+const WORST_CASE_OUTPUT_TOKENS = 8_192;
+
+export const VIDEO_SAMPLE_FPS = 2;
+export const VIDEO_MAX_OUTPUT_TOKENS = 8_192;
+export const VIDEO_MEDIA_RESOLUTION = "MEDIA_RESOLUTION_HIGH";
 
 export function worstCaseVideoCost(): number {
   const tokensIn = WORST_CASE_DURATION_SECONDS * GEMINI_VIDEO_TOKENS_PER_SECOND;
@@ -39,12 +42,69 @@ export function worstCaseVideoCost(): number {
 }
 
 export const DESCRIPTION_INSTRUCTION = [
-  "Describe this reference video in detail for someone who will write an",
-  "image/video generation prompt from it. Cover: composition and framing,",
-  "camera movement, subject(s), visual style, any on-screen text, and spoken",
-  "dialogue if present. If there is no dialogue or narration, still describe",
-  "composition, movement, subject, and style fully from the visuals alone.",
+  "Analyze this ENTIRE video from the first frame to the last. Do not write a short summary",
+  "and do not write an image/video generation prompt.",
+  "Reply in Spanish. Use this structure:",
+  "1) Overview: approximate duration, number of shots, and whether there is spoken dialogue,",
+  "narration, music, or only sound effects.",
+  "2) Chronology: for every shot or action change, a MM:SS timestamp plus what is on screen",
+  "(subjects, wardrobe, props, framing, camera move, lighting, and any on-screen text quoted",
+  "verbatim).",
+  "3) Audio: transcribe every audible line of dialogue or voice-over verbatim in the original",
+  "language. If nobody speaks, say so. Describe relevant music and sound effects.",
+  "4) Do not invent scenes, text, or dialogue. If something is unreadable or inaudible, say so.",
+  "This is a complete shot-by-shot log for someone who cannot open the file.",
 ].join(" ");
+
+export type DescribeVideoRequestBody = {
+  contents: Array<{
+    role: "user";
+    parts: Array<
+      | {
+          file_data: { file_uri: string; mime_type: string };
+          video_metadata: { fps: number };
+          media_resolution: { level: string };
+        }
+      | { text: string }
+    >;
+  }>;
+  generationConfig: { maxOutputTokens: number; temperature: number };
+};
+
+/** Cuerpo de generateContent. Extraído para testear caps/prompt sin red. */
+export function buildDescribeVideoRequest(fileUri: string, mimeType: string): DescribeVideoRequestBody {
+  return {
+    contents: [
+      {
+        role: "user",
+        parts: [
+          {
+            file_data: { file_uri: fileUri, mime_type: mimeType },
+            video_metadata: { fps: VIDEO_SAMPLE_FPS },
+            media_resolution: { level: VIDEO_MEDIA_RESOLUTION },
+          },
+          { text: DESCRIPTION_INSTRUCTION },
+        ],
+      },
+    ],
+    generationConfig: { maxOutputTokens: VIDEO_MAX_OUTPUT_TOKENS, temperature: 0.2 },
+  };
+}
+
+export function parseDescribeVideoResponse(data: {
+  candidates?: Array<{ content?: { parts?: Array<{ text?: string; thought?: boolean }> } }>;
+  usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number };
+}): { text: string; tokensIn: number; tokensOut: number } {
+  const text = (data.candidates?.[0]?.content?.parts ?? [])
+    .filter((part) => !part.thought)
+    .map((part) => part.text ?? "")
+    .join("");
+  return {
+    text,
+    tokensIn: data.usageMetadata?.promptTokenCount ?? 0,
+    tokensOut: data.usageMetadata?.candidatesTokenCount ?? 0,
+  };
+}
 
 const GEMINI_UPLOAD_URL = "https://generativelanguage.googleapis.com/upload/v1beta/files";
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
@@ -106,23 +166,10 @@ export async function describeVideo(
   const response = await fetchFn(`${GEMINI_API_BASE}/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      contents: [
-        {
-          role: "user",
-          parts: [{ file_data: { file_uri: fileUri, mime_type: mimeType } }, { text: DESCRIPTION_INSTRUCTION }],
-        },
-      ],
-    }),
+    body: JSON.stringify(buildDescribeVideoRequest(fileUri, mimeType)),
   });
   if (!response.ok) {
     throw new Error(`Gemini generateContent failed: ${response.status} ${await response.text()}`);
   }
-  const data = await response.json();
-  const text = (data.candidates?.[0]?.content?.parts ?? []).map((part: { text?: string }) => part.text ?? "").join("");
-  return {
-    text,
-    tokensIn: data.usageMetadata?.promptTokenCount ?? 0,
-    tokensOut: data.usageMetadata?.candidatesTokenCount ?? 0,
-  };
+  return parseDescribeVideoResponse(await response.json());
 }

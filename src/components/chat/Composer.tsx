@@ -5,6 +5,7 @@ import { useDismissable } from "@/hooks/useDismissable";
 import RecordingWave from "./RecordingWave";
 import { imageLabel, type ThreadNumbers } from "@/lib/attachment-labels";
 import { mentionAt, moveIndex, removeMention, type MentionQuery } from "@/lib/file-search";
+import { VIDEO_ANALYZING_HINT, VIDEO_ANALYZING_LABEL, VIDEO_ATTACH_TITLE } from "@/lib/video-copy";
 import FilePicker from "./FilePicker";
 import type { LibraryFile } from "@/app/api/files/route";
 
@@ -337,8 +338,8 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
               <span className="w-3 h-3 rounded-full border-2 border-zinc-600 border-t-zinc-300 animate-spin" />
               {isUploadingVideo ? (
                 <span>
-                  Analizando video...
-                  <span className="block text-zinc-500">Puedes seguir escribiendo</span>
+                  {VIDEO_ANALYZING_LABEL}
+                  <span className="block text-zinc-500">{VIDEO_ANALYZING_HINT}</span>
                 </span>
               ) : (
                 <span>Subiendo...</span>
@@ -400,7 +401,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           // así que el globo nombra pegar únicamente para imágenes.
           title={
             videoEnabled
-              ? "Adjuntar imágenes, archivos o video (las imágenes también se pegan con Ctrl+V)"
+              ? VIDEO_ATTACH_TITLE
               : "Adjuntar imágenes o archivos (las imágenes también se pegan con Ctrl+V)"
           }
           aria-label="Adjuntar"
