@@ -15,31 +15,30 @@ const MAX_VIDEO_BYTES = MAX_VIDEO_MB * 1024 * 1024;
 
 const MIN_DESCRIPTION_CHARS = 80;
 
-// Gemini pricing estimate, USD per 1M tokens — same "adjust if it changes"
-// posture as src/lib/pricing.ts, kept separate per the spec (OpenAI/Whisper
-// pricing must not silently start covering Gemini calls).
 const GEMINI_PRICE_PER_1M_TOKENS = { in: 0.1, out: 0.4 };
 
-export const VIDEO_SAMPLE_FPS = 2;
+export const VIDEO_SAMPLE_FPS = 1;
 export const VIDEO_MAX_OUTPUT_TOKENS = 8_192;
-export const VIDEO_MEDIA_RESOLUTION = "MEDIA_RESOLUTION_HIGH";
 
-export const DESCRIPTION_INSTRUCTION = [
-  "Analyze this ENTIRE video from the first frame to the last. Do not write a short summary",
-  "and do not write an image/video generation prompt.",
-  "Reply in Spanish. Use this structure:",
-  "1) Overview: approximate duration, number of shots, and whether there is spoken dialogue,",
-  "narration, music, or only sound effects.",
-  "2) Chronology: for every shot or action change, a MM:SS timestamp plus what is on screen",
-  "(subjects, wardrobe, props, framing, camera move, lighting, and any on-screen text quoted",
-  "verbatim).",
-  "3) Audio: transcribe every audible line of dialogue or voice-over verbatim in the original",
-  "language. If nobody speaks, say so. Describe relevant music and sound effects.",
-  "4) Do not invent scenes, text, or dialogue. If something is unreadable or inaudible, say so.",
-  "This is a complete shot-by-shot log for someone who cannot open the file.",
+export const TRANSCRIPT_INSTRUCTION = [
+  "Listen only. There may be a song, jingle, or voice mixed under engines or SFX.",
+  "Output ONLY a word-for-word transcript of every spoken or sung line in the original",
+  "language, one line per utterance, prefixed with MM:SS. Do not paraphrase.",
+  "Do not describe the picture. If you hear singing you MUST quote the lyrics — do not",
+  "call it instrumental. If a word is unclear write [inaudible]. If and only if there",
+  "is truly no human voice, output exactly: No hay habla ni letra audible.",
 ].join(" ");
 
-export function buildDescribeVideoRequest(fileUri, mimeType) {
+export const VISUAL_INSTRUCTION = [
+  "Ignore writing a generation prompt. Reply in Spanish. Output a shot-by-shot visual",
+  "log of the ENTIRE video. For every shot or action change: MM:SS, subjects, wardrobe,",
+  "framing, camera move, lighting, and any on-screen text quoted verbatim.",
+  "Do not invent scenes. Do not transcribe audio here.",
+].join(" ");
+
+export const DESCRIPTION_INSTRUCTION = TRANSCRIPT_INSTRUCTION;
+
+export function buildDescribeVideoRequest(fileUri, mimeType, instruction = TRANSCRIPT_INSTRUCTION) {
   return {
     contents: [
       {
@@ -48,13 +47,12 @@ export function buildDescribeVideoRequest(fileUri, mimeType) {
           {
             file_data: { file_uri: fileUri, mime_type: mimeType },
             video_metadata: { fps: VIDEO_SAMPLE_FPS },
-            media_resolution: { level: VIDEO_MEDIA_RESOLUTION },
           },
-          { text: DESCRIPTION_INSTRUCTION },
+          { text: instruction },
         ],
       },
     ],
-    generationConfig: { maxOutputTokens: VIDEO_MAX_OUTPUT_TOKENS, temperature: 0.2 },
+    generationConfig: { maxOutputTokens: VIDEO_MAX_OUTPUT_TOKENS, temperature: 0.1 },
   };
 }
 
@@ -70,12 +68,12 @@ export function parseDescribeVideoResponse(data) {
   };
 }
 
-/**
- * Reject reason, or null. A non-finite durationSeconds REJECTS: an
- * unverifiable duration cannot be proven under the cap without calling
- * Gemini, and the spec forbids that call for a file whose cap compliance is
- * unproven.
- */
+export function mergeVideoAnalysis({ transcript, visual }) {
+  const audio = (transcript ?? "").trim() || "No hay habla ni letra audible.";
+  const pictures = (visual ?? "").trim() || "(sin cronología visual)";
+  return `## TRANSCRIPCIÓN\n\n${audio}\n\n## CRONOLOGÍA VISUAL\n\n${pictures}`;
+}
+
 export function videoRejectReason({ sizeBytes, durationSeconds }) {
   if (sizeBytes > MAX_VIDEO_BYTES) {
     return `video exceeds the ${MAX_VIDEO_MB}MB size cap (${(sizeBytes / (1024 * 1024)).toFixed(1)}MB)`;
@@ -89,7 +87,6 @@ export function videoRejectReason({ sizeBytes, durationSeconds }) {
   return null;
 }
 
-/** ffprobe stdout -> seconds. Handles "N/A", "", and garbage -> null. */
 export function parseFfprobeDuration(stdout) {
   const trimmed = stdout.trim();
   if (!trimmed) return null;
@@ -97,12 +94,6 @@ export function parseFfprobeDuration(stdout) {
   return Number.isFinite(value) ? value : null;
 }
 
-/**
- * Argv for ffprobe. Throws if absPath is not absolute — that is the guard
- * against a file named "-i" or "--help" being read as a flag: ffprobe has no
- * reliable `--` end-of-options separator, so path.resolve() before this call
- * is the mitigation, not a convention.
- */
 export function ffprobeArgs(absPath) {
   if (!isAbsolute(absPath)) {
     throw new Error(`ffprobeArgs requires an absolute path, got: ${absPath}`);
@@ -110,7 +101,6 @@ export function ffprobeArgs(absPath) {
   return ["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", absPath];
 }
 
-/** Empty, whitespace-only, or implausibly short description -> pilot failure. */
 export function descriptionRejectReason(text) {
   const trimmed = (text ?? "").trim();
   if (!trimmed) return "Gemini returned an empty description";
@@ -124,7 +114,6 @@ export function estimateGeminiCost(tokensIn, tokensOut) {
   return (tokensIn / 1_000_000) * GEMINI_PRICE_PER_1M_TOKENS.in + (tokensOut / 1_000_000) * GEMINI_PRICE_PER_1M_TOKENS.out;
 }
 
-/** execFileFn injected (node:child_process execFileSync) per the repo's DI convention. */
 export function probeDurationSeconds(execFileFn, absPath) {
   const stdout = execFileFn("ffprobe", ffprobeArgs(absPath), { encoding: "utf8" });
   return parseFfprobeDuration(stdout);
@@ -133,10 +122,9 @@ export function probeDurationSeconds(execFileFn, absPath) {
 const GEMINI_UPLOAD_URL = "https://generativelanguage.googleapis.com/upload/v1beta/files";
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
 const GEMINI_MODEL = "gemini-3.5-flash-lite";
-const POLL_INTERVAL_MS = 2_000;
-const POLL_MAX_ATTEMPTS = 30;
+const POLL_INTERVAL_MS = 800;
+const POLL_MAX_ATTEMPTS = 40;
 
-/** fetchFn injected so request-building/response-parsing is testable without a live key. */
 export async function uploadVideo(fetchFn, apiKey, { filePath, mimeType }) {
   const bytes = readFileSync(filePath);
   const form = new FormData();
@@ -174,15 +162,32 @@ export async function uploadVideo(fetchFn, apiKey, { filePath, mimeType }) {
   throw new Error(`Gemini file ${name} did not become ACTIVE within ${POLL_MAX_ATTEMPTS} polls`);
 }
 
-/** fetchFn injected so request-building/response-parsing is testable without a live key. */
-export async function describeVideo(fetchFn, apiKey, { fileUri, mimeType }) {
+async function generateFromVideo(fetchFn, apiKey, fileUri, mimeType, instruction) {
   const response = await fetchFn(`${GEMINI_API_BASE}/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(buildDescribeVideoRequest(fileUri, mimeType)),
+    body: JSON.stringify(buildDescribeVideoRequest(fileUri, mimeType, instruction)),
   });
   if (!response.ok) {
     throw new Error(`Gemini generateContent failed: ${response.status} ${await response.text()}`);
   }
   return parseDescribeVideoResponse(await response.json());
+}
+
+export async function describeVideo(fetchFn, apiKey, { fileUri, mimeType }) {
+  const [transcriptResult, visualResult] = await Promise.allSettled([
+    generateFromVideo(fetchFn, apiKey, fileUri, mimeType, TRANSCRIPT_INSTRUCTION),
+    generateFromVideo(fetchFn, apiKey, fileUri, mimeType, VISUAL_INSTRUCTION),
+  ]);
+  if (transcriptResult.status === "rejected" && visualResult.status === "rejected") {
+    throw transcriptResult.reason;
+  }
+  const transcript =
+    transcriptResult.status === "fulfilled" ? transcriptResult.value : { text: "", tokensIn: 0, tokensOut: 0 };
+  const visual = visualResult.status === "fulfilled" ? visualResult.value : { text: "", tokensIn: 0, tokensOut: 0 };
+  return {
+    text: mergeVideoAnalysis({ transcript: transcript.text, visual: visual.text }),
+    tokensIn: transcript.tokensIn + visual.tokensIn,
+    tokensOut: transcript.tokensOut + visual.tokensOut,
+  };
 }

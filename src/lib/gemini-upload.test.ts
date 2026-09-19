@@ -1,12 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  DESCRIPTION_INSTRUCTION,
+  TRANSCRIPT_INSTRUCTION,
   VIDEO_MAX_OUTPUT_TOKENS,
-  VIDEO_MEDIA_RESOLUTION,
   VIDEO_SAMPLE_FPS,
+  VISUAL_INSTRUCTION,
   buildDescribeVideoRequest,
   describeVideo,
   estimateGeminiCost,
+  mergeVideoAnalysis,
   parseDescribeVideoResponse,
   uploadVideo,
   worstCaseVideoCost,
@@ -29,33 +30,39 @@ describe("worstCaseVideoCost", () => {
   it("is a positive, small constant (reservation ceiling, not a real bill)", () => {
     const cost = worstCaseVideoCost();
     expect(cost).toBeGreaterThan(0);
-    // 180s * ~550 tok/s (2 FPS + HIGH) in + 8192 tok out, at $0.1/$0.4 per 1M.
+    // 2 pases × 180s × 300 tok/s + 2 × 8192 tok out.
     expect(cost).toBeLessThan(0.05);
   });
 });
 
 describe("buildDescribeVideoRequest", () => {
-  it("pide cronología completa, no un prompt de generación", () => {
-    expect(DESCRIPTION_INSTRUCTION).toMatch(/ENTIRE video/i);
-    expect(DESCRIPTION_INSTRUCTION).toMatch(/Chronology/i);
-    expect(DESCRIPTION_INSTRUCTION).toMatch(/MM:SS/);
-    expect(DESCRIPTION_INSTRUCTION).toMatch(/transcribe/i);
-    expect(DESCRIPTION_INSTRUCTION).toMatch(/on-screen text/i);
-    expect(DESCRIPTION_INSTRUCTION).not.toMatch(/write an image\/video generation prompt from it/i);
+  it("pide transcripción verbatim y cronología visual por separado", () => {
+    expect(TRANSCRIPT_INSTRUCTION).toMatch(/word-for-word/i);
+    expect(VISUAL_INSTRUCTION).toMatch(/shot-by-shot/i);
+    expect(VISUAL_INSTRUCTION).toMatch(/on-screen text/i);
   });
 
-  it("fija fps, techo de salida y resolución alta en el body", () => {
+  it("fija 1 FPS y techo de salida, sin resolución HIGH", () => {
     const body = buildDescribeVideoRequest("https://.../files/abc", "video/mp4");
     const videoPart = body.contents[0].parts[0] as {
       file_data: { file_uri: string; mime_type: string };
       video_metadata: { fps: number };
-      media_resolution: { level: string };
+      media_resolution?: unknown;
     };
     expect(videoPart.file_data).toEqual({ file_uri: "https://.../files/abc", mime_type: "video/mp4" });
+    expect(videoPart.video_metadata.fps).toBe(1);
     expect(videoPart.video_metadata.fps).toBe(VIDEO_SAMPLE_FPS);
-    expect(videoPart.media_resolution.level).toBe(VIDEO_MEDIA_RESOLUTION);
+    expect(videoPart.media_resolution).toBeUndefined();
     expect(body.generationConfig.maxOutputTokens).toBe(VIDEO_MAX_OUTPUT_TOKENS);
-    expect(body.contents[0].parts[1]).toEqual({ text: DESCRIPTION_INSTRUCTION });
+    expect(body.contents[0].parts[1]).toEqual({ text: TRANSCRIPT_INSTRUCTION });
+  });
+});
+
+describe("mergeVideoAnalysis", () => {
+  it("antepone la transcripción a la cronología visual", () => {
+    expect(mergeVideoAnalysis({ transcript: "00:01 Hola", visual: "00:01 un puente" })).toContain("## TRANSCRIPCIÓN");
+    expect(mergeVideoAnalysis({ transcript: "00:01 Hola", visual: "00:01 un puente" })).toContain("00:01 Hola");
+    expect(mergeVideoAnalysis({ transcript: "00:01 Hola", visual: "00:01 un puente" })).toContain("## CRONOLOGÍA VISUAL");
   });
 });
 
@@ -147,7 +154,15 @@ describe("describeVideo (DI, no real network)", () => {
       mimeType: "video/mp4",
     });
 
-    expect(result).toEqual({ text: "A cat walks across a sunlit room.", tokensIn: 1234, tokensOut: 56 });
+    expect(result.text).toBe(
+      mergeVideoAnalysis({
+        transcript: "A cat walks across a sunlit room.",
+        visual: "A cat walks across a sunlit room.",
+      })
+    );
+    expect(result.tokensIn).toBe(2468);
+    expect(result.tokensOut).toBe(112);
+    expect(fetchFn).toHaveBeenCalledTimes(2);
 
     const [url, init] = fetchFn.mock.calls[0];
     expect(url).toContain(":generateContent");
@@ -167,5 +182,27 @@ describe("describeVideo (DI, no real network)", () => {
     await expect(
       describeVideo(fetchFn, "test-key", { fileUri: "https://.../files/x", mimeType: "video/mp4" })
     ).rejects.toThrow();
+  });
+
+  it("conserva el visual si solo falla la transcripción", async () => {
+    const fetchFn = vi.fn(async (_url: string, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body ?? "{}"));
+      const instruction = body.contents?.[0]?.parts?.[1]?.text ?? "";
+      if (instruction.includes("Listen only")) {
+        return { ok: false, status: 503, text: async () => "busy" } as Response;
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          candidates: [{ content: { parts: [{ text: "00:01 un puente" }] } }],
+          usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 4 },
+        }),
+      } as unknown as Response;
+    });
+
+    const result = await describeVideo(fetchFn, "test-key", { fileUri: "https://.../files/x", mimeType: "video/mp4" });
+    expect(result.text).toContain("## CRONOLOGÍA VISUAL");
+    expect(result.text).toContain("00:01 un puente");
+    expect(result.text).toContain("No hay habla ni letra audible.");
   });
 });

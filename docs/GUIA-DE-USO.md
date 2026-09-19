@@ -40,7 +40,7 @@ Al entrar caes en **`/chat`**, un shell fullscreen (sin header, como ChatGPT des
 ### Adjuntar imágenes, archivos y videos
 Todos los GPTs aceptan **imágenes** (visión), **documentos** y **videos** — sin distinción por GPT. Dos formas de adjuntar: el botón `+` (abre el selector de archivos directo, sin menú) o **pegar** con Ctrl+V, que solo toma imágenes. Las imágenes se numeran (**img 1, img 2…**) para GPTs que las referencian así.
 
-**Videos**: hasta 100MB. No se valida la duración en el servidor (no hay ffprobe); Gemini acepta clips largos, pero el análisis pide una cronología de planos + audio, no una transcripción palabra por palabra, y muestrea ~2 fotogramas/segundo. Esa descripción es lo único que recibe el GPT (requiere `GEMINI_API_KEY`, ver §5). El composer muestra "Analizando video (escenas + audio)..." — tarda más que una imagen o un documento.
+**Videos**: hasta 100MB. Gemini transcribe el audio (voz o letra, lo más literal posible) y arma una cronología de planos; eso es lo único que recibe el GPT (requiere `GEMINI_API_KEY`, ver §5). Mientras tanto se puede escribir; Enviar espera a que termine el adjunto. El composer muestra "Transcribiendo audio y escenas...".
 
 ### Copiar prompts
 Los bloques de código (donde los GPTs devuelven prompts) traen botón **Copiar** siempre visible.

@@ -9,6 +9,7 @@ import {
   insertMentionToken,
   type MentionCandidate,
 } from "@/lib/attachment-mentions";
+import { composerFieldDisabled } from "@/lib/composer-input";
 import { mentionAt, moveIndex, type MentionQuery } from "@/lib/file-search";
 import { VIDEO_ANALYZING_HINT, VIDEO_ANALYZING_LABEL, VIDEO_ATTACH_TITLE } from "@/lib/video-copy";
 import MentionField, { type MentionFieldHandle } from "./MentionField";
@@ -386,7 +387,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             <MentionField
               ref={mentionFieldRef}
               value={input}
-              disabled={isLoading || isTranscribing}
+              disabled={composerFieldDisabled({ isLoading, isTranscribing })}
               placeholder={
                 isTranscribing
                   ? "Transcribiendo audio..."

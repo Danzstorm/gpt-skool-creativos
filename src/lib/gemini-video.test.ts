@@ -10,13 +10,13 @@ import {
   MAX_VIDEO_MB,
   MAX_VIDEO_SECONDS,
   VIDEO_MAX_OUTPUT_TOKENS,
-  VIDEO_MEDIA_RESOLUTION,
   VIDEO_SAMPLE_FPS,
   buildDescribeVideoRequest,
   describeVideo,
   descriptionRejectReason,
   estimateGeminiCost,
   ffprobeArgs,
+  mergeVideoAnalysis,
   parseDescribeVideoResponse,
   parseFfprobeDuration,
   probeDurationSeconds,
@@ -112,13 +112,12 @@ describe("descriptionRejectReason", () => {
 });
 
 describe("buildDescribeVideoRequest", () => {
-  it("pide cronología completa y fija fps, techo de salida y resolución", () => {
-    expect(DESCRIPTION_INSTRUCTION).toMatch(/Chronology/i);
-    expect(DESCRIPTION_INSTRUCTION).toMatch(/transcribe/i);
+  it("pide transcripción verbatim y fija 1 FPS sin resolución HIGH", () => {
+    expect(DESCRIPTION_INSTRUCTION).toMatch(/word-for-word/i);
     const body = buildDescribeVideoRequest("https://.../files/abc", "video/mp4");
     const videoPart = body.contents[0]?.parts[0];
     expect(videoPart?.video_metadata?.fps).toBe(VIDEO_SAMPLE_FPS);
-    expect(videoPart?.media_resolution?.level).toBe(VIDEO_MEDIA_RESOLUTION);
+    expect(videoPart && "media_resolution" in videoPart).toBe(false);
     expect(body.generationConfig.maxOutputTokens).toBe(VIDEO_MAX_OUTPUT_TOKENS);
   });
 });
@@ -257,7 +256,14 @@ describe("uploadVideo / describeVideo (DI, no real network)", () => {
       mimeType: "video/mp4",
     });
 
-    expect(result).toEqual({ text: "A cat walks across a sunlit room.", tokensIn: 1234, tokensOut: 56 });
+    expect(result.text).toBe(
+      mergeVideoAnalysis({
+        transcript: "A cat walks across a sunlit room.",
+        visual: "A cat walks across a sunlit room.",
+      })
+    );
+    expect(result.tokensIn).toBe(2468);
+    expect(result.tokensOut).toBe(112);
 
     const [url, init] = fetchFn.mock.calls[0];
     expect(url).toContain(":generateContent");
