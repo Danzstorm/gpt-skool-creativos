@@ -50,28 +50,29 @@ describe("getGptVisual", () => {
     expect(known.accentClasses).not.toMatch(/sky|emerald|rose|cyan/);
 
     expect(known.accentHex).toBe(GPT_CRAFT_ACCENTS.scripts);
-    expect(known.stageKind).toBe("page");
+    expect(known.markKind).toBe("scripts");
     expect(known.heroShape).toContain("rounded");
 
     const video = getGptVisual("General", "Seedance Director", "Crea videos cinematográficos con Seedance");
-    expect(video.stageKind).toBe("frame");
+    expect(video.markKind).toBe("video");
 
     const unknown = getGptVisual("General", "Oráculo");
     expect(unknown.craft).toBeNull();
     expect(unknown.Icon.displayName || unknown.Icon.name).toMatch(/Hexagon/i);
     expect(unknown.accentHex).toBe(LOGO_REST_ACCENT);
-    expect(unknown.stageKind).toBe("ring");
+    expect(unknown.markKind).toBe("gem");
   });
 
-  it("mapea cada oficio creativo a una escena distinta, no a la misma ficha", () => {
+  it("mapea cada oficio creativo a una marca distinta, no a la misma ficha", () => {
     const kinds = [
-      getGptVisual("General", "Seedance Director", "video").stageKind,
-      getGptVisual("General", "Photoshoot", "fotos").stageKind,
-      getGptVisual("General", "CinePrompt", "imágenes").stageKind,
-      getGptVisual("General", "Characters", "personajes").stageKind,
-      getGptVisual("General", "Locations", "locaciones").stageKind,
-      getGptVisual("General", "UGC Scripts", "guiones").stageKind,
+      getGptVisual("General", "Seedance Director", "video").markKind,
+      getGptVisual("General", "Photoshoot", "fotos").markKind,
+      getGptVisual("General", "CinePrompt", "imágenes").markKind,
+      getGptVisual("General", "Characters", "personajes").markKind,
+      getGptVisual("General", "Locations", "locaciones").markKind,
+      getGptVisual("General", "UGC Scripts", "guiones").markKind,
     ];
+    expect(kinds).toEqual(["video", "photo", "images", "characters", "locations", "scripts"]);
     expect(new Set(kinds).size).toBe(6);
   });
 });

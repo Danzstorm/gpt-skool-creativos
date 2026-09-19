@@ -1,8 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import type { Gpt } from "@/lib/types";
 import { conversationStartersOf, getGptVisual } from "@/lib/gpt-visual";
-import GptGlyph from "./GptGlyph";
-import GptStageDecor from "./GptStage";
+import GptMark from "./GptMark";
 
 interface Props {
   gpt: Gpt;
@@ -10,27 +9,21 @@ interface Props {
   children?: ReactNode;
 }
 
-// Empty-state del GPT activo. El protagonista es el oficio (escena + marca),
-// no el orb de Creativos. Starters solo si la ficha ya los trae.
+// Empty-state del GPT activo. El protagonista es la marca de vidrio del oficio,
+// no el orb de Creativos ni un icono Lucide. Starters solo si la ficha ya los trae.
 export default function GptHero({ gpt, onStarter, children }: Props) {
-  const { label, accentHex, stageKind } = getGptVisual(gpt.category, gpt.name, gpt.description);
+  const { label, accentHex, markKind } = getGptVisual(gpt.category, gpt.name, gpt.description);
   const starters = conversationStartersOf(gpt.conversation_starters);
   const description = gpt.description?.trim() || "";
   const author = gpt.author?.trim() || "";
+  const letter = gpt.name?.trim()?.charAt(0)?.toUpperCase() || "G";
 
   return (
     <div
       className="gpt-hero flex min-h-full w-full max-w-2xl mx-auto flex-col items-center justify-center px-1 py-10 text-center"
       style={{ "--craft": accentHex } as CSSProperties}
     >
-      <div className="gpt-stage relative mb-8">
-        <div className="gpt-stage-bloom" aria-hidden />
-        <div className="gpt-stage-floor" aria-hidden />
-        <GptStageDecor kind={stageKind} />
-        <span className="relative z-[1]">
-          <GptGlyph gpt={gpt} size="hero" lit />
-        </span>
-      </div>
+      <GptMark kind={markKind} letter={letter} size="xl" className="mb-8" />
 
       {label && <p className="eyebrow mb-3 text-zinc-400">{label}</p>}
       <h3 className="font-display text-3xl font-bold tracking-tight text-zinc-100 md:text-4xl">

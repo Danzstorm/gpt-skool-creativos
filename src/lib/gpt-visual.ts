@@ -27,33 +27,41 @@ export type GptCraft =
   | "productivity"
   | "education";
 
-export type GptStageKind = "frame" | "lens" | "iris" | "scan" | "map" | "page" | "ring";
+/** Emblema 3D/vidrio del empty-state. Los 6 oficios creativos tienen marca propia. */
+export type GptMarkKind =
+  | "video"
+  | "photo"
+  | "images"
+  | "characters"
+  | "locations"
+  | "scripts"
+  | "gem";
 
 type CraftDef = {
   label: string;
   Icon: LucideIcon;
-  stageKind: GptStageKind;
+  markKind: GptMarkKind;
   heroShape: string;
 };
 
 // Marcas geométricas por oficio. El catálogo real vive casi todo en categoría
 // "General" y sin icon_url: el oficio se infiere del nombre/descripción.
 export const GPT_CRAFTS: Record<GptCraft, CraftDef> = {
-  video: { label: "Video", Icon: Clapperboard, stageKind: "frame", heroShape: "rounded-[1.75rem]" },
-  photo: { label: "Foto", Icon: Camera, stageKind: "lens", heroShape: "rounded-full" },
-  images: { label: "Imágenes", Icon: Aperture, stageKind: "iris", heroShape: "rounded-full" },
-  characters: { label: "Personajes", Icon: ScanFace, stageKind: "scan", heroShape: "rounded-[2rem]" },
-  locations: { label: "Locaciones", Icon: MapPinned, stageKind: "map", heroShape: "rounded-full" },
-  scripts: { label: "Guiones", Icon: PenLine, stageKind: "page", heroShape: "rounded-xl" },
-  marketing: { label: "Marketing", Icon: Megaphone, stageKind: "ring", heroShape: "rounded-2xl" },
-  design: { label: "Diseño", Icon: PenTool, stageKind: "ring", heroShape: "rounded-2xl" },
-  sales: { label: "Ventas", Icon: Target, stageKind: "ring", heroShape: "rounded-2xl" },
-  productivity: { label: "Productividad", Icon: ListTodo, stageKind: "ring", heroShape: "rounded-2xl" },
-  education: { label: "Educación", Icon: GraduationCap, stageKind: "ring", heroShape: "rounded-2xl" },
+  video: { label: "Video", Icon: Clapperboard, markKind: "video", heroShape: "rounded-[1.75rem]" },
+  photo: { label: "Foto", Icon: Camera, markKind: "photo", heroShape: "rounded-full" },
+  images: { label: "Imágenes", Icon: Aperture, markKind: "images", heroShape: "rounded-full" },
+  characters: { label: "Personajes", Icon: ScanFace, markKind: "characters", heroShape: "rounded-[2rem]" },
+  locations: { label: "Locaciones", Icon: MapPinned, markKind: "locations", heroShape: "rounded-full" },
+  scripts: { label: "Guiones", Icon: PenLine, markKind: "scripts", heroShape: "rounded-xl" },
+  marketing: { label: "Marketing", Icon: Megaphone, markKind: "gem", heroShape: "rounded-2xl" },
+  design: { label: "Diseño", Icon: PenTool, markKind: "gem", heroShape: "rounded-2xl" },
+  sales: { label: "Ventas", Icon: Target, markKind: "gem", heroShape: "rounded-2xl" },
+  productivity: { label: "Productividad", Icon: ListTodo, markKind: "gem", heroShape: "rounded-2xl" },
+  education: { label: "Educación", Icon: GraduationCap, markKind: "gem", heroShape: "rounded-2xl" },
 };
 
 const DEFAULT_HERO_SHAPE = "rounded-[1.75rem]";
-const DEFAULT_STAGE_KIND: GptStageKind = "ring";
+const DEFAULT_MARK_KIND: GptMarkKind = "gem";
 
 const DEFAULT_ICON = Hexagon;
 
@@ -150,7 +158,7 @@ export function getGptVisual(
     Icon: def?.Icon ?? DEFAULT_ICON,
     accentClasses: GPT_MARK_SURFACE,
     accentHex: craftAccentHex(craft),
-    stageKind: def?.stageKind ?? DEFAULT_STAGE_KIND,
+    markKind: def?.markKind ?? DEFAULT_MARK_KIND,
     heroShape: def?.heroShape ?? DEFAULT_HERO_SHAPE,
   };
 }

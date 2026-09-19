@@ -526,79 +526,163 @@ body {
   transition: background 260ms ease;
 }
 
-.gpt-hero {
-  --craft: var(--page-accent);
+/* --craft lo pone el contenedor (GptHero / preview) por inline style.
+   No resetearlo en .gpt-mark: si no, todas las esferas caen al magenta de marca. */
+
+/* Marca de oficio: misma familia que .orb (vidrio 3D), halo del color de craft.
+   Héroe ~176px; no fullscreen, no aurora. */
+.gpt-mark {
+  perspective: 640px;
 }
 
-.gpt-stage {
-  --craft: var(--page-accent);
-  width: min(17.5rem, 78vw);
-  height: min(17.5rem, 78vw);
-  display: grid;
-  place-items: center;
-}
-
-.gpt-stage-bloom {
+.gpt-mark-halo {
   position: absolute;
-  inset: -18%;
+  inset: -28%;
   border-radius: 9999px;
   background: radial-gradient(
-    circle at 50% 46%,
-    color-mix(in srgb, var(--craft, var(--page-accent)) 48%, transparent) 0%,
-    color-mix(in srgb, var(--craft, var(--page-accent)) 16%, transparent) 44%,
+    circle,
+    color-mix(in srgb, var(--craft) 56%, transparent) 0%,
+    color-mix(in srgb, var(--craft) 22%, transparent) 42%,
     transparent 72%
   );
-  filter: blur(28px);
+  filter: blur(18px);
   pointer-events: none;
   z-index: 0;
 }
 
-.gpt-stage-floor {
-  position: absolute;
-  left: 18%;
-  right: 18%;
-  bottom: 12%;
-  height: 18%;
-  border-radius: 9999px;
-  background: radial-gradient(
-    ellipse at 50% 50%,
-    color-mix(in srgb, var(--craft, var(--page-accent)) 22%, transparent),
-    transparent 72%
-  );
-  filter: blur(10px);
-  pointer-events: none;
-  z-index: 0;
+.gpt-mark-xl .gpt-mark-halo {
+  inset: -36%;
+  filter: blur(26px);
 }
 
-.gpt-stage-scene {
+.gpt-mark-sphere {
   position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
-  color: color-mix(in srgb, var(--craft, var(--page-accent)) 62%, #fff);
+  z-index: 1;
+  border-radius: 9999px;
+  overflow: hidden;
+  isolation: isolate;
+  background: color-mix(in srgb, var(--craft) 14%, #160c12);
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, 0.42),
+    0 0 0 1px rgba(255, 255, 255, 0.14),
+    0 0 40px color-mix(in srgb, var(--craft) 36%, transparent);
+  transform-style: preserve-3d;
+}
+
+.gpt-mark-atmosphere {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 30% 22%, color-mix(in srgb, #fff 28%, var(--craft)) 0%, transparent 30%),
+    radial-gradient(circle at 56% 42%, color-mix(in srgb, var(--craft) 72%, transparent) 0%, transparent 44%),
+    radial-gradient(circle at 48% 70%, color-mix(in srgb, var(--craft) 38%, #000) 0%, transparent 46%),
+    color-mix(in srgb, var(--craft) 12%, #160c12);
+}
+
+.gpt-mark-caustic {
+  position: absolute;
+  inset: -30%;
+  background: conic-gradient(
+    from 200deg,
+    transparent 0 46%,
+    rgba(255, 255, 255, 0.28) 56%,
+    transparent 64%,
+    color-mix(in srgb, var(--craft) 32%, transparent) 72%,
+    transparent 84%
+  );
   pointer-events: none;
-  z-index: 0;
 }
 
-.gpt-stage-scene :is(rect, circle, polygon, path, line) {
-  stroke: currentColor;
-  stroke-width: 1.35;
-  fill: none;
+.gpt-mark-emblem {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
 }
 
-.gpt-stage-scene .gpt-stage-light {
-  fill: color-mix(in srgb, var(--craft, var(--page-accent)) 42%, transparent);
-  stroke: none;
+.gpt-mark-svg {
+  width: 72%;
+  height: 72%;
+  overflow: visible;
 }
 
-.gpt-stage-scene .gpt-stage-glint {
-  fill: color-mix(in srgb, var(--craft, var(--page-accent)) 70%, #fff);
-  stroke: none;
+.gpt-mark-letter {
+  color: #fff;
+  font-size: 42px;
+  font-stretch: 68%;
+  letter-spacing: -0.05em;
+  line-height: 1;
+  text-shadow:
+    0 0 16px rgba(255, 255, 255, 0.28),
+    0 1px 2px rgba(0, 0, 0, 0.45);
+  user-select: none;
 }
 
-.gpt-stage-scene .gpt-stage-scan {
-  stroke: color-mix(in srgb, var(--craft, var(--page-accent)) 80%, #fff);
-  stroke-width: 1.75;
+.gpt-mark-md .gpt-mark-letter {
+  font-size: 26px;
+}
+
+.gpt-mark-film {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background: linear-gradient(
+    155deg,
+    rgba(255, 255, 255, 0.2) 0%,
+    rgba(255, 255, 255, 0.04) 36%,
+    transparent 52%,
+    rgba(0, 0, 0, 0.22) 100%
+  );
+  pointer-events: none;
+}
+
+.gpt-mark-highlight {
+  position: absolute;
+  z-index: 5;
+  width: 42%;
+  height: 26%;
+  left: 16%;
+  top: 11%;
+  border-radius: 9999px;
+  background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0) 72%);
+  filter: blur(2px);
+  pointer-events: none;
+}
+
+.gpt-mark-shade {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  border-radius: inherit;
+  box-shadow:
+    inset -10px -14px 22px rgba(0, 0, 0, 0.48),
+    inset 5px 7px 12px rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+}
+
+.gpt-mark-rim {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(
+    from 210deg,
+    color-mix(in srgb, #fff 70%, var(--craft)),
+    var(--craft),
+    color-mix(in srgb, var(--craft) 40%, #1a1020),
+    color-mix(in srgb, #fff 35%, var(--craft)),
+    var(--craft)
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.62;
+  pointer-events: none;
 }
 
 .gpt-glyph-lit {
@@ -606,7 +690,7 @@ body {
   color: color-mix(in srgb, var(--craft, var(--accent)) 68%, #fff);
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--craft, var(--accent)) 18%, transparent),
-    0 0 36px color-mix(in srgb, var(--craft, var(--accent)) 34%, transparent);
+    0 0 20px color-mix(in srgb, var(--craft, var(--accent)) 26%, transparent);
 }
 
 .gpt-starter {
@@ -703,32 +787,80 @@ body {
       transform: translateY(0);
     }
   }
-  @keyframes gpt-stage-glow {
+  @keyframes gpt-mark-breathe {
     0%,
     100% {
-      opacity: 0.55;
+      transform: scale(1);
+      opacity: 0.58;
     }
     50% {
+      transform: scale(1.12);
       opacity: 1;
     }
   }
-  @keyframes gpt-stage-scan {
+  @keyframes gpt-mark-shimmer {
+    0%,
+    100% {
+      opacity: 0.7;
+      transform: translate(0, 0) scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: translate(8%, 5%) scale(1.08);
+    }
+  }
+  @keyframes gpt-mark-tilt {
+    0%,
+    100% {
+      transform: rotateX(6deg) rotateY(-8deg);
+    }
+    50% {
+      transform: rotateX(-4deg) rotateY(8deg);
+    }
+  }
+  @keyframes gpt-mark-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  @keyframes gpt-mark-float {
     0%,
     100% {
       transform: translateY(0);
-      opacity: 0.35;
     }
     50% {
-      transform: translateY(96px);
-      opacity: 0.95;
+      transform: translateY(-2px);
     }
   }
 
-  .gpt-stage-light {
-    animation: gpt-stage-glow 3.2s ease-in-out infinite;
+  .gpt-mark-breathe {
+    animation: gpt-mark-breathe 8s ease-in-out infinite;
   }
-  .gpt-stage-scan {
-    animation: gpt-stage-scan 3.8s ease-in-out infinite;
+  .gpt-mark-shimmer {
+    animation: gpt-mark-shimmer 9.5s ease-in-out infinite;
+  }
+  .gpt-mark-tilt {
+    animation: gpt-mark-tilt 11s ease-in-out infinite;
+  }
+  .gpt-mark-spin {
+    animation: gpt-mark-spin 28s linear infinite;
+  }
+  .gpt-mark-emblem {
+    animation: gpt-mark-float 8s ease-in-out infinite;
+  }
+  @keyframes gpt-mark-scan {
+    0%,
+    100% {
+      transform: translateY(-8px);
+      opacity: 0.35;
+    }
+    50% {
+      transform: translateY(8px);
+      opacity: 0.9;
+    }
+  }
+  .gpt-mark-scan {
+    animation: gpt-mark-scan 9s ease-in-out infinite;
     transform-box: fill-box;
     transform-origin: center;
   }

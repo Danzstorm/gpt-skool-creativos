@@ -19,7 +19,7 @@ interface Props {
   className?: string;
   sizePx?: string;
   textClassName?: string;
-  /** Enciende el acento del oficio. El empty-state lo usa; sidebar/cards no. */
+  /** Enciende el acento del oficio en placas compactas. El empty-state usa GptMark. */
   lit?: boolean;
 }
 
