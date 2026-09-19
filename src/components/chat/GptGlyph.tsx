@@ -8,6 +8,7 @@ const SIZES = {
   sm: { box: "w-6 h-6 rounded-md", px: "24px", text: "text-[11px]", icon: 14 },
   lg: { box: "w-8 h-8 rounded-lg", px: "32px", text: "text-base", icon: 16 },
   xl: { box: "h-16 w-16 rounded-2xl", px: "64px", text: "text-2xl", icon: 28 },
+  hero: { box: "h-[7.5rem] w-[7.5rem]", px: "120px", text: "text-5xl", icon: 56 },
 } as const;
 
 interface Props {
@@ -18,15 +19,17 @@ interface Props {
   className?: string;
   sizePx?: string;
   textClassName?: string;
+  /** Enciende el acento del oficio. El empty-state lo usa; sidebar/cards no. */
+  lit?: boolean;
 }
 
 // Marca visual canónica de un GPT:
 // 1. icon_url si el admin subió uno
 // 2. marca geométrica del oficio (categoría o nombre/descripción)
 // 3. inicial tipográfica si no hay oficio reconocible
-export default function GptGlyph({ gpt, size = "sm", className, sizePx, textClassName }: Props) {
+export default function GptGlyph({ gpt, size = "sm", className, sizePx, textClassName, lit }: Props) {
   const preset = SIZES[size];
-  const { craft, Icon, accentClasses } = getGptVisual(
+  const { craft, Icon, accentClasses, heroShape } = getGptVisual(
     gpt?.category,
     gpt?.name,
     gpt?.description
@@ -38,6 +41,8 @@ export default function GptGlyph({ gpt, size = "sm", className, sizePx, textClas
       className={cn(
         "gpt-glyph relative flex items-center justify-center flex-shrink-0 bg-gradient-to-br border overflow-hidden",
         className || preset.box,
+        size === "hero" && !className && heroShape,
+        lit && "gpt-glyph-lit",
         accentClasses
       )}
       aria-hidden
@@ -45,7 +50,7 @@ export default function GptGlyph({ gpt, size = "sm", className, sizePx, textClas
       {gpt?.icon_url ? (
         <Image src={gpt.icon_url} alt="" fill sizes={sizePx || preset.px} className="object-cover" />
       ) : craft ? (
-        <Icon size={preset.icon} strokeWidth={1.75} />
+        <Icon size={preset.icon} strokeWidth={size === "hero" ? 1.4 : 1.75} />
       ) : (
         <span className={cn("font-display font-semibold leading-none", textClassName || preset.text)}>
           {initial}

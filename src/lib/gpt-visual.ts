@@ -27,26 +27,33 @@ export type GptCraft =
   | "productivity"
   | "education";
 
+export type GptStageKind = "frame" | "lens" | "iris" | "scan" | "map" | "page" | "ring";
+
 type CraftDef = {
   label: string;
   Icon: LucideIcon;
+  stageKind: GptStageKind;
+  heroShape: string;
 };
 
 // Marcas geométricas por oficio. El catálogo real vive casi todo en categoría
 // "General" y sin icon_url: el oficio se infiere del nombre/descripción.
 export const GPT_CRAFTS: Record<GptCraft, CraftDef> = {
-  video: { label: "Video", Icon: Clapperboard },
-  photo: { label: "Foto", Icon: Camera },
-  images: { label: "Imágenes", Icon: Aperture },
-  characters: { label: "Personajes", Icon: ScanFace },
-  locations: { label: "Locaciones", Icon: MapPinned },
-  scripts: { label: "Guiones", Icon: PenLine },
-  marketing: { label: "Marketing", Icon: Megaphone },
-  design: { label: "Diseño", Icon: PenTool },
-  sales: { label: "Ventas", Icon: Target },
-  productivity: { label: "Productividad", Icon: ListTodo },
-  education: { label: "Educación", Icon: GraduationCap },
+  video: { label: "Video", Icon: Clapperboard, stageKind: "frame", heroShape: "rounded-[1.75rem]" },
+  photo: { label: "Foto", Icon: Camera, stageKind: "lens", heroShape: "rounded-full" },
+  images: { label: "Imágenes", Icon: Aperture, stageKind: "iris", heroShape: "rounded-full" },
+  characters: { label: "Personajes", Icon: ScanFace, stageKind: "scan", heroShape: "rounded-[2rem]" },
+  locations: { label: "Locaciones", Icon: MapPinned, stageKind: "map", heroShape: "rounded-full" },
+  scripts: { label: "Guiones", Icon: PenLine, stageKind: "page", heroShape: "rounded-xl" },
+  marketing: { label: "Marketing", Icon: Megaphone, stageKind: "ring", heroShape: "rounded-2xl" },
+  design: { label: "Diseño", Icon: PenTool, stageKind: "ring", heroShape: "rounded-2xl" },
+  sales: { label: "Ventas", Icon: Target, stageKind: "ring", heroShape: "rounded-2xl" },
+  productivity: { label: "Productividad", Icon: ListTodo, stageKind: "ring", heroShape: "rounded-2xl" },
+  education: { label: "Educación", Icon: GraduationCap, stageKind: "ring", heroShape: "rounded-2xl" },
 };
+
+const DEFAULT_HERO_SHAPE = "rounded-[1.75rem]";
+const DEFAULT_STAGE_KIND: GptStageKind = "ring";
 
 const DEFAULT_ICON = Hexagon;
 
@@ -143,5 +150,16 @@ export function getGptVisual(
     Icon: def?.Icon ?? DEFAULT_ICON,
     accentClasses: GPT_MARK_SURFACE,
     accentHex: craftAccentHex(craft),
+    stageKind: def?.stageKind ?? DEFAULT_STAGE_KIND,
+    heroShape: def?.heroShape ?? DEFAULT_HERO_SHAPE,
   };
+}
+
+/** Starters de la ficha. No inventa copy: si la DB manda basura o un string, no hay chips. */
+export function conversationStartersOf(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean);
 }

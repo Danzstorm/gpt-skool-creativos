@@ -8,6 +8,7 @@ import { firstNameOf } from "@/lib/utils";
 import { getGptVisual, LOGO_REST_ACCENT } from "@/lib/gpt-visual";
 import GptCatalog from "@/components/GptCatalog";
 import GptGlyph from "./chat/GptGlyph";
+import GptHero from "./chat/GptHero";
 import ChatSidebar from "./chat/ChatSidebar";
 import MessageBubble from "./chat/MessageBubble";
 import Composer, { type ComposerHandle } from "./chat/Composer";
@@ -321,7 +322,9 @@ export default function UnifiedChat({
       />
 
       <div
-        className={`chat-main flex flex-col flex-1 min-w-0 relative${showCraftWash ? " is-accented" : ""}`}
+        className={`chat-main flex flex-col flex-1 min-w-0 relative${showCraftWash ? " is-accented" : ""}${
+          activeGpt && messages.length === 0 && !isLoadingHistory ? " is-gpt-empty" : ""
+        }`}
         style={{ "--page-accent": pageAccent } as CSSProperties}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
@@ -428,41 +431,12 @@ export default function UnifiedChat({
           )}
 
           {activeGpt && messages.length === 0 && !isLoadingHistory && (
-            <div className="flex flex-col items-center justify-center h-full text-center py-12 max-w-2xl mx-auto">
-              <div
-                className="gpt-empty relative mb-5"
-                style={{ "--craft": selectedAccent ?? pageAccent } as CSSProperties}
-              >
-                <div className="gpt-empty-bloom" aria-hidden />
-                <span className="relative z-[1]">
-                  <GptGlyph gpt={activeGpt} size="xl" />
-                </span>
-              </div>
-              <h3 className="font-display text-3xl font-bold tracking-tight text-zinc-100 mb-2">{activeGpt.name}</h3>
-              {activeGpt.description && (
-                <p className="text-zinc-400 text-sm max-w-md">{activeGpt.description}</p>
-              )}
-              {activeGpt.author && (
-                <p className="text-zinc-500 text-xs mt-1.5">By {activeGpt.author}</p>
-              )}
+            <GptHero gpt={activeGpt} onStarter={sendMessage}>
               {/* Sigue visible después de elegir el GPT: el destino recién se
                   aplica al enviar el primer mensaje, y hasta entonces es la
                   única señal de que este chat va a nacer dentro de la carpeta. */}
               {pendingProject && <ProjectDestination name={pendingProject.name} />}
-              {activeGpt.conversation_starters && activeGpt.conversation_starters.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-8 w-full">
-                  {activeGpt.conversation_starters.slice(0, 4).map((starter, i) => (
-                    <button
-                      key={i}
-                      onClick={() => sendMessage(starter)}
-                      className="cursor-pointer rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-left text-sm text-zinc-300 transition hover:border-zinc-700 hover:text-zinc-100 motion-safe:hover:-translate-y-px active:scale-[0.98]"
-                    >
-                      {starter}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            </GptHero>
           )}
 
           {messages.length > 0 && (
