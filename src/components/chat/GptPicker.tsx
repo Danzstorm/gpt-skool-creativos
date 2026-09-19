@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, SearchX, X } from "lucide-react";
 import type { Gpt } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -14,7 +14,6 @@ interface Props {
   activeGptId: string | null;
   onClose: () => void;
   onSelect: (id: string) => void;
-  onAccentHover: (hex: string | null) => void;
 }
 
 const CHIP_BASE =
@@ -23,7 +22,7 @@ const CHIP_ACTIVE = "bg-zinc-100 text-zinc-950 border-transparent";
 const CHIP_IDLE =
   "bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 hover:border-zinc-700";
 
-export default function GptPicker({ gpts, activeGptId, onClose, onSelect, onAccentHover }: Props) {
+export default function GptPicker({ gpts, activeGptId, onClose, onSelect }: Props) {
   const [search, setSearch] = useState("");
   const [activeCraft, setActiveCraft] = useState<GptCraft | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -136,11 +135,6 @@ export default function GptPicker({ gpts, activeGptId, onClose, onSelect, onAcce
                     key={gpt.id}
                     type="button"
                     onClick={() => onSelect(gpt.id)}
-                    onPointerEnter={() => onAccentHover(visual.accentHex)}
-                    onPointerLeave={() => onAccentHover(null)}
-                    onFocus={() => onAccentHover(visual.accentHex)}
-                    onBlur={() => onAccentHover(null)}
-                    style={{ "--craft": visual.accentHex } as CSSProperties}
                     aria-current={isActive ? "true" : undefined}
                     className={cn(
                       "gpt-nav flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors active:scale-[0.99]",

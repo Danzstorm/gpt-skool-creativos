@@ -289,17 +289,11 @@ export default function UnifiedChat({
 
   const lastUserIndex = messages.map((m) => m.role).lastIndexOf("user");
   const showComposer = !!activeGpt;
-  const [hoverAccent, setHoverAccent] = useState<string | null>(null);
-  const onAccentHover = useCallback((hex: string | null) => {
-    setHoverAccent(hex);
-  }, []);
   const selectedAccent = activeGpt
     ? getGptVisual(activeGpt.category, activeGpt.name, activeGpt.description).accentHex
     : null;
-  const pageAccent = hoverAccent ?? selectedAccent ?? LOGO_REST_ACCENT;
-  const showCraftWash = Boolean(
-    hoverAccent || (activeGpt && messages.length === 0 && !isLoadingHistory)
-  );
+  const pageAccent = selectedAccent ?? LOGO_REST_ACCENT;
+  const showCraftWash = Boolean(activeGpt && messages.length === 0 && !isLoadingHistory);
   const firstName = firstNameOf(profile.fullName);
   const gptChatsModalGpt = gptChatsModalId ? gpts.find((g) => g.id === gptChatsModalId) : null;
   const gptChatsModalThreads = useMemo(
@@ -330,7 +324,6 @@ export default function UnifiedChat({
         onSearchChange={onSearchChange}
         onSelectGpt={selectGpt}
         onOpenAllGpts={openAllGpts}
-        onAccentHover={onAccentHover}
         onSelectThread={selectThread}
         onNewChat={newChat}
         onCloseSidebar={closeSidebar}
@@ -462,11 +455,11 @@ export default function UnifiedChat({
             <div className="flex w-full max-w-6xl mx-auto flex-col items-center py-10 md:py-14">
               <div className="relative mb-8 flex flex-col items-center text-center md:mb-10">
                 <div className="hero-bloom" aria-hidden />
-                <Orb size="xl" className="relative z-[1] mb-7 md:mb-8" />
-                <p className="eyebrow mb-3 text-zinc-400">
+                <Orb size="md" className="relative z-[1] mb-6" />
+                <p className="mb-3 text-sm leading-normal text-zinc-500">
                   {firstName ? `Bienvenido de nuevo, ${firstName}` : "Bienvenido de nuevo"}
                 </p>
-                <h1 className="font-display text-center text-4xl font-bold tracking-tight text-zinc-100 md:text-5xl">
+                <h1 className="font-display italic text-center text-[1.75rem] font-semibold tracking-tight text-zinc-100 md:text-4xl">
                   ¿Qué vas a crear hoy?
                 </h1>
                 {pendingProject && <ProjectDestination name={pendingProject.name} />}
@@ -475,7 +468,6 @@ export default function UnifiedChat({
                 <GptCatalog
                   gpts={gpts}
                   onSelect={selectGpt}
-                  onAccentHover={onAccentHover}
                   expanded={heroCatalogExpanded}
                   onExpand={expandHeroCatalog}
                 />
@@ -585,7 +577,6 @@ export default function UnifiedChat({
           activeGptId={activeGptId}
           onClose={closeGptPicker}
           onSelect={selectGpt}
-          onAccentHover={onAccentHover}
         />
       )}
 

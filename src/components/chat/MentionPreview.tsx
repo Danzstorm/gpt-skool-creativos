@@ -12,8 +12,8 @@ interface Props {
 const PREVIEW_WIDTH = 240;
 
 /**
- * Popover Higgsfield: foto grande + token. Sin "guardar como elemento":
- * acá el archivo ya es un adjunto del hilo, no un elemento de librería.
+ * Foto Higgsfield: ~240px, esquinas redondas, anclada al token.
+ * Sin caption ni chrome extra — el token ya está en la línea.
  */
 export default function MentionPreview({ candidate, anchor }: Props) {
   const ref = useRef<HTMLDivElement>(null);
@@ -21,8 +21,8 @@ export default function MentionPreview({ candidate, anchor }: Props) {
 
   useLayoutEffect(() => {
     const el = ref.current;
-    const height = el?.offsetHeight ?? 280;
-    const gap = 10;
+    const height = el?.offsetHeight ?? 240;
+    const gap = 8;
     let top = anchor.top - height - gap;
     if (top < 8) top = anchor.bottom + gap;
     let left = anchor.left + anchor.width / 2 - PREVIEW_WIDTH / 2;
@@ -47,13 +47,12 @@ export default function MentionPreview({ candidate, anchor }: Props) {
       ) : (
         <div className="flex aspect-square w-full items-center justify-center bg-zinc-900">
           {candidate.kind === "video" ? (
-            <Video size={32} className="text-zinc-500" />
+            <Video size={28} className="text-zinc-500" />
           ) : (
-            <Paperclip size={32} className="text-zinc-500" />
+            <Paperclip size={28} className="text-zinc-500" />
           )}
         </div>
       )}
-      <p className="px-3 py-2 text-sm text-zinc-100">{candidate.token}</p>
     </div>
   );
 }

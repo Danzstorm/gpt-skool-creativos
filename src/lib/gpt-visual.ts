@@ -27,10 +27,10 @@ export type GptCraft =
   | "productivity"
   | "education";
 
-/** Badge de catálogo/sidebar (px). El empty-state 3D sigue en GptMark (xl). */
-export const GPT_LOGO_PX = { xs: 28, md: 64 } as const;
+/** Glyph de catálogo/sidebar (px). Card ~44, sidebar 20. */
+export const GPT_LOGO_PX = { xs: 20, md: 44 } as const;
 
-/** Emblema de oficio: empty-state (GptMark 3D) y catálogo/sidebar (GptLogo). */
+/** Emblema de oficio (empty-state y tests). El catálogo usa Lucide, no esmalte. */
 export type GptMarkKind =
   | "video"
   | "photo"
@@ -68,29 +68,27 @@ const DEFAULT_MARK_KIND: GptMarkKind = "gem";
 
 const DEFAULT_ICON = Hexagon;
 
-// Placa en reposo: zinc + vidrio para todos. El color de oficio vive en
-// `accentHex` (espectro muestreado del logo) y solo se enciende en hover/selected.
+// Placa en reposo: zinc + vidrio para todos. El tinte de oficio va en el trazo.
 export const GPT_MARK_SURFACE =
   "from-white/[0.08] to-white/[0.02] border-white/[0.12] text-zinc-100";
 
-// Banda dominante del JPG: magenta/rosa (~#FF1B8D), no el ámbar del borde.
-// El velo en reposo y el halo del orb salen de acá.
-export const LOGO_REST_ACCENT = "#FF1B8D";
+// Acento de marca: rojo del logo. Rosa solo en el wordmark. No teñir cards.
+export const LOGO_REST_ACCENT = "#FF003C";
 
-// Stops del logo (ámbar → naranja → rojo → magenta → fucsia → violeta → índigo)
-// repartidos por oficio. Distintos en hover; misma familia que el wordmark.
+// Tintes suaves del oficio para el símbolo (no el magenta de marca).
+// Distintos a ojo: video frío, foto cálida, locación verdosa.
 export const GPT_CRAFT_ACCENTS: Record<GptCraft, string> = {
-  video: "#FF1B8D",
-  photo: "#FF2D9A",
-  images: "#FF1A58",
-  characters: "#E000D8",
-  locations: "#5B3CFF",
-  scripts: "#FF9A1A",
-  marketing: "#FF6D1A",
-  design: "#C000FF",
-  sales: "#FF003C",
-  productivity: "#A91EFF",
-  education: "#4A44FE",
+  video: "#8BA3B8",
+  photo: "#C4A574",
+  images: "#A89BB8",
+  characters: "#C9A08A",
+  locations: "#7FA8A0",
+  scripts: "#C8B896",
+  marketing: "#C47A7A",
+  design: "#9B8FB8",
+  sales: "#C48A70",
+  productivity: "#8A96A8",
+  education: "#B8A06A",
 };
 
 export function craftAccentHex(craft: GptCraft | null | undefined): string {

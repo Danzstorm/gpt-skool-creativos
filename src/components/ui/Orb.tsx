@@ -13,10 +13,8 @@ interface Props {
   className?: string;
 }
 
-// Firma de marca: burbuja de vidrio 3D con el wordmark Creativos como núcleo.
-// Halo magenta (banda dominante del logo), atmósfera estática, caústico,
-// rim-light del espectro y highlight que respira. Animaciones solo
-// bajo prefers-reduced-motion: no-preference.
+// Firma de marca: esfera de vidrio con el wordmark. Halo rojo contenido,
+// no un bloom magenta a media pantalla. Motion solo sin reduce-motion.
 export default function Orb({ size, className }: Props) {
   const { px, mark } = SIZES[size];
   const compact = size === "xs";

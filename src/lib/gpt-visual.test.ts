@@ -92,21 +92,21 @@ describe("conversationStartersOf", () => {
 });
 
 describe("GPT_LOGO_PX", () => {
-  it("deja el badge sidebar nítido y el de card a tamaño héroe, sin esfera xl", () => {
-    expect(GPT_LOGO_PX.xs).toBeGreaterThanOrEqual(24);
-    expect(GPT_LOGO_PX.xs).toBeLessThanOrEqual(32);
-    expect(GPT_LOGO_PX.md).toBeGreaterThanOrEqual(56);
-    expect(GPT_LOGO_PX.md).toBeLessThanOrEqual(72);
+  it("deja el glyph sidebar a 20px y el de card a ~44, sin esfera ni esmalte", () => {
+    expect(GPT_LOGO_PX.xs).toBe(20);
+    expect(GPT_LOGO_PX.md).toBeGreaterThanOrEqual(40);
+    expect(GPT_LOGO_PX.md).toBeLessThanOrEqual(48);
   });
 });
 
 describe("GPT_CRAFT_ACCENTS", () => {
-  it("reparte el espectro del logo entre oficios, sin reciclar un solo hex", () => {
+  it("usa tintes suaves distintos por oficio, no el rojo de marca", () => {
     const hexes = Object.values(GPT_CRAFT_ACCENTS);
     for (const hex of hexes) {
       expect(hex).toMatch(/^#[0-9A-Fa-f]{6}$/);
+      expect(hex.toUpperCase()).not.toBe(LOGO_REST_ACCENT);
     }
     expect(new Set(hexes).size).toBe((Object.keys(GPT_CRAFT_ACCENTS) as GptCraft[]).length);
-    expect(LOGO_REST_ACCENT).toBe("#FF1B8D");
+    expect(LOGO_REST_ACCENT).toBe("#FF003C");
   });
 });

@@ -13,10 +13,8 @@ interface Props {
 }
 
 /**
- * Autocompletado de adjuntos del hilo al escribir `@`.
- *
- * Presentacional: el Composer decide qué está activo y atrapa Enter antes de
- * enviar el mensaje. Las filas miden 44px para poder elegirlas con el pulgar.
+ * Lista mínima al escribir `@`: Imagen 1…N de este hilo.
+ * El Composer atrapa Enter antes de enviar. Filas 44px para el pulgar.
  */
 function MentionMenu({ files, activeIndex, query, onPick, onHover }: Props) {
   const listRef = useRef<HTMLUListElement>(null);
@@ -27,19 +25,15 @@ function MentionMenu({ files, activeIndex, query, onPick, onHover }: Props) {
   }, [activeIndex]);
 
   return (
-    <div className="absolute bottom-full left-0 z-20 mb-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
-      <p className="px-3 py-2 text-[11px] uppercase tracking-wide text-zinc-500 border-b border-white/[0.08]">
-        Adjuntos de este chat
-      </p>
-
+    <div className="absolute bottom-full left-0 z-20 mb-1.5 w-56 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950">
       {files.length === 0 ? (
-        <p className="px-3 py-4 text-sm text-zinc-500">
+        <p className="px-3 py-3 text-sm leading-normal text-zinc-500">
           {query
             ? `Sin resultados para «${query}»`
-            : "Todavía no hay imágenes en este hilo. Adjuntá una arriba para referenciarla."}
+            : "Todavía no hay adjuntos en este hilo."}
         </p>
       ) : (
-        <ul ref={listRef} role="listbox" className="max-h-64 overflow-y-auto py-1">
+        <ul ref={listRef} role="listbox" className="max-h-56 overflow-y-auto py-1">
           {files.map((file, i) => (
             <li
               key={file.id}
@@ -50,8 +44,8 @@ function MentionMenu({ files, activeIndex, query, onPick, onHover }: Props) {
                 onPick(file);
               }}
               onMouseEnter={() => onHover(i)}
-              className={`flex h-11 cursor-pointer items-center gap-2.5 overflow-hidden px-3 ${
-                i === activeIndex ? "bg-white/[0.08]" : "hover:bg-white/[0.06]"
+              className={`flex min-h-11 cursor-pointer items-center gap-2.5 px-3 ${
+                i === activeIndex ? "bg-white/[0.08]" : "hover:bg-white/[0.05]"
               }`}
             >
               {file.kind === "image" && file.previewUrl ? (
@@ -59,22 +53,19 @@ function MentionMenu({ files, activeIndex, query, onPick, onHover }: Props) {
                 <img
                   src={file.previewUrl}
                   alt=""
-                  className="h-11 w-11 flex-shrink-0 rounded-lg border border-white/[0.08] object-cover"
+                  className="h-5 w-5 flex-shrink-0 rounded object-cover"
                 />
               ) : (
-                <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-white/[0.06]">
+                <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center">
                   {file.kind === "video" ? (
-                    <Video size={16} className="text-zinc-400" />
+                    <Video size={14} className="text-zinc-500" />
                   ) : (
-                    <Paperclip size={16} className="text-zinc-400" />
+                    <Paperclip size={14} className="text-zinc-500" />
                   )}
                 </span>
               )}
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm text-zinc-100">{file.token}</span>
-                {file.kind === "document" && (
-                  <span className="block truncate text-[11px] text-zinc-500">{file.name}</span>
-                )}
+              <span className="min-w-0 truncate text-sm leading-normal text-zinc-200">
+                {file.token.replace(/^@/, "")}
               </span>
             </li>
           ))}

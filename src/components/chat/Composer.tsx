@@ -446,9 +446,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           <button
             onClick={submit}
             disabled={isUploading || (!input.trim() && attachedFiles.length === 0)}
-            // `disabled:bg-none` es obligatorio: `.cta-gradient` pinta con
-            // background-image y `disabled:bg-zinc-800` solo cambia el color.
-            className="cta-gradient flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-white transition hover:brightness-110 active:scale-95 disabled:cursor-not-allowed disabled:bg-none disabled:bg-zinc-800 disabled:text-zinc-500 disabled:hover:brightness-100"
+            className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-brand text-white transition hover:bg-[#E00032] active:scale-95 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500 disabled:hover:bg-zinc-800"
             // Enviar sigue esperando al adjunto: mandar antes dejaría el mensaje
             // sin el archivo que lo motivó. Escribir, en cambio, nunca se bloquea.
             title={isUploading ? "Esperando a que termine el adjunto" : "Enviar"}

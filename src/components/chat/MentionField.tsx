@@ -137,7 +137,7 @@ function tokenSpan(
   span.dataset.mention = token;
   span.contentEditable = "false";
   span.tabIndex = 0;
-  span.className = "mention-chip";
+  span.className = "mention-chip mention-chip--has-preview";
   span.textContent = token;
   span.addEventListener("mouseenter", () => onPreview(span, token));
   span.addEventListener("focus", () => onPreview(span, token));
