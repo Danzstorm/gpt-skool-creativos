@@ -1,42 +1,29 @@
-// Luz ambiental: tres manchas de color de marca (ámbar / magenta / índigo)
-// muy desenfocadas detrás del contenido. El padre debe ser `relative`. Las
-// clases aurora-a/b/c (globals.css) las hacen derivar bajo no-preference.
+// Luz ambiental de marca: dos manchas rojo/rosa, muy desenfocadas.
+// Solo en login/unauthorized — el chat es una herramienta y va sobre negro.
 export default function Aurora() {
   return (
     <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
       <div
-        className="aurora-a absolute rounded-full blur-[120px]"
+        className="aurora-a absolute rounded-full blur-[140px]"
         style={{
-          width: "40%",
+          width: "42%",
           aspectRatio: "1",
-          top: "-10%",
-          left: "-8%",
-          background: "#FEC200",
-          opacity: 0.1,
+          top: "-12%",
+          left: "-10%",
+          background: "#FF003C",
+          opacity: 0.08,
           willChange: "transform",
         }}
       />
       <div
-        className="aurora-b absolute rounded-full blur-[120px]"
+        className="aurora-b absolute rounded-full blur-[140px]"
         style={{
-          width: "45%",
+          width: "38%",
           aspectRatio: "1",
-          top: "20%",
-          right: "-12%",
-          background: "#F400EB",
-          opacity: 0.12,
-          willChange: "transform",
-        }}
-      />
-      <div
-        className="aurora-c absolute rounded-full blur-[120px]"
-        style={{
-          width: "50%",
-          aspectRatio: "1",
-          bottom: "-25%",
-          left: "20%",
-          background: "#4A44FE",
-          opacity: 0.1,
+          top: "28%",
+          right: "-14%",
+          background: "#F80092",
+          opacity: 0.06,
           willChange: "transform",
         }}
       />

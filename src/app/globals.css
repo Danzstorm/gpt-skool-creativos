@@ -2,15 +2,15 @@
 
 /* ============================================================
    Tema único: Creativos
-   Base neutra-fría casi negra, superficies de vidrio y el gradiente de
-   marca muestreado del logo (ámbar → rojo → magenta → violeta → índigo)
-   como firma. Acento sólido: el violeta del gradiente.
+   Base neutra-fría casi negra. Un acento (rojo → rosa del logo). El
+   degradado completo del wordmark es un momento de marca, no el fondo.
    ============================================================ */
 :root {
   --background: #050506;
   --foreground: #EDEDEF;
-  --accent: #A91EFF;
-  --accent-strong: #8F0FE0;
+  --accent: #FF003C;
+  --accent-strong: #F80092;
+  --cta-gradient: linear-gradient(135deg, #FF003C 0%, #F80092 100%);
   --brand-gradient: linear-gradient(
     135deg,
     #FEC200 0%,
@@ -34,17 +34,17 @@
    así genera utilities como text-ink / bg-cta. */
 @theme {
   --color-ink: #ffffff;
-  --color-cta: #A91EFF;
-  --color-cta-active: #BB61FF;
+  --color-cta: #FF003C;
+  --color-cta-active: #F80092;
   --color-cta-fg: #ffffff;
+  --color-brand: #FF003C;
+  --color-brand-pink: #F80092;
 
   /* Remap de las escalas que ya usan todos los componentes. Tailwind v4
      compila bg-zinc-800 / text-violet-400 como `var(--color-zinc-800)`, así
      que redefinir los tokens retiñe toda la app sin tocar cada clase.
-     zinc: neutro frío (el zinc de fábrica es cálido y pelea con el ámbar y
-     el magenta de marca). zinc-600 se usa como texto de 11–12px en ~18
-     lugares: #7A7F89 da ≥ 4.5:1 sobre #0a0a0c. violet: la escala del violeta
-     de marca, con #A91EFF como 500. */
+     zinc: neutro frío. zinc-600 se usa como texto de 11–12px: #7A7F89 da
+     ≥ 4.5:1 sobre #050506. violet se deja para admin; el chat usa brand. */
   --color-zinc-50: #F6F6F8;
   --color-zinc-100: #EDEDEF;
   --color-zinc-200: #D9DBE0;
@@ -165,6 +165,9 @@ body {
   .brand-gradient {
     background: var(--brand-gradient);
   }
+  .cta-gradient {
+    background: var(--cta-gradient);
+  }
   .brand-text {
     background: var(--brand-gradient);
     -webkit-background-clip: text;
@@ -173,21 +176,21 @@ body {
     -webkit-text-fill-color: transparent;
   }
 
-  /* Vidrio: superficies translúcidas sobre la luz ambiental. Solo en sidebar,
-     top bar, composer, diálogos y tarjetas — no en burbujas (muchos nodos). */
+  /* Superficies elevadas: casi opacas. El vidrio fino solo en login, donde
+     hay aurora a propósito; el chat usa zinc sólido y no hereda color. */
   .glass {
-    background: rgba(255, 255, 255, 0.04);
+    background: color-mix(in srgb, var(--color-zinc-900) 92%, transparent);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(20px) saturate(140%);
-    -webkit-backdrop-filter: blur(20px) saturate(140%);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 8px 32px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 8px 32px rgba(0, 0, 0, 0.35);
   }
   .glass-strong {
-    background: rgba(255, 255, 255, 0.07);
+    background: color-mix(in srgb, var(--color-zinc-900) 96%, transparent);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(28px) saturate(140%);
-    -webkit-backdrop-filter: blur(28px) saturate(140%);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 8px 32px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 8px 32px rgba(0, 0, 0, 0.35);
   }
 
   /* Etiqueta de sección (GPTS / PROYECTOS / CHATS, "Bienvenido de nuevo"). */
@@ -196,29 +199,24 @@ body {
     font-stretch: 85%;
     font-weight: 600;
     font-size: 11px;
-    letter-spacing: 0.2em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
   }
 
-  /* Item activo del sidebar: pill del acento que se desvanece a la derecha +
-     barra izquierda de 2px con el gradiente vertical de marca. */
+  /* Item activo del sidebar: tinte suave rojo/rosa + barra izquierda de 2px. */
   .nav-active {
-    background: linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--accent) 25%, transparent),
-      transparent 85%
-    );
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
     position: relative;
   }
   .nav-active::before {
     content: "";
     position: absolute;
     left: 0;
-    top: 20%;
-    bottom: 20%;
+    top: 22%;
+    bottom: 22%;
     width: 2px;
     border-radius: 9999px;
-    background: linear-gradient(180deg, #F80092, #A91EFF, #4A44FE);
+    background: linear-gradient(180deg, #FF003C, #F80092);
   }
 }
 
@@ -247,8 +245,8 @@ body {
   padding: 1px;
   background: linear-gradient(
     140deg,
-    color-mix(in srgb, #F400EB 60%, transparent),
-    color-mix(in srgb, #4A44FE 40%, transparent) 60%,
+    color-mix(in srgb, #FF003C 50%, transparent),
+    color-mix(in srgb, #F80092 35%, transparent) 60%,
     transparent 100%
   );
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);

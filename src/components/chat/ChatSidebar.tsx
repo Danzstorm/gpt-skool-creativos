@@ -172,7 +172,7 @@ function ChatSidebar({
 
       <aside
         className={cn(
-          "flex-col glass rounded-none border-y-0 border-l-0 z-30 overflow-hidden",
+          "flex-col border-r border-zinc-800 bg-zinc-950 z-30 overflow-hidden",
           "md:flex md:relative md:translate-x-0 transition-[width] duration-200 ease-out",
           collapsed ? "md:w-0 md:border-r-0" : "md:w-64",
           "fixed top-0 bottom-0 left-0 flex w-64 transition-transform duration-200",
@@ -200,7 +200,7 @@ function ChatSidebar({
           <div className="px-2 pb-2 space-y-2">
             <button
               onClick={onNewChat}
-              className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium text-zinc-100 bg-white/[0.06] hover:bg-white/[0.10] border border-white/[0.08] transition"
+              className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-zinc-100 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 transition"
             >
               <SquarePen size={16} />
               Nuevo chat
@@ -212,7 +212,7 @@ function ChatSidebar({
                 value={chatSearch}
                 onChange={(e) => onSearchChange(e.target.value)}
                 placeholder="Buscar..."
-                className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl pl-7 pr-14 py-1.5 text-[13px] text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-white/20 transition"
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-900 pl-7 pr-14 py-2.5 text-[13px] text-zinc-200 placeholder-zinc-600 transition focus:border-brand/40 focus:outline-none"
               />
               <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md border border-white/10 bg-white/[0.05] px-1.5 py-0.5 text-[10px] font-medium text-zinc-500">
                 {isMac ? "⌘K" : "Ctrl K"}
@@ -278,7 +278,7 @@ function ChatSidebar({
                           }}
                           className={cn(
                             "group flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 cursor-pointer text-[13px] transition text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200",
-                            dropProjectId === project.id && "ring-1 ring-violet-500/70 bg-violet-500/10"
+                            dropProjectId === project.id && "ring-1 ring-brand/50 bg-brand/10"
                           )}
                           onClick={() => onToggleProject(project.id)}
                         >
@@ -339,7 +339,7 @@ function ChatSidebar({
                                   // respondiendo con un contexto extra que no se
                                   // ve en la conversación.
                                   project.instructions
-                                    ? "text-violet-400 hover:text-violet-300"
+                                    ? "text-brand-pink hover:text-brand"
                                     : "text-zinc-500 hover:text-ink"
                                 )}
                                 title={
@@ -413,7 +413,7 @@ function ChatSidebar({
                   }}
                   className={cn(
                     "space-y-0.5 rounded-lg",
-                    dropLoose && "ring-1 ring-violet-500/70 bg-violet-500/10"
+                    dropLoose && "ring-1 ring-brand/50 bg-brand/10"
                   )}
                 >
                   {loose.map(renderThread)}

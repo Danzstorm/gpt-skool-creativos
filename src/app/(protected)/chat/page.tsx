@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAppSettings } from "@/lib/app-settings";
 import type { Gpt, Project, ThreadSummary } from "@/lib/types";
 import UnifiedChat from "@/components/UnifiedChat";
+import { humanDisplayName } from "@/lib/utils";
 
 // Motivos por los que /admin puede devolver a alguien aquí. Sin esto, quien
 // intenta entrar al panel aterriza en el chat sin una palabra y no sabe si le
@@ -64,7 +65,12 @@ export default async function ChatPage({ searchParams }: Props) {
       // /api/upload/sign lo rechaza antes de firmar la subida.
       videoEnabled={!!process.env.GEMINI_API_KEY}
       profile={{
-        fullName: profile?.full_name ?? null,
+        fullName: humanDisplayName(
+          profile?.full_name,
+          typeof user?.user_metadata?.given_name === "string" ? user.user_metadata.given_name : null,
+          typeof user?.user_metadata?.name === "string" ? user.user_metadata.name : null,
+          typeof user?.user_metadata?.full_name === "string" ? user.user_metadata.full_name : null
+        ),
         email: user?.email ?? null,
         // Foto de Google: Supabase la guarda en user_metadata al entrar por
         // OAuth. Se lee de la sesión y no de `profiles` a propósito — la URL

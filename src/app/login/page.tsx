@@ -150,9 +150,9 @@ export default function LoginPage({
           )}
 
           {inAppBrowser && (
-            <div className="rounded-xl border border-violet-500/30 bg-violet-500/10 px-4 py-3 text-sm text-violet-200">
+            <div className="rounded-xl border border-brand/30 bg-brand/10 px-4 py-3 text-sm text-zinc-200">
               <p className="font-medium">Abre esta página en tu navegador</p>
-              <p className="mt-1 leading-relaxed text-violet-200/70">
+              <p className="mt-1 leading-relaxed text-zinc-400">
                 Google no permite iniciar sesión desde el navegador de Instagram, Facebook o
                 TikTok. Toca el menú (⋯) y elige «Abrir en el navegador», o copia el enlace en
                 Chrome o Safari.

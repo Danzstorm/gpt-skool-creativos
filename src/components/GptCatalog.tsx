@@ -15,7 +15,7 @@ const CHIP_BASE =
   "inline-flex min-h-11 items-center rounded-xl px-4 text-sm font-medium border transition cursor-pointer";
 const CHIP_ACTIVE = "bg-zinc-100 text-zinc-950 border-transparent";
 const CHIP_IDLE =
-  "bg-white/[0.04] border-white/[0.08] text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.08]";
+  "bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 hover:border-zinc-700";
 
 export default function GptCatalog({ gpts, onSelect }: Props) {
   const [search, setSearch] = useState("");
@@ -61,7 +61,7 @@ export default function GptCatalog({ gpts, onSelect }: Props) {
             placeholder="Buscar por nombre o lo que hace"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-11 w-full rounded-xl border border-white/[0.08] bg-white/[0.04] pl-11 pr-4 text-base text-zinc-100 outline-none transition placeholder:text-zinc-500 focus:border-white/20 sm:text-sm"
+            className="h-11 w-full rounded-xl border border-zinc-800 bg-zinc-900 pl-11 pr-4 text-base text-zinc-100 outline-none transition placeholder:text-zinc-500 focus:border-brand/40 focus:ring-2 focus:ring-brand/20 sm:text-sm"
           />
         </div>
 

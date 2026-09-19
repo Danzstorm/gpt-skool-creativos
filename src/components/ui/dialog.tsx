@@ -7,10 +7,9 @@ export const Dialog = DialogPrimitive.Root;
 export const DialogTitle = DialogPrimitive.Title;
 export const DialogClose = DialogPrimitive.Close;
 
-// Sin Portal a propósito: el root del chat lleva `zoom: 1.15` y un portal a
-// <body> dejaría el diálogo fuera de esa escala (15 % más chico). Content va
-// dentro de Overlay para conservar el centrado flex y las animaciones
-// `.modal-*`; un translate(-50%,-50%) pelearía con el scale de `modal-pop`.
+// Sin Portal: Content va dentro de Overlay para conservar el centrado flex
+// y las animaciones `.modal-*`. Un translate(-50%,-50%) pelearía con el
+// scale de `modal-pop`.
 export function DialogContent({
   className,
   children,
@@ -20,7 +19,7 @@ export function DialogContent({
     <DialogPrimitive.Overlay className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <DialogPrimitive.Content
         aria-describedby={undefined}
-        className={cn("modal-panel glass-strong w-full rounded-2xl shadow-2xl outline-none", className)}
+        className={cn("modal-panel w-full rounded-2xl border border-zinc-800 bg-zinc-900 shadow-2xl outline-none", className)}
         {...props}
       >
         {children}

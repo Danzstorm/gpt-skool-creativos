@@ -70,7 +70,7 @@ export default function MessageContent({ content }: { content: string }) {
           hr: () => <hr className="my-2.5 border-zinc-800" />,
           strong: ({ children }) => <strong className="font-semibold text-ink">{children}</strong>,
           a: ({ children, href }) => (
-            <a href={href} target="_blank" rel="noreferrer" className="text-violet-400 hover:text-violet-300 underline">
+            <a href={href} target="_blank" rel="noreferrer" className="text-brand-pink hover:text-brand underline">
               {children}
             </a>
           ),

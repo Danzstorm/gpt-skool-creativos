@@ -22,7 +22,7 @@ export default function GptCard({ gpt, onSelect, style }: Props) {
       onClick={() => onSelect(gpt.id)}
       style={style}
       aria-label={`Abrir ${gpt.name}`}
-      className="group relative glass ring-gradient fade-up flex h-full min-h-[13.75rem] w-full cursor-pointer flex-col items-start rounded-3xl p-6 text-left motion-safe:transition-transform motion-safe:duration-200 motion-safe:hover:-translate-y-0.5 motion-safe:active:scale-[0.99]"
+      className="group relative fade-up flex h-full min-h-[13.75rem] w-full cursor-pointer flex-col items-start rounded-3xl border border-zinc-800 bg-zinc-900 p-6 text-left motion-safe:transition-[transform,border-color] motion-safe:duration-200 motion-safe:hover:-translate-y-px motion-safe:hover:border-zinc-700 motion-safe:active:scale-[0.99]"
     >
       <ArrowUpRight
         size={18}

@@ -6,6 +6,25 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
+ * Primer candidato que parece un nombre de persona, nunca un email.
+ * Google a veces deja el correo en `full_name`; eso no se muestra en UI.
+ */
+export function humanDisplayName(...candidates: (string | null | undefined)[]): string | null {
+  for (const candidate of candidates) {
+    const name = candidate?.trim();
+    if (name && !name.includes("@")) return name;
+  }
+  return null;
+}
+
+/** Nombre de pila, o cadena vacía si no hay nombre real. */
+export function firstNameOf(...candidates: (string | null | undefined)[]): string {
+  const name = humanDisplayName(...candidates);
+  if (!name) return "";
+  return name.split(/\s+/)[0] ?? "";
+}
+
+/**
  * "juan.perez@gmail.com" → "j••••••••@gmail.com"
  *
  * Se usa al explicar un rechazo de acceso. Esos mensajes se pintan en páginas

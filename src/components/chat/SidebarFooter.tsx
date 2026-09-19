@@ -2,6 +2,7 @@ import { memo, useCallback, useState } from "react";
 import Link from "next/link";
 import { ShieldCheck, LogOut, ChevronsUpDown } from "lucide-react";
 import { useDismissable } from "@/hooks/useDismissable";
+import { humanDisplayName } from "@/lib/utils";
 
 interface Props {
   fullName: string | null;
@@ -25,15 +26,16 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
   const close = useCallback(() => setOpen(false), []);
   const rootRef = useDismissable<HTMLDivElement>(open, close);
 
-  const displayName = fullName || email || "Cuenta";
+  const personName = humanDisplayName(fullName);
+  const displayName = personName || email || "Cuenta";
   // Sin nombre, el email ya ocupa la primera línea: no repetirlo debajo.
-  const subline = fullName ? email : null;
+  const subline = personName ? email : null;
   const showAvatar = !!avatarUrl && !avatarFailed;
 
   return (
     <div ref={rootRef} className="relative border-t border-white/[0.06] p-2">
       {open && (
-        <div className="absolute bottom-full left-2 right-2 mb-1.5 glass-strong rounded-xl overflow-hidden py-1">
+        <div className="absolute bottom-full left-2 right-2 mb-1.5 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 py-1">
           {isAdmin && (
             <Link
               href="/admin"

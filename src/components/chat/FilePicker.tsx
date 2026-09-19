@@ -44,7 +44,7 @@ function FilePicker({ files, activeIndex, loading, query, onPick, onHover }: Pro
   }, [activeIndex]);
 
   return (
-    <div className="absolute bottom-full left-0 mb-2 w-80 max-w-[calc(100vw-2rem)] glass-strong rounded-xl overflow-hidden z-20">
+    <div className="absolute bottom-full left-0 z-20 mb-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
       <p className="px-3 py-2 text-[11px] uppercase tracking-wide text-zinc-500 border-b border-white/[0.08]">
         Tus archivos
       </p>

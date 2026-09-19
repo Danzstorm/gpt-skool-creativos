@@ -65,7 +65,7 @@ export default async function UnauthorizedPage({
       <Aurora />
       <div className="glass-strong relative z-10 w-full max-w-sm rounded-3xl p-8 text-center">
         <div className="glass mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl">
-          <Icon size={28} className="text-violet-300" aria-hidden />
+          <Icon size={28} className="text-brand-pink" aria-hidden />
         </div>
         <h1 className="font-display mb-3 text-2xl font-semibold tracking-tight text-zinc-50">
           {copy.title}
@@ -81,7 +81,7 @@ export default async function UnauthorizedPage({
               Iniciaste sesión como{" "}
               <span className="font-medium text-zinc-200">{used}</span>, pero tu acceso a{" "}
               {settings.community_name} está a nombre de{" "}
-              <span className="font-medium text-violet-300">{member}</span>.
+              <span className="font-medium text-brand-pink">{member}</span>.
             </p>
             <p>
               Vuelve a intentar y, en el selector de Google, elige la cuenta de ese correo.
@@ -112,7 +112,7 @@ export default async function UnauthorizedPage({
         {isMismatch ? (
           <Link
             href="/login"
-            className="brand-gradient inline-flex items-center justify-center rounded-xl px-5 py-2.5 font-medium text-white shadow-[0_0_24px_rgba(169,30,255,.35)] transition hover:shadow-[0_0_36px_rgba(169,30,255,.55)]"
+            className="cta-gradient inline-flex min-h-11 items-center justify-center rounded-xl px-5 py-2.5 font-medium text-white transition hover:brightness-110"
           >
             Volver a intentar
           </Link>
@@ -122,7 +122,7 @@ export default async function UnauthorizedPage({
               href={settings.skool_url ?? "https://www.skool.com/"}
               target="_blank"
               rel="noreferrer"
-              className="brand-gradient group inline-flex items-center justify-center gap-1.5 rounded-xl px-5 py-2.5 font-medium text-white shadow-[0_0_24px_rgba(169,30,255,.35)] transition hover:shadow-[0_0_36px_rgba(169,30,255,.55)]"
+              className="cta-gradient group inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-5 py-2.5 font-medium text-white transition hover:brightness-110"
             >
               {reason === "never_member"
                 ? `Unirme a ${settings.community_name}`

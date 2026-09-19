@@ -3,8 +3,8 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import type { Gpt, Project, ThreadSummary } from "@/lib/types";
 import { Menu, ArrowDown, ChevronDown, Folder, PanelLeftOpen, SquarePen, X } from "lucide-react";
-import Aurora from "@/components/ui/Aurora";
 import Orb from "@/components/ui/Orb";
+import { firstNameOf } from "@/lib/utils";
 import GptCatalog from "@/components/GptCatalog";
 import GptGlyph from "./chat/GptGlyph";
 import ChatSidebar from "./chat/ChatSidebar";
@@ -258,7 +258,7 @@ export default function UnifiedChat({
 
   const lastUserIndex = messages.map((m) => m.role).lastIndexOf("user");
   const showComposer = !!activeGpt;
-  const firstName = profile.fullName?.trim().split(/\s+/)[0] ?? "";
+  const firstName = firstNameOf(profile.fullName);
   const gptChatsModalGpt = gptChatsModalId ? gpts.find((g) => g.id === gptChatsModalId) : null;
   const gptChatsModalThreads = useMemo(
     () => (gptChatsModalId ? threadList.filter((t) => t.gpt_id === gptChatsModalId) : []),
@@ -266,22 +266,7 @@ export default function UnifiedChat({
   );
 
   return (
-    // bg-zinc-950 en el root: el área principal (mensajes, empty-state) no fija
-    // fondo propio; tematizar el root cubre toda la superficie.
-    // zoom 1.15 = interfaz de chat 15% más grande (pedido del cliente). El tamaño
-    // del shell NO usa unidades de viewport: `fixed inset-0` lo ata al área de
-    // cliente, que es lo único que todos los motores miden igual. La versión previa
-    // (`width: calc(100vw / 1.15); height: calc(100dvh / 1.15)`) rompía por dos
-    // lados: `100vw` incluye la barra de scroll (medido en Chromium: shell de 1176px
-    // contra 1161px de área útil → desborde horizontal), y en un navegador sin `dvh`
-    // la declaración de alto es inválida, cae a `auto` y el shell colapsa a la altura
-    // del contenido — la pantalla rota que reportó el cliente. Con inset el zoom sigue
-    // aplicando (el bloque contenedor se resuelve en el espacio ya escalado) y, si el
-    // navegador no soporta `zoom`, degrada a interfaz sin escalar pero bien armada.
-    // `fixed` crea stacking context: Aurora (-z-10) pinta ENCIMA del fondo del
-    // root y debajo del resto, sin quitar bg-zinc-950.
-    <div className="fixed inset-0 flex bg-zinc-950 text-zinc-100" style={{ zoom: 1.15 }}>
-      <Aurora />
+    <div className="fixed inset-0 flex bg-zinc-950 text-zinc-100">
       <ChatSidebar
         communityName={communityName}
         gpts={gpts}
@@ -329,14 +314,14 @@ export default function UnifiedChat({
         onDrop={onDrop}
       >
         {isDragging && showComposer && (
-          <div className="absolute inset-0 z-10 bg-violet-500/10 border-2 border-dashed border-violet-500/40 rounded-2xl m-2 flex items-center justify-center pointer-events-none">
-            <p className="text-violet-100 text-sm font-medium">Suelta imágenes o archivos aquí</p>
+          <div className="absolute inset-0 z-10 m-2 flex items-center justify-center rounded-2xl border-2 border-dashed border-brand/40 bg-brand/10 pointer-events-none">
+            <p className="text-sm font-medium text-zinc-100">Suelta imágenes o archivos aquí</p>
           </div>
         )}
-        <div className="glass border-x-0 border-t-0 rounded-none shadow-none px-4 py-2.5 flex items-center gap-3">
+        <div className="flex items-center gap-3 border-b border-zinc-800 bg-zinc-950 px-4 py-2">
           <button
             onClick={openSidebar}
-            className="text-zinc-400 hover:text-ink transition md:hidden"
+            className="flex h-11 w-11 items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-900 hover:text-ink md:hidden"
             aria-label="Abrir panel"
           >
             <Menu size={20} />
@@ -346,7 +331,7 @@ export default function UnifiedChat({
               <Orb size="xs" className="mr-1" />
               <button
                 onClick={toggleSidebarCollapsed}
-                className="p-1.5 rounded-lg text-zinc-400 hover:text-ink hover:bg-zinc-800/60 transition"
+                className="flex h-11 w-11 items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-900 hover:text-ink"
                 title="Expandir panel"
                 aria-label="Expandir panel"
               >
@@ -354,7 +339,7 @@ export default function UnifiedChat({
               </button>
               <button
                 onClick={newChat}
-                className="p-1.5 rounded-lg text-zinc-400 hover:text-ink hover:bg-zinc-800/60 transition"
+                className="flex h-11 w-11 items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-900 hover:text-ink"
                 title="Nuevo chat"
                 aria-label="Nuevo chat"
               >
@@ -365,7 +350,7 @@ export default function UnifiedChat({
           {activeGpt ? (
             <button
               onClick={() => openGptChats(activeGpt.id)}
-              className="flex items-center gap-2 min-w-0 rounded-lg px-1.5 py-1 -ml-1.5 hover:bg-zinc-800/60 transition"
+              className="flex min-w-0 items-center gap-2 rounded-lg px-1.5 py-1 -ml-1.5 transition hover:bg-zinc-900"
               title="Ver conversaciones de este GPT"
             >
               <GptGlyph gpt={activeGpt} size="sm" />
@@ -410,9 +395,8 @@ export default function UnifiedChat({
 
           {!activeGpt && !isLoadingHistory && (
             <div className="flex w-full max-w-6xl mx-auto flex-col items-center py-8 md:py-10">
-              <Orb size="xl" className="mb-6" />
-              <p className="eyebrow mb-3 text-zinc-500">
-                Bienvenido de nuevo{firstName ? `, ${firstName}` : ""}
+              <p className="mb-3 text-sm text-zinc-500">
+                {firstName ? `Bienvenido de nuevo, ${firstName}` : "Bienvenido de nuevo"}
               </p>
               <h1 className="font-display mb-2 text-center text-4xl font-bold tracking-tight text-zinc-100 md:text-5xl">
                 ¿Qué vas a crear hoy?
@@ -446,7 +430,7 @@ export default function UnifiedChat({
                     <button
                       key={i}
                       onClick={() => sendMessage(starter)}
-                      className="text-left glass rounded-2xl px-4 py-3 text-sm text-zinc-300 hover:text-zinc-100 hover:-translate-y-0.5 active:scale-[0.98] active:translate-y-0 transition-all cursor-pointer"
+                      className="cursor-pointer rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-left text-sm text-zinc-300 transition hover:border-zinc-700 hover:text-zinc-100 motion-safe:hover:-translate-y-px active:scale-[0.98]"
                     >
                       {starter}
                     </button>
@@ -495,10 +479,10 @@ export default function UnifiedChat({
           <div ref={bottomRef} />
         </div>
 
-        {showScrollBtn && (
+        {showScrollBtn && messages.length > 0 && (
           <button
             onClick={scrollToBottom}
-            className="absolute bottom-28 left-1/2 -translate-x-1/2 z-10 glass rounded-full h-9 w-9 flex items-center justify-center text-zinc-300 hover:text-zinc-100 transition"
+            className="absolute bottom-28 left-1/2 z-10 flex h-11 w-11 -translate-x-1/2 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900 text-zinc-300 transition hover:border-zinc-700 hover:text-zinc-100"
             aria-label="Bajar al final"
           >
             <ArrowDown size={16} />
