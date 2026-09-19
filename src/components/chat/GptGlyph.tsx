@@ -1,61 +1,36 @@
-import Image from "next/image";
+import type { CSSProperties } from "react";
 import type { Gpt } from "@/lib/types";
-import { cn } from "@/lib/utils";
 import { getGptVisual } from "@/lib/gpt-visual";
+import GptLogo from "./GptLogo";
 
-const SIZES = {
-  xs: { box: "w-5 h-5 rounded-md", px: "20px", text: "text-[9px]", icon: 12 },
-  sm: { box: "w-6 h-6 rounded-md", px: "24px", text: "text-[11px]", icon: 14 },
-  lg: { box: "w-8 h-8 rounded-lg", px: "32px", text: "text-base", icon: 16 },
-  xl: { box: "h-16 w-16 rounded-2xl", px: "64px", text: "text-2xl", icon: 28 },
-  hero: { box: "h-[7.5rem] w-[7.5rem]", px: "120px", text: "text-5xl", icon: 56 },
+const LOGO_SIZE = {
+  xs: "xs",
+  sm: "xs",
+  lg: "xs",
+  xl: "md",
+  hero: "md",
 } as const;
 
 interface Props {
   gpt?: Pick<Gpt, "name" | "icon_url" | "category"> & { description?: string | null };
-  size?: keyof typeof SIZES;
-  // Overrides puntuales para contextos fuera del chat (catálogo, landing) que
-  // necesitan un tamaño/estilo propio en vez de la escala fija de `size`.
+  size?: keyof typeof LOGO_SIZE;
   className?: string;
-  sizePx?: string;
-  textClassName?: string;
-  /** Enciende el acento del oficio en placas compactas. El empty-state usa GptMark. */
-  lit?: boolean;
 }
 
-// Marca visual canónica de un GPT:
-// 1. icon_url si el admin subió uno
-// 2. marca geométrica del oficio (categoría o nombre/descripción)
-// 3. inicial tipográfica si no hay oficio reconocible
-export default function GptGlyph({ gpt, size = "sm", className, sizePx, textClassName, lit }: Props) {
-  const preset = SIZES[size];
-  const { craft, Icon, accentClasses, heroShape } = getGptVisual(
-    gpt?.category,
-    gpt?.name,
-    gpt?.description
-  );
-  const initial = gpt?.name?.trim()?.charAt(0)?.toUpperCase() || "G";
+// Marca canónica fuera del empty-state: badge de color del oficio (GptLogo).
+// El héroe 3D del chat vacío sigue siendo GptMark.
+export default function GptGlyph({ gpt, size = "sm", className }: Props) {
+  const { markKind, accentHex } = getGptVisual(gpt?.category, gpt?.name, gpt?.description);
+  const letter = gpt?.name?.trim()?.charAt(0)?.toUpperCase() || "G";
 
   return (
-    <span
-      className={cn(
-        "gpt-glyph relative flex items-center justify-center flex-shrink-0 bg-gradient-to-br border overflow-hidden",
-        className || preset.box,
-        size === "hero" && !className && heroShape,
-        lit && "gpt-glyph-lit",
-        accentClasses
-      )}
-      aria-hidden
-    >
-      {gpt?.icon_url ? (
-        <Image src={gpt.icon_url} alt="" fill sizes={sizePx || preset.px} className="object-cover" />
-      ) : craft ? (
-        <Icon size={preset.icon} strokeWidth={size === "hero" ? 1.4 : 1.75} />
-      ) : (
-        <span className={cn("font-display font-semibold leading-none", textClassName || preset.text)}>
-          {initial}
-        </span>
-      )}
-    </span>
+    <GptLogo
+      kind={markKind}
+      letter={letter}
+      size={LOGO_SIZE[size]}
+      iconUrl={gpt?.icon_url}
+      className={className}
+      style={{ "--craft": accentHex } as CSSProperties}
+    />
   );
 }

@@ -10,12 +10,12 @@ interface Paint {
   core: string;
 }
 
-function glassPaint(uid: string): { defs: ReactNode; paint: Paint } {
+function glassPaint(uid: string, compact?: boolean): { defs: ReactNode; paint: Paint } {
   const paint: Paint = {
     face: `${uid}-face`,
     edge: `${uid}-edge`,
     well: `${uid}-well`,
-    depth: `${uid}-depth`,
+    depth: compact ? "" : `${uid}-depth`,
     sheen: `${uid}-sheen`,
     core: `${uid}-core`,
   };
@@ -47,18 +47,24 @@ function glassPaint(uid: string): { defs: ReactNode; paint: Paint } {
         <stop offset="0" stopColor="#fff" stopOpacity="0.7" />
         <stop offset="1" stopColor="#0a0610" stopOpacity="0.55" />
       </linearGradient>
-      <filter id={paint.depth} x="-30%" y="-30%" width="160%" height="160%">
-        <feDropShadow dx="0.8" dy="2.2" stdDeviation="1.4" floodColor="#000" floodOpacity="0.5" />
-      </filter>
+      {paint.depth ? (
+        <filter id={paint.depth} x="-30%" y="-30%" width="160%" height="160%">
+          <feDropShadow dx="0.8" dy="2.2" stdDeviation="1.4" floodColor="#000" floodOpacity="0.5" />
+        </filter>
+      ) : null}
     </defs>
   );
 
   return { defs, paint };
 }
 
+function depthFilter(paint: Paint) {
+  return paint.depth ? `url(#${paint.depth})` : undefined;
+}
+
 function VideoEmblem({ paint }: { paint: Paint }) {
   return (
-    <g filter={`url(#${paint.depth})`}>
+    <g filter={depthFilter(paint)}>
       <ellipse cx="22" cy="54" rx="15" ry="15" fill={`url(#${paint.well})`} stroke={`url(#${paint.edge})`} strokeWidth="1.4" />
       <ellipse cx="22" cy="54" rx="5.2" ry="5.2" fill={`url(#${paint.face})`} />
       {[0, 60, 120, 180, 240, 300].map((deg) => {
@@ -99,7 +105,7 @@ function VideoEmblem({ paint }: { paint: Paint }) {
 
 function PhotoEmblem({ paint }: { paint: Paint }) {
   return (
-    <g filter={`url(#${paint.depth})`}>
+    <g filter={depthFilter(paint)}>
       <circle cx="40" cy="40" r="26" fill={`url(#${paint.edge})`} />
       <circle cx="40" cy="40" r="21" fill={`url(#${paint.well})`} />
       <circle cx="40" cy="40" r="15" fill={`url(#${paint.face})`} stroke="rgba(255,255,255,0.4)" strokeWidth="1" />
@@ -126,7 +132,7 @@ function ImagesEmblem({ paint }: { paint: Paint }) {
     "M12 40 18 22 33.5 27.5 27.5 37.5Z",
   ];
   return (
-    <g filter={`url(#${paint.depth})`}>
+    <g filter={depthFilter(paint)}>
       <circle cx="40" cy="40" r="26" fill={`url(#${paint.well})`} stroke={`url(#${paint.edge})`} strokeWidth="1.4" />
       {blades.map((d) => (
         <path key={d} d={d} fill={`url(#${paint.face})`} stroke="rgba(255,255,255,0.28)" strokeWidth="0.7" />
@@ -140,7 +146,7 @@ function ImagesEmblem({ paint }: { paint: Paint }) {
 
 function CharactersEmblem({ paint }: { paint: Paint }) {
   return (
-    <g filter={`url(#${paint.depth})`}>
+    <g filter={depthFilter(paint)}>
       <ellipse cx="40" cy="40" rx="25" ry="28" fill="none" stroke={`url(#${paint.edge})`} strokeWidth="1.2" opacity="0.45" />
       <path
         d="M28 62c.8-9.4 6.6-16.2 14.8-18.4C38.4 41 35.2 35.6 35.2 29.4 35.2 21.2 41.6 15 49.2 15c7.4 0 13.6 6 13.6 14.2 0 6.4-3.4 11.8-8.4 14.4 8.6 2.4 14.8 10.2 15.6 18.4H28Z"
@@ -156,7 +162,7 @@ function CharactersEmblem({ paint }: { paint: Paint }) {
 
 function LocationsEmblem({ paint }: { paint: Paint }) {
   return (
-    <g filter={`url(#${paint.depth})`}>
+    <g filter={depthFilter(paint)}>
       <path d="M10 60c10-9 18-6 26 1 9-12 18-9 28 3 8-7 14-4 22 3" fill="none" stroke={`url(#${paint.edge})`} strokeWidth="1.6" opacity="0.55" />
       <path d="M12 62 30 44l12 10 18-20 16 22" fill={`url(#${paint.well})`} opacity="0.5" />
       <path
@@ -173,7 +179,7 @@ function LocationsEmblem({ paint }: { paint: Paint }) {
 
 function ScriptsEmblem({ paint }: { paint: Paint }) {
   return (
-    <g filter={`url(#${paint.depth})`}>
+    <g filter={depthFilter(paint)}>
       <path
         d="M18 14 58 9.5 64 66 23 70.5Z"
         fill={`url(#${paint.face})`}
@@ -207,20 +213,22 @@ interface Props {
   kind: GptMarkKind;
   uid: string;
   letter: string;
+  /** Recorte nítido para badges xs: mismo SVG, sin sombra cara. */
+  compact?: boolean;
 }
 
-export default function GptEmblem({ kind, uid, letter }: Props) {
+export default function GptEmblem({ kind, uid, letter, compact }: Props) {
   if (kind === "gem") {
     return (
       <span className="gpt-mark-letter font-display italic uppercase font-extrabold">{letter}</span>
     );
   }
 
-  const { defs, paint } = glassPaint(uid);
+  const { defs, paint } = glassPaint(uid, compact);
   const Emblem = EMBLEMS[kind];
 
   return (
-    <svg viewBox="0 0 80 80" className="gpt-mark-svg" aria-hidden>
+    <svg viewBox={compact ? "10 10 60 60" : "0 0 80 80"} className="gpt-mark-svg" aria-hidden>
       {defs}
       <Emblem paint={paint} />
     </svg>

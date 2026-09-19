@@ -27,7 +27,10 @@ export type GptCraft =
   | "productivity"
   | "education";
 
-/** Emblema 3D/vidrio del empty-state. Los 6 oficios creativos tienen marca propia. */
+/** Badge de catálogo/sidebar (px). El empty-state 3D sigue en GptMark (xl). */
+export const GPT_LOGO_PX = { xs: 28, md: 64 } as const;
+
+/** Emblema de oficio: empty-state (GptMark 3D) y catálogo/sidebar (GptLogo). */
 export type GptMarkKind =
   | "video"
   | "photo"

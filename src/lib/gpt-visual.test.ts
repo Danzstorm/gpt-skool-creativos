@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   GPT_CRAFT_ACCENTS,
+  GPT_LOGO_PX,
   LOGO_REST_ACCENT,
   conversationStartersOf,
   getGptVisual,
@@ -42,7 +43,7 @@ describe("resolveGptCraft", () => {
 });
 
 describe("getGptVisual", () => {
-  it("expone marca + placa uniforme, o Hexagon si no hay oficio", () => {
+  it("expone marca de oficio para logo/empty-state, o Hexagon si no hay oficio", () => {
     const known = getGptVisual("General", "UGC Scripts", "Crea guiones para tus videos UGC");
     expect(known.craft).toBe("scripts");
     expect(known.label).toBe("Guiones");
@@ -87,6 +88,15 @@ describe("conversationStartersOf", () => {
     expect(conversationStartersOf(null)).toEqual([]);
     expect(conversationStartersOf("un string no es una lista")).toEqual([]);
     expect(conversationStartersOf([1, { text: "no" }, "sí"])).toEqual(["sí"]);
+  });
+});
+
+describe("GPT_LOGO_PX", () => {
+  it("deja el badge sidebar nítido y el de card a tamaño héroe, sin esfera xl", () => {
+    expect(GPT_LOGO_PX.xs).toBeGreaterThanOrEqual(24);
+    expect(GPT_LOGO_PX.xs).toBeLessThanOrEqual(32);
+    expect(GPT_LOGO_PX.md).toBeGreaterThanOrEqual(56);
+    expect(GPT_LOGO_PX.md).toBeLessThanOrEqual(72);
   });
 });
 
