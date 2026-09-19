@@ -221,11 +221,12 @@ Todos leen las credenciales de `.env.local`.
 | Comando | Qué hace |
 |---|---|
 | `npm run admin:bootstrap -- <email>` | Da acceso y admin. Idempotente. |
-| `npm run cleanup:orphans` | Borra archivos que se subieron y **nunca se enviaron**, con más de 30 días (`--keep-days=N` para cambiarlo, `--dry-run` para ver sin borrar). **Nunca toca lo que se envió alguna vez**: eso es la biblioteca del usuario, la que alimenta el menú `@` del composer, y sigue siendo suya aunque haya borrado la conversación. Requiere la columna `uploaded_files.attached_at`; sin ella se niega a correr. |
+| `npm run cleanup:orphans` | **Solo informa** (dry-run). Lista huérfanos nunca enviados (>30 días) y blobs de Storage sin registrar (>7 días), con GB medidos. **Nunca toca lo enviado alguna vez**. Para borrar de verdad: `npm run cleanup:orphans -- --confirm`. `--keep-days=N` y `--keep-unregistered-days=N` cambian las ventanas. |
 | `npm run cleanup:orphan-users` | Borra cuentas de quien autenticó sin ser miembro (sin conversaciones, >7 días). **Solo informa**; hay que pasar `-- --confirm` para borrar. |
 | `npm run backfill:gpt-config` | Migración puntual de configuración de GPTs. |
 | `npm run backfill:messages` | Migración puntual de mensajes de threads. |
 | `npm run audit:data-model` | Auditoría agregada de integridad y permisos. |
+| `npm run report:storage` | Informe de solo lectura: uso de `chat-uploads` por tipo, edad y usuario, más miembros revocados/quietos. No borra nada. |
 
 ---
 

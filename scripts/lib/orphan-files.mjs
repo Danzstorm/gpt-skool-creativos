@@ -8,6 +8,19 @@
 export const DEFAULT_KEEP_DAYS = 30;
 
 /**
+ * Días que un blob de Storage sin fila en `uploaded_files` sobrevive.
+ *
+ * Eso no es un adjunto abandonado en el composer: es una subida que se firmó
+ * y se guardó en el bucket, pero `/register` nunca llegó a mapearla (pestaña
+ * cerrada, 422 de OpenAI/Gemini, fallo de red). No hay biblioteca que proteger
+ * — no hay fila — así que la gracia puede ser más corta que la de los huérfanos
+ * registrados. Siete días cubre reintentos; no espera un mes a 100 MB de video.
+ */
+export const DEFAULT_UNREGISTERED_KEEP_DAYS = 7;
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/**
  * Archivos a borrar. Hacen falta TRES condiciones a la vez, y ninguna alcanza
  * sola:
  *
@@ -41,7 +54,7 @@ export function selectOrphans(
   keepDays = DEFAULT_KEEP_DAYS,
   now = Date.now()
 ) {
-  const cutoff = now - keepDays * 24 * 60 * 60 * 1000;
+  const cutoff = now - keepDays * MS_PER_DAY;
   return uploaded.filter((file) => {
     // Se envió alguna vez: es biblioteca del usuario, no se toca nunca.
     if (file.attached_at) return false;
@@ -53,4 +66,58 @@ export function selectOrphans(
     if (!file.created_at) return false;
     return new Date(file.created_at).getTime() < cutoff;
   });
+}
+
+/**
+ * Blobs del bucket que no tienen fila en `uploaded_files`.
+ *
+ * El comentario de `/api/upload/register` ya decía que esta limpieza los
+ * recogía; hasta ahora solo miraba filas de `uploaded_files`. Un PUT a la URL
+ * firmada sin registro posterior dejaba el objeto para siempre.
+ *
+ * @param objects  { name, created_at, bytes? }  `name` = path dentro del bucket
+ * @param registeredPaths  Set de `uploaded_files.storage_path`
+ */
+export function selectUnregisteredBlobs(
+  objects,
+  registeredPaths,
+  keepDays = DEFAULT_UNREGISTERED_KEEP_DAYS,
+  now = Date.now()
+) {
+  const cutoff = now - keepDays * MS_PER_DAY;
+  return objects.filter((object) => {
+    if (!object?.name) return false;
+    if (registeredPaths.has(object.name)) return false;
+    if (!object.created_at) return false;
+    return new Date(object.created_at).getTime() < cutoff;
+  });
+}
+
+/** Tamaño para humanos. Usa base 10 (1 GB = 1e9) para alinearse al dashboard. */
+export function formatBytes(bytes) {
+  if (!Number.isFinite(bytes) || bytes < 0) return "tamaño desconocido";
+  if (bytes < 1000) return `${Math.round(bytes)} B`;
+  if (bytes < 1e6) return `${(bytes / 1e3).toFixed(1)} KB`;
+  if (bytes < 1e9) return `${(bytes / 1e6).toFixed(1)} MB`;
+  return `${(bytes / 1e9).toFixed(2)} GB`;
+}
+
+/**
+ * Suma bytes conocidos. `unknown` son filas sin tamaño (listado de Storage
+ * falló o el objeto no trajo metadata). No se inventa un promedio acá: el
+ * informe debe distinguir "1.2 GB medidos" de "771 archivos, tamaño ?".
+ */
+export function summarizeBytes(rows) {
+  let knownBytes = 0;
+  let known = 0;
+  let unknown = 0;
+  for (const row of rows) {
+    if (Number.isFinite(row?.bytes) && row.bytes >= 0) {
+      knownBytes += row.bytes;
+      known += 1;
+    } else {
+      unknown += 1;
+    }
+  }
+  return { count: rows.length, known, unknown, knownBytes };
 }

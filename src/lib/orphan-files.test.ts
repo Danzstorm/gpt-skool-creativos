@@ -2,7 +2,14 @@ import { describe, expect, it } from "vitest";
 // El filtro vive en un .mjs porque lo importa un script de Node suelto, que no
 // pasa por el build de Next. Se testea desde acá igual: decide borrados
 // irreversibles en Storage, OpenAI y la base a la vez.
-import { DEFAULT_KEEP_DAYS, selectOrphans } from "../../scripts/lib/orphan-files.mjs";
+import {
+  DEFAULT_KEEP_DAYS,
+  DEFAULT_UNREGISTERED_KEEP_DAYS,
+  formatBytes,
+  selectOrphans,
+  selectUnregisteredBlobs,
+  summarizeBytes,
+} from "../../scripts/lib/orphan-files.mjs";
 
 const AHORA = new Date("2026-09-03T00:00:00Z").getTime();
 const DIA = 24 * 60 * 60 * 1000;
@@ -105,5 +112,53 @@ describe("selectOrphans", () => {
 
   it("la ventana por defecto es de 30 días", () => {
     expect(DEFAULT_KEEP_DAYS).toBe(30);
+  });
+});
+
+describe("selectUnregisteredBlobs", () => {
+  const blob = (name: string, dias: number) => ({
+    name,
+    created_at: hace(dias),
+    bytes: 1_000_000,
+  });
+
+  it("no toca un path que ya está en uploaded_files", () => {
+    expect(
+      selectUnregisteredBlobs([blob("u/a.png", 40)], new Set(["u/a.png"]), 7, AHORA)
+    ).toEqual([]);
+  });
+
+  it("borra el PUT abandonado pasada la gracia corta", () => {
+    expect(
+      selectUnregisteredBlobs([blob("u/a.png", 8)], new Set(), 7, AHORA).map((o) => o.name)
+    ).toEqual(["u/a.png"]);
+  });
+
+  it("protege un blob reciente (reintento de /register)", () => {
+    expect(selectUnregisteredBlobs([blob("u/a.png", 2)], new Set(), 7, AHORA)).toEqual([]);
+  });
+
+  it("sin fecha se conserva", () => {
+    expect(
+      selectUnregisteredBlobs([{ name: "u/a.png", created_at: null, bytes: 1 }], new Set(), 7, AHORA)
+    ).toEqual([]);
+  });
+
+  it("la gracia por defecto de blobs sin registrar es 7 días", () => {
+    expect(DEFAULT_UNREGISTERED_KEEP_DAYS).toBe(7);
+  });
+});
+
+describe("formatBytes / summarizeBytes", () => {
+  it("habla en GB de dashboard (base 10)", () => {
+    expect(formatBytes(1.5e9)).toBe("1.50 GB");
+    expect(formatBytes(1280000)).toBe("1.3 MB");
+    expect(formatBytes(Number.NaN)).toBe("tamaño desconocido");
+  });
+
+  it("no inventa un promedio cuando faltan tamaños", () => {
+    expect(
+      summarizeBytes([{ bytes: 100 }, { bytes: null }, { bytes: 50 }])
+    ).toEqual({ count: 3, known: 2, unknown: 1, knownBytes: 150 });
   });
 });
