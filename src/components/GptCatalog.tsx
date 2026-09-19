@@ -10,6 +10,7 @@ import { LayoutGrid, Search, SearchX } from "lucide-react";
 interface Props {
   gpts: Gpt[];
   onSelect: (id: string) => void;
+  onPreview?: (accent: string | null) => void;
   /** Tope de cards grandes en el hero. Por defecto 9. */
   previewLimit?: number;
   expanded?: boolean;
@@ -25,6 +26,7 @@ const CHIP_IDLE =
 export default function GptCatalog({
   gpts,
   onSelect,
+  onPreview,
   previewLimit = HERO_GPT_PREVIEW_LIMIT,
   expanded = false,
   onExpand,
@@ -115,6 +117,7 @@ export default function GptCatalog({
               key={gpt.id}
               gpt={gpt}
               onSelect={onSelect}
+              onPreview={onPreview}
               style={{ animationDelay: `${i * 45}ms` }}
             />
           ))}

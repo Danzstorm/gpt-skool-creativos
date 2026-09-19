@@ -75,8 +75,11 @@ export function selectOrphans(
  * recogía; hasta ahora solo miraba filas de `uploaded_files`. Un PUT a la URL
  * firmada sin registro posterior dejaba el objeto para siempre.
  *
- * @param objects  { name, created_at, bytes? }  `name` = path dentro del bucket
- * @param registeredPaths  Set de `uploaded_files.storage_path`
+ * @param {Array<{name: string, created_at: string|null, bytes?: number}>} objects
+ * @param {Set<string>} registeredPaths
+ * @param {number} [keepDays]
+ * @param {number} [now]
+ * @returns {Array<{name: string, created_at: string|null, bytes?: number}>}
  */
 export function selectUnregisteredBlobs(
   objects,

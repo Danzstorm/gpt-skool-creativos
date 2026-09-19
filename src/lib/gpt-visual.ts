@@ -30,7 +30,7 @@ export type GptCraft =
 /** Glyph de catálogo/sidebar (px). Card ~44, sidebar 20. */
 export const GPT_LOGO_PX = { xs: 20, md: 44 } as const;
 
-/** Emblema de oficio (empty-state y tests). El catálogo usa Lucide, no esmalte. */
+/** Emblema de oficio dentro de la esfera de vidrio (catálogo, hero, sidebar). */
 export type GptMarkKind =
   | "video"
   | "photo"

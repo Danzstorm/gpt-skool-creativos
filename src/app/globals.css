@@ -489,17 +489,17 @@ body {
 /* Bloom del orb: 30–40% del anterior, rojo suave. */
 .hero-bloom {
   position: absolute;
-  width: min(16rem, 60vw);
-  height: 9rem;
-  top: 0.5rem;
+  width: min(20rem, 68vw);
+  height: 11rem;
+  top: 0.25rem;
   left: 50%;
   transform: translateX(-50%);
   background: radial-gradient(
     ellipse at 50% 42%,
-    color-mix(in srgb, var(--page-accent) 12%, transparent) 0%,
+    color-mix(in srgb, var(--page-accent) 14%, transparent) 0%,
     transparent 72%
   );
-  filter: blur(22px);
+  filter: blur(24px);
   pointer-events: none;
   z-index: 0;
 }
@@ -507,30 +507,37 @@ body {
 /* --craft lo pone el contenedor (GptHero / preview) por inline style.
    No resetearlo en .gpt-mark: si no, todas las esferas caen al magenta de marca. */
 
-/* Marca de oficio: misma familia que .orb (vidrio 3D), halo del color de craft.
-   Héroe ~176px; no fullscreen, no aurora. */
+/* Marca de oficio: misma familia que .orb (vidrio 3D).
+   Tinte de craft contenido — el fluir vive en caústico/shimmer, no en el flood. */
 .gpt-mark {
-  perspective: 640px;
+  display: block;
 }
 
 .gpt-mark-halo {
   position: absolute;
-  inset: -28%;
+  inset: -12%;
   border-radius: 9999px;
   background: radial-gradient(
     circle,
-    color-mix(in srgb, var(--craft) 56%, transparent) 0%,
-    color-mix(in srgb, var(--craft) 22%, transparent) 42%,
-    transparent 72%
+    color-mix(in srgb, var(--craft) 22%, transparent) 0%,
+    transparent 70%
   );
-  filter: blur(18px);
+  filter: blur(10px);
   pointer-events: none;
   z-index: 0;
 }
 
-.gpt-mark-xl .gpt-mark-halo {
-  inset: -36%;
-  filter: blur(26px);
+.gpt-mark-hero .gpt-mark-halo {
+  inset: -16%;
+  opacity: 0.4;
+  filter: blur(14px);
+}
+
+.gpt-mark-xs .gpt-mark-halo,
+.gpt-mark-sm .gpt-mark-halo {
+  inset: -16%;
+  filter: blur(3px);
+  opacity: 0.4;
 }
 
 .gpt-mark-sphere {
@@ -540,22 +547,21 @@ body {
   border-radius: 9999px;
   overflow: hidden;
   isolation: isolate;
-  background: color-mix(in srgb, var(--craft) 14%, #160c12);
+  background: color-mix(in srgb, var(--craft) 10%, #1a1014);
   box-shadow:
     0 10px 28px rgba(0, 0, 0, 0.42),
     0 0 0 1px rgba(255, 255, 255, 0.14),
-    0 0 40px color-mix(in srgb, var(--craft) 36%, transparent);
-  transform-style: preserve-3d;
+    0 0 20px color-mix(in srgb, var(--craft) 14%, transparent);
 }
 
 .gpt-mark-atmosphere {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 30% 22%, color-mix(in srgb, #fff 28%, var(--craft)) 0%, transparent 30%),
-    radial-gradient(circle at 56% 42%, color-mix(in srgb, var(--craft) 72%, transparent) 0%, transparent 44%),
-    radial-gradient(circle at 48% 70%, color-mix(in srgb, var(--craft) 38%, #000) 0%, transparent 46%),
-    color-mix(in srgb, var(--craft) 12%, #160c12);
+    radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.2), transparent 30%),
+    radial-gradient(circle at 56% 42%, color-mix(in srgb, var(--craft) 28%, transparent), transparent 42%),
+    radial-gradient(circle at 48% 70%, rgba(0, 0, 0, 0.28), transparent 44%),
+    color-mix(in srgb, var(--craft) 8%, #1a1014);
 }
 
 .gpt-mark-caustic {
@@ -566,7 +572,7 @@ body {
     transparent 0 46%,
     rgba(255, 255, 255, 0.28) 56%,
     transparent 64%,
-    color-mix(in srgb, var(--craft) 32%, transparent) 72%,
+    color-mix(in srgb, var(--craft) 16%, transparent) 72%,
     transparent 84%
   );
   pointer-events: none;
@@ -582,6 +588,10 @@ body {
   pointer-events: none;
 }
 
+.gpt-mark-emblem > .relative {
+  border-radius: inherit;
+}
+
 .gpt-mark-svg {
   width: 72%;
   height: 72%;
@@ -590,7 +600,7 @@ body {
 
 .gpt-mark-letter {
   color: #fff;
-  font-size: 42px;
+  font-size: 22px;
   font-stretch: 68%;
   letter-spacing: -0.05em;
   line-height: 1;
@@ -600,8 +610,25 @@ body {
   user-select: none;
 }
 
-.gpt-mark-md .gpt-mark-letter {
-  font-size: 26px;
+.gpt-mark-xs .gpt-mark-letter {
+  font-size: 11px;
+  font-stretch: 75%;
+}
+
+.gpt-mark-sm .gpt-mark-letter {
+  font-size: 12px;
+}
+
+.gpt-mark-lg .gpt-mark-letter {
+  font-size: 15px;
+}
+
+.gpt-mark-xl .gpt-mark-letter {
+  font-size: 20px;
+}
+
+.gpt-mark-hero .gpt-mark-letter {
+  font-size: 42px;
 }
 
 .gpt-mark-film {
@@ -650,109 +677,35 @@ body {
   padding: 1.5px;
   background: conic-gradient(
     from 210deg,
-    color-mix(in srgb, #fff 70%, var(--craft)),
-    var(--craft),
-    color-mix(in srgb, var(--craft) 40%, #1a1020),
-    color-mix(in srgb, #fff 35%, var(--craft)),
-    var(--craft)
+    color-mix(in srgb, #fff 55%, var(--craft)),
+    color-mix(in srgb, var(--craft) 70%, #1a1014),
+    color-mix(in srgb, var(--craft) 28%, #1a1014),
+    color-mix(in srgb, #fff 28%, var(--craft)),
+    color-mix(in srgb, var(--craft) 50%, #1a1014)
   );
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
-  opacity: 0.62;
+  opacity: 0.45;
   pointer-events: none;
 }
 
-.gpt-glyph-lit {
-  border-color: color-mix(in srgb, var(--craft, var(--accent)) 52%, transparent);
-  color: color-mix(in srgb, var(--craft, var(--accent)) 68%, #fff);
+.gpt-mark-xs .gpt-mark-rim,
+.gpt-mark-sm .gpt-mark-rim {
+  padding: 1px;
+  opacity: 0.36;
+}
+
+.gpt-mark-xs .gpt-mark-highlight,
+.gpt-mark-sm .gpt-mark-highlight {
+  filter: blur(0.6px);
+}
+
+.gpt-mark-xs .gpt-mark-shade,
+.gpt-mark-sm .gpt-mark-shade {
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--craft, var(--accent)) 18%, transparent),
-    0 0 20px color-mix(in srgb, var(--craft, var(--accent)) 26%, transparent);
-}
-
-/* Logo de oficio: esmalte de color, misma geometría en xs/md. No esfera. */
-.gpt-logo {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.gpt-logo-glow {
-  position: absolute;
-  inset: -18%;
-  border-radius: 36%;
-  background: radial-gradient(
-    circle,
-    color-mix(in srgb, var(--craft) 46%, transparent) 0%,
-    transparent 72%
-  );
-  pointer-events: none;
-  z-index: 0;
-}
-
-.gpt-logo-xs .gpt-logo-glow {
-  inset: -10%;
-  filter: blur(2px);
-  opacity: 0.85;
-}
-
-.gpt-logo-md .gpt-logo-glow {
-  filter: blur(8px);
-}
-
-.gpt-logo-plate {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  border-radius: 28%;
-  background: linear-gradient(
-    152deg,
-    color-mix(in srgb, #fff 38%, var(--craft)) 0%,
-    var(--craft) 46%,
-    color-mix(in srgb, var(--craft) 74%, #2a1024) 100%
-  );
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--craft) 48%, rgba(255, 255, 255, 0.4)),
-    0 6px 16px color-mix(in srgb, var(--craft) 30%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.42);
-}
-
-.gpt-logo-plate::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  background: linear-gradient(155deg, rgba(255, 255, 255, 0.34) 0%, transparent 42%);
-  pointer-events: none;
-}
-
-.gpt-logo-plate > * {
-  position: relative;
-  z-index: 2;
-}
-
-.gpt-logo-plate .gpt-mark-svg {
-  width: 78%;
-  height: 78%;
-}
-
-.gpt-logo-xs .gpt-logo-plate .gpt-mark-svg {
-  width: 88%;
-  height: 88%;
-}
-
-.gpt-logo-md .gpt-mark-letter {
-  font-size: 28px;
-}
-
-.gpt-logo-xs .gpt-mark-letter {
-  font-size: 13px;
+    inset -2px -3px 5px rgba(0, 0, 0, 0.5),
+    inset 1px 1px 2px rgba(255, 255, 255, 0.14);
 }
 
 .gpt-starter {
@@ -788,8 +741,12 @@ body {
 
 .gpt-card:hover,
 .gpt-card:focus-visible {
-  background: color-mix(in srgb, var(--accent) 8%, var(--color-zinc-900));
-  border-color: color-mix(in srgb, var(--accent) 40%, var(--color-zinc-800));
+  background: color-mix(
+    in srgb,
+    var(--craft, var(--accent)) 7%,
+    var(--color-zinc-900)
+  );
+  border-color: color-mix(in srgb, var(--accent) 32%, var(--color-zinc-800));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
@@ -849,31 +806,22 @@ body {
     0%,
     100% {
       transform: scale(1);
-      opacity: 0.58;
+      opacity: 0.62;
     }
     50% {
-      transform: scale(1.12);
-      opacity: 1;
+      transform: scale(1.06);
+      opacity: 0.85;
     }
   }
   @keyframes gpt-mark-shimmer {
     0%,
     100% {
-      opacity: 0.7;
+      opacity: 0.72;
       transform: translate(0, 0) scale(1);
     }
     50% {
       opacity: 1;
-      transform: translate(8%, 5%) scale(1.08);
-    }
-  }
-  @keyframes gpt-mark-tilt {
-    0%,
-    100% {
-      transform: rotateX(6deg) rotateY(-8deg);
-    }
-    50% {
-      transform: rotateX(-4deg) rotateY(8deg);
+      transform: translate(10%, 6%) scale(1.1);
     }
   }
   @keyframes gpt-mark-spin {
@@ -881,61 +829,31 @@ body {
       transform: rotate(360deg);
     }
   }
-  @keyframes gpt-mark-float {
-    0%,
-    100% {
-      transform: translateY(0);
-    }
-    50% {
-      transform: translateY(-2px);
-    }
-  }
 
   .gpt-mark-breathe {
-    animation: gpt-mark-breathe 8s ease-in-out infinite;
+    animation: gpt-mark-breathe 4.2s ease-in-out infinite;
   }
   .gpt-mark-shimmer {
-    animation: gpt-mark-shimmer 9.5s ease-in-out infinite;
-  }
-  .gpt-mark-tilt {
-    animation: gpt-mark-tilt 11s ease-in-out infinite;
+    animation: gpt-mark-shimmer 3.6s ease-in-out infinite;
   }
   .gpt-mark-spin {
-    animation: gpt-mark-spin 28s linear infinite;
-  }
-  .gpt-mark-emblem {
-    animation: gpt-mark-float 8s ease-in-out infinite;
+    animation: gpt-mark-spin 22s linear infinite;
   }
   @keyframes gpt-mark-scan {
     0%,
     100% {
-      transform: translateY(-8px);
-      opacity: 0.35;
+      transform: translateY(-6px);
+      opacity: 0.28;
     }
     50% {
-      transform: translateY(8px);
-      opacity: 0.9;
+      transform: translateY(6px);
+      opacity: 0.55;
     }
   }
   .gpt-mark-scan {
     animation: gpt-mark-scan 9s ease-in-out infinite;
     transform-box: fill-box;
     transform-origin: center;
-  }
-  .gpt-logo-xs .gpt-mark-scan {
-    animation: none;
-  }
-  @keyframes gpt-logo-breathe {
-    0%,
-    100% {
-      opacity: 0.72;
-    }
-    50% {
-      opacity: 1;
-    }
-  }
-  .gpt-logo-md .gpt-logo-glow {
-    animation: gpt-logo-breathe 7s ease-in-out infinite;
   }
   .gpt-starter:hover {
     transform: translateY(-1px);
