@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { DragEvent } from "react";
 import type { UploadedFile } from "@/lib/types";
 import { downscaleImage } from "@/lib/image-resize";
@@ -35,7 +35,9 @@ export function useChatUploads(canAttach: boolean) {
   const pendingRef = useRef(0);
   const videoPendingRef = useRef(0);
   const attachedCountRef = useRef(0);
-  attachedCountRef.current = attachedFiles.length;
+  useEffect(() => {
+    attachedCountRef.current = attachedFiles.length;
+  }, [attachedFiles.length]);
 
   const dismissUploadError = useCallback(() => setUploadError(null), []);
   const clearAttachments = useCallback(() => setAttachedFiles([]), []);
