@@ -1,13 +1,19 @@
-import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, memo, useCallback, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { ArrowUp, Plus, Paperclip, Mic, X, Check, Square, Video } from "lucide-react";
 import type { UploadedFile } from "@/lib/types";
 import { useDismissable } from "@/hooks/useDismissable";
 import RecordingWave from "./RecordingWave";
-import { imageLabel, type ThreadNumbers } from "@/lib/attachment-labels";
-import { mentionAt, moveIndex, removeMention, type MentionQuery } from "@/lib/file-search";
+import {
+  filterMentionCandidates,
+  findCandidateByToken,
+  insertMentionToken,
+  type MentionCandidate,
+} from "@/lib/attachment-mentions";
+import { mentionAt, moveIndex, type MentionQuery } from "@/lib/file-search";
 import { VIDEO_ANALYZING_HINT, VIDEO_ANALYZING_LABEL, VIDEO_ATTACH_TITLE } from "@/lib/video-copy";
-import FilePicker from "./FilePicker";
-import type { LibraryFile } from "@/app/api/files/route";
+import MentionField, { type MentionFieldHandle } from "./MentionField";
+import MentionMenu from "./MentionMenu";
+import MentionPreview from "./MentionPreview";
 
 // Tipos que acepta el <input type="file">. El video va aparte porque depende
 // de que Gemini esté configurado (ver `videoEnabled`).
@@ -31,24 +37,20 @@ interface Props {
    */
   videoEnabled: boolean;
   isEditing: boolean;
-  /** Hilo activo: acota la biblioteca del `@` a los archivos de este chat. */
-  activeThreadId: string | null;
   onCancelEdit: () => void;
   attachedFiles: UploadedFile[];
-  /** Numeración del hilo entero: lo mismo que se le manda al modelo. */
-  numbers: ThreadNumbers;
+  /** Adjuntos del hilo + bandeja, para el menú `@` y el preview del token. */
+  mentions: MentionCandidate[];
   onFilesSelected: (files: File[]) => void;
   onRemoveFile: (index: number) => void;
   onSend: (text: string) => void;
   onStop: () => void;
-  /** Adjunta un archivo ya subido antes, elegido desde el menú `@`. */
-  onLibraryPick: (file: LibraryFile) => void;
 }
 
 // Composer aislado: el texto y la grabación viven acá, no en el componente padre.
 // Así escribir no re-renderiza el resto del chat (sidebar, lista de mensajes).
 const Composer = forwardRef<ComposerHandle, Props>(function Composer(
-  { isLoading, isUploading, isUploadingVideo, videoEnabled, isEditing, activeThreadId, onCancelEdit, attachedFiles, numbers, onFilesSelected, onRemoveFile, onSend, onStop, onLibraryPick },
+  { isLoading, isUploading, isUploadingVideo, videoEnabled, isEditing, onCancelEdit, attachedFiles, mentions, onFilesSelected, onRemoveFile, onSend, onStop },
   ref
 ) {
   const [input, setInput] = useState("");
@@ -59,13 +61,12 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [micError, setMicError] = useState("");
 
-  // Menú `@` de la biblioteca de archivos.
+  // Menú `@` de los adjuntos del hilo actual + los pendientes de la bandeja.
   const [mention, setMention] = useState<MentionQuery | null>(null);
-  const [library, setLibrary] = useState<LibraryFile[]>([]);
-  const [libraryLoading, setLibraryLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [tokenPreview, setTokenPreview] = useState<{ token: string; rect: DOMRect } | null>(null);
 
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const mentionFieldRef = useRef<MentionFieldHandle>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -73,82 +74,40 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   // que distingue "descartá el audio" de "transcribilo".
   const cancelledRef = useRef(false);
 
-
   const closeMention = useCallback(() => setMention(null), []);
   const mentionRef = useDismissable<HTMLDivElement>(mention !== null, closeMention);
 
-  // Se busca en la biblioteca con un respiro de 180ms: sin él, cada tecla
-  // dispara una petición y el servidor recibe una ráfaga por palabra escrita.
-  const mentionQuery = mention?.query ?? null;
-  useEffect(() => {
-    if (mentionQuery === null) return;
-    // Chat nuevo, sin hilo todavía: nada propio que referenciar.
-    if (!activeThreadId) {
-      setLibrary([]);
-      setLibraryLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setLibraryLoading(true);
-    const timer = setTimeout(async () => {
-      try {
-        const params = new URLSearchParams({ threadId: activeThreadId, q: mentionQuery });
-        const res = await fetch(`/api/files?${params}`);
-        if (!res.ok) throw new Error("no se pudo cargar la biblioteca");
-        const data: LibraryFile[] = await res.json();
-        if (cancelled) return;
-        setLibrary(data);
-        setActiveIndex(0);
-      } catch {
-        // Silencioso a propósito: el menú se ve vacío, que es información
-        // suficiente. Un error rojo tapando el composer sería peor que no
-        // encontrar archivos.
-        if (!cancelled) setLibrary([]);
-      } finally {
-        if (!cancelled) setLibraryLoading(false);
-      }
-    }, 180);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [mentionQuery, activeThreadId]);
+  const mentionOptions = useMemo(
+    () => (mention ? filterMentionCandidates(mentions, mention.query) : []),
+    [mention, mentions]
+  );
 
-  /** Recalcula si el cursor está dentro de una mención `@`. */
-  function syncMention(el: HTMLTextAreaElement) {
-    setMention(mentionAt(el.value, el.selectionStart ?? el.value.length));
+  function syncMention() {
+    const field = mentionFieldRef.current;
+    if (!field) return;
+    const next = mentionAt(field.getValue(), field.getCaret());
+    const same = mention?.start === next?.start && mention?.query === next?.query;
+    if (!same) setActiveIndex(0);
+    setMention(next);
   }
 
-  function pickFromLibrary(file: LibraryFile) {
-    const el = textareaRef.current;
-    if (!el || !mention) return;
-    const caret = el.selectionStart ?? el.value.length;
-    const next = removeMention(el.value, mention, caret);
+  function pickMention(file: MentionCandidate) {
+    const field = mentionFieldRef.current;
+    if (!field || !mention) return;
+    const next = insertMentionToken(field.getValue(), mention.start, field.getCaret(), file.token);
     setInput(next.text);
+    field.apply(next.text, next.caret);
     setMention(null);
-    onLibraryPick(file);
-    // El cursor vuelve a donde estaba el `@`, para poder seguir escribiendo
-    // la frase sin buscar el punto con el mouse.
-    setTimeout(() => {
-      el.focus();
-      el.setSelectionRange(next.caret, next.caret);
-      autoResize();
-    }, 0);
-  }
-
-  function autoResize() {
-    const el = textareaRef.current;
-    if (!el) return;
-    el.style.height = "auto";
-    el.style.height = Math.min(el.scrollHeight, 180) + "px";
+    setTokenPreview(null);
+    field.focus();
   }
 
   useImperativeHandle(ref, () => ({
     setText(text: string) {
       setInput(text);
       setTimeout(() => {
-        autoResize();
-        textareaRef.current?.focus();
+        mentionFieldRef.current?.apply(text, text.length);
+        mentionFieldRef.current?.focus();
       }, 0);
     },
   }));
@@ -172,6 +131,12 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
     if (imgs.length > 0) {
       e.preventDefault();
       onFilesSelected(imgs);
+      return;
+    }
+    const text = e.clipboardData.getData("text/plain");
+    if (text) {
+      e.preventDefault();
+      document.execCommand("insertText", false, text);
     }
   }
 
@@ -222,8 +187,11 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
         const res = await fetch("/api/transcribe", { method: "POST", body: formData });
         if (res.ok) {
           const { text } = await res.json();
-          setInput((prev) => (prev ? `${prev} ${text}` : text));
-          setTimeout(autoResize, 0);
+          setInput((prev) => {
+            const next = prev ? `${prev} ${text}` : text;
+            setTimeout(() => mentionFieldRef.current?.apply(next, next.length), 0);
+            return next;
+          });
         } else {
           setMicError("No se pudo transcribir el audio. Intenta de nuevo.");
         }
@@ -241,22 +209,22 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
     if ((!input.trim() && attachedFiles.length === 0) || isLoading || isUploading) return;
     const text = input.trim();
     setInput("");
-    if (textareaRef.current) textareaRef.current.style.height = "auto";
+    mentionFieldRef.current?.apply("", 0);
     onSend(text);
   }
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+  function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
     // El menú se atiende PRIMERO. Si no, Enter envía el mensaje en vez de
     // elegir el archivo resaltado — el error clásico de este tipo de menú.
     if (mention) {
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setActiveIndex((i) => moveIndex(i, 1, library.length));
+        setActiveIndex((i) => moveIndex(i, 1, mentionOptions.length));
         return;
       }
       if (e.key === "ArrowUp") {
         e.preventDefault();
-        setActiveIndex((i) => moveIndex(i, -1, library.length));
+        setActiveIndex((i) => moveIndex(i, -1, mentionOptions.length));
         return;
       }
       if (e.key === "Escape") {
@@ -266,15 +234,9 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
       }
       // Con la lista vacía NO se intercepta: alguien escribió "@zzz" sin
       // resultados y lo que quiere es mandar su mensaje, no elegir nada.
-      //
-      // Y tampoco mientras se está buscando: en ese momento `library` todavía
-      // tiene los resultados de la consulta ANTERIOR, que ya no se ven en
-      // pantalla (el menú muestra "Buscando…"). Sin este guardia, escribir
-      // `@bri`, seguir tecleando y dar Enter adjuntaba un archivo que el
-      // usuario no tenía delante.
-      if ((e.key === "Enter" || e.key === "Tab") && !libraryLoading && library.length > 0) {
+      if ((e.key === "Enter" || e.key === "Tab") && mentionOptions.length > 0) {
         e.preventDefault();
-        pickFromLibrary(library[activeIndex]);
+        pickMention(mentionOptions[activeIndex]);
         return;
       }
     }
@@ -290,11 +252,6 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
       {(attachedFiles.length > 0 || isUploading) && (
         <div className="flex flex-wrap gap-2 mb-3 max-w-3xl mx-auto">
           {attachedFiles.map((f, i) => {
-            // La numeración sale de la misma función que usa el servidor para
-            // rotular las imágenes que le manda al modelo: si se calcularan por
-            // separado, el usuario vería "imagen 2" mientras el modelo habla
-            // de otra.
-            const position = numbers.images.get(f.openai_file_id) ?? null;
             return f.type === "image" ? (
               <div key={i} className="relative group/thumb">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -303,9 +260,6 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
                   alt={f.name}
                   className="h-16 w-16 rounded-xl border border-zinc-800 object-cover"
                 />
-                <span className="absolute bottom-0.5 left-0.5 text-[10px] bg-black/70 text-white rounded px-1">
-                  {position !== null ? imageLabel(position) : "imagen"}
-                </span>
                 <button
                   onClick={() => onRemoveFile(i)}
                   className="absolute -top-1.5 -right-1.5 bg-zinc-800 border border-zinc-600 rounded-full p-0.5 text-zinc-300 hover:text-ink opacity-0 group-hover/thumb:opacity-100 transition"
@@ -356,6 +310,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             onClick={() => {
               onCancelEdit();
               setInput("");
+              mentionFieldRef.current?.apply("", 0);
             }}
             className="text-zinc-400 hover:text-ink"
           >
@@ -372,13 +327,18 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
 
       <div ref={mentionRef} className="frost relative mx-auto flex max-w-3xl items-end gap-2 rounded-3xl px-4 py-2.5 transition-colors focus-within:border-brand/40 focus-within:ring-2 focus-within:ring-brand/25">
         {mention && (
-          <FilePicker
-            files={library}
+          <MentionMenu
+            files={mentionOptions}
             activeIndex={activeIndex}
-            loading={libraryLoading}
             query={mention.query}
-            onPick={pickFromLibrary}
+            onPick={pickMention}
             onHover={setActiveIndex}
+          />
+        )}
+        {tokenPreview && findCandidateByToken(mentions, tokenPreview.token) && (
+          <MentionPreview
+            candidate={findCandidateByToken(mentions, tokenPreview.token)!}
+            anchor={tokenPreview.rect}
           />
         )}
         <input
@@ -423,27 +383,23 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             {/* Micrófono y controles de grabación usan la misma caja de 36px que
                 el botón de enviar: con items-end, dos alturas distintas dejan los
                 centros ópticos desalineados. */}
-            <textarea
-              ref={textareaRef}
+            <MentionField
+              ref={mentionFieldRef}
               value={input}
-              onChange={(e) => {
-                setInput(e.target.value);
-                syncMention(e.target);
-                autoResize();
-              }}
-              // onSelect cubre mover el cursor con el mouse o las flechas hasta
-              // dentro de un `@` que ya estaba escrito.
-              onSelect={(e) => syncMention(e.currentTarget)}
-              onKeyDown={handleKeyDown}
-              onPaste={handlePaste}
+              disabled={isLoading || isTranscribing}
               placeholder={
                 isTranscribing
                   ? "Transcribiendo audio..."
                   : "Escribe un mensaje... (Enter para enviar)"
               }
-              disabled={isLoading || isTranscribing}
-              rows={1}
-              className="flex-1 bg-transparent text-ink placeholder:text-zinc-500 resize-none focus:outline-none text-[16px] leading-6 py-2 max-h-[180px]"
+              onChange={setInput}
+              onCaret={syncMention}
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
+              onTokenPreview={(el, token) =>
+                setTokenPreview({ token, rect: el.getBoundingClientRect() })
+              }
+              onTokenPreviewEnd={() => setTokenPreview(null)}
             />
 
             <button

@@ -16,6 +16,7 @@ import Composer, { type ComposerHandle } from "./chat/Composer";
 import GptChatsModal from "./chat/GptChatsModal";
 import ProjectInstructionsModal from "./chat/ProjectInstructionsModal";
 import { assignThreadNumbers } from "@/lib/attachment-labels";
+import { listMentionCandidates } from "@/lib/attachment-mentions";
 import ThinkingIndicator from "./chat/ThinkingIndicator";
 import {
   countAttachments,
@@ -153,7 +154,6 @@ export default function UnifiedChat({
     clearAttachments,
     restoreAttachments,
     uploadFiles,
-    attachFromLibrary,
     removeAttached,
     onDragOver,
     onDragLeave,
@@ -201,6 +201,10 @@ export default function UnifiedChat({
   const attachmentNumbers = useMemo(
     () => assignThreadNumbers(messages, attachedFiles),
     [messages, attachedFiles]
+  );
+  const mentionables = useMemo(
+    () => listMentionCandidates(messages, attachedFiles, attachmentNumbers),
+    [messages, attachedFiles, attachmentNumbers]
   );
 
   useEffect(() => {
@@ -501,6 +505,7 @@ export default function UnifiedChat({
                     index={i}
                     message={msg}
                     numbers={attachmentNumbers}
+                    mentions={mentionables}
                     activeGpt={activeGpt}
                     isLast={isLast}
                     streaming={streaming}
@@ -559,9 +564,7 @@ export default function UnifiedChat({
             ref={composerRef}
             isLoading={isLoading}
             videoEnabled={videoEnabled}
-            onLibraryPick={attachFromLibrary}
-            numbers={attachmentNumbers}
-            activeThreadId={activeThreadId}
+            mentions={mentionables}
             isUploading={pendingUploads > 0}
             isUploadingVideo={uploadingVideo}
             isEditing={isEditing}

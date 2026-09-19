@@ -4,6 +4,8 @@ import type { Gpt, Message } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import MessageContent from "../MessageContent";
 import { imageLabel, type ThreadNumbers } from "@/lib/attachment-labels";
+import type { MentionCandidate } from "@/lib/attachment-mentions";
+import MentionedText from "./MentionedText";
 
 interface Props {
   message: Message;
@@ -13,6 +15,7 @@ interface Props {
    * conversación, y este componente solo ve su propio mensaje.
    */
   numbers: ThreadNumbers;
+  mentions: MentionCandidate[];
   index: number;
   activeGpt?: Gpt;
   isLast: boolean;
@@ -36,6 +39,7 @@ interface Props {
 function MessageBubble({
   message: msg,
   numbers,
+  mentions,
   index,
   isLast,
   streaming,
@@ -65,11 +69,6 @@ function MessageBubble({
               alt={position !== null ? imageLabel(position) : "imagen"}
               className="w-24 h-24 object-cover rounded-lg border border-white/[0.08]"
             />
-            {position !== null && (
-              <span className="absolute bottom-0.5 left-0.5 text-[10px] bg-black/70 text-white rounded px-1">
-                {imageLabel(position)}
-              </span>
-            )}
           </div>
         ) : (
           <span key={fi} className="inline-flex items-center gap-1 text-xs bg-white/[0.06] border border-white/[0.08] rounded-lg px-2 py-1">
@@ -172,7 +171,7 @@ function MessageBubble({
       <div className="flex flex-col gap-1 max-w-[80%]">
         <div className="rounded-2xl rounded-br-sm bg-white/[0.06] border border-white/[0.08] text-zinc-100 px-4 py-2.5">
           {files}
-          <p className="text-[15px] whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+          <MentionedText text={msg.content} mentions={mentions} />
         </div>
         {actions}
       </div>

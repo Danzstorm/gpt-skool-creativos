@@ -4,7 +4,7 @@ import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { threadAttachmentLabels, threadFileIds } from "@/lib/message-attachments";
 import { matchLibraryRows, type LibraryFile } from "@/lib/file-library";
 
-// Re-exportado porque el FilePicker ya lo importaba desde acá.
+// Re-exportado: el menú `@` del composer ya no consume esta ruta.
 export type { LibraryFile };
 
 /** Tope duro: el menú muestra una lista corta, no un explorador de archivos. */

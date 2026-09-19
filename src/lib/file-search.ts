@@ -5,6 +5,8 @@
 // "referencia" encuentre "Referencia", y mover el índice activo con las flechas
 // dando la vuelta en los extremos.
 
+import { completeTokenRange } from "./attachment-mentions";
+
 export interface MentionQuery {
   /** Índice del `@` en el texto. */
   start: number;
@@ -23,6 +25,10 @@ export interface MentionQuery {
  * escribe el espacio, así que el menú se cierra solo al seguir escribiendo.
  */
 export function mentionAt(text: string, caret: number): MentionQuery | null {
+  // Un token ya insertado (`@Imagen 2`) no es una consulta: el menú se abre
+  // para escribir `@` o `@im`, no para editar un chip por dentro.
+  if (completeTokenRange(text, caret)) return null;
+
   const upToCaret = text.slice(0, caret);
   const at = upToCaret.lastIndexOf("@");
   if (at === -1) return null;

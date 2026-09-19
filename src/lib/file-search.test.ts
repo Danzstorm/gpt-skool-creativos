@@ -35,6 +35,13 @@ describe("mentionAt — cuándo se abre el menú", () => {
   it("trata el salto de línea como separador, igual que el espacio", () => {
     expect(mentionAt("linea\n@bri", 10)).toEqual({ start: 6, query: "bri" });
   });
+
+  it("no reabre el menú dentro de un token @Imagen N ya insertado", () => {
+    const text = "usa @Imagen 2 ahora";
+    const inside = text.indexOf("Imagen");
+    expect(mentionAt(text, inside + 2)).toBeNull();
+    expect(mentionAt("@im", 3)).toEqual({ start: 0, query: "im" });
+  });
 });
 
 describe("removeMention", () => {

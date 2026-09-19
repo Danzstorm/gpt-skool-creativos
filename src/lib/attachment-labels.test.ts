@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { assignThreadNumbers, imageLabel, videoLabel } from "./attachment-labels";
+import {
+  assignThreadNumbers,
+  documentLabel,
+  documentMention,
+  imageLabel,
+  imageMention,
+  videoLabel,
+  videoMention,
+} from "./attachment-labels";
 
 describe("imageLabel", () => {
   it("es el nombre que se usa en pantalla y para el modelo", () => {
@@ -13,6 +21,21 @@ describe("imageLabel", () => {
 describe("videoLabel", () => {
   it("es el nombre que se usa en pantalla y para el modelo", () => {
     expect(videoLabel(1)).toBe("descripción de video 1");
+  });
+});
+
+describe("documentLabel", () => {
+  it("nombra el documento cuando el menú @ le asigna número", () => {
+    expect(documentLabel(1)).toBe("archivo 1");
+  });
+});
+
+describe("tokens @ del composer", () => {
+  it("el chip es @Imagen N, el modelo sigue leyendo imagen N", () => {
+    expect(imageMention(4)).toBe("@Imagen 4");
+    expect(imageLabel(4)).toBe("imagen 4");
+    expect(videoMention(1)).toBe("@Video 1");
+    expect(documentMention(2)).toBe("@Archivo 2");
   });
 });
 

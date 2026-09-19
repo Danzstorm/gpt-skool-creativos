@@ -140,3 +140,26 @@ export function imageLabel(position: number): string {
 export function videoLabel(position: number): string {
   return `descripción de video ${position}`;
 }
+
+/** Cómo se nombra un documento cuando el hilo le asigna número. */
+export function documentLabel(position: number): string {
+  return `archivo ${position}`;
+}
+
+/**
+ * Token que se inserta en el composer al referenciar con `@`.
+ *
+ * Es el chip que ve la persona (`@Imagen 2`). El modelo sigue recibiendo
+ * `imageLabel` / `videoLabel` / `documentLabel` — ver resolveMentionTokens.
+ */
+export function imageMention(position: number): string {
+  return `@Imagen ${position}`;
+}
+
+export function videoMention(position: number): string {
+  return `@Video ${position}`;
+}
+
+export function documentMention(position: number): string {
+  return `@Archivo ${position}`;
+}

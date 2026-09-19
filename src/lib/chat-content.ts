@@ -1,5 +1,6 @@
 import type { ResponseInputItem } from "openai/resources/responses/responses";
 import { imageLabel, videoLabel, type ThreadNumbers } from "@/lib/attachment-labels";
+import { resolveMentionTokens } from "@/lib/attachment-mentions";
 
 export type IncomingFile = {
   openai_file_id: string;
@@ -48,7 +49,11 @@ export function buildUserInput(
   numbers: ThreadNumbers
 ): ResponseInputItem[] {
   const contentParts: ContentPart[] = [];
-  if (message.trim()) contentParts.push({ type: "input_text", text: message.trim() });
+  if (message.trim()) {
+    // El composer guarda chips (`@Imagen 2`); el modelo recibe el rótulo que
+    // ya entiende (`imagen 2`). El file_id se sigue resolviendo por número.
+    contentParts.push({ type: "input_text", text: resolveMentionTokens(message.trim()) });
+  }
 
   files.forEach((f) => {
     if (f.type === "image") {

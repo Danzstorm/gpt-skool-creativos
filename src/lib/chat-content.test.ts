@@ -117,4 +117,9 @@ describe("buildUserInput — sin adjuntos no cambia nada", () => {
     const parts = partsOf(build("  hola  ", []));
     expect(parts).toEqual([{ type: "input_text", text: "hola" }]);
   });
+
+  it("resuelve los chips @ del composer al rótulo que entiende el modelo", () => {
+    const parts = partsOf(build("usa @Imagen 2 de referencia", [image("file-A"), image("file-B")]));
+    expect(parts[0]).toEqual({ type: "input_text", text: "usa imagen 2 de referencia" });
+  });
 });
