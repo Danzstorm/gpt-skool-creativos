@@ -491,18 +491,42 @@ body {
   opacity: 1;
 }
 
-/* Zoom del shell (sidebar + hero + catálogo + composer).
+/* Zoom del chrome (sidebar + hero + catálogo + composer).
    1.15 se rechazó: recortaba. 1.04 se nota y cabe en 1366.
-   Tamaño compensado para que `fixed inset-0` siga llenando el viewport.
+   Va en un hijo, no en `.chat-shell`: si el mismo nodo tiene
+   `overflow: hidden` + `height: calc(100% / 1.04)`, el zoom pinta
+   más grande pero el clip se queda en la caja chica y deja una
+   franja muerta abajo (y a la derecha). El padre llena el viewport;
+   el hijo se encoge y el zoom recupera el 100% DENTRO del padre.
    Móvil: sin zoom — el composer no puede perder aire. */
+.chat-zoom {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
 @media (min-width: 768px) {
-  .chat-shell {
+  .chat-zoom {
     zoom: 1.04;
-    right: auto;
-    bottom: auto;
     width: calc(100% / 1.04);
     height: calc(100% / 1.04);
   }
+}
+
+/* Pie del chat: composer + disclaimer. Placa para que el producto
+   no “se acabe” en negro vacío. overflow visible = el menú @ no se recorta. */
+.chat-dock {
+  flex-shrink: 0;
+  overflow: visible;
+  padding: 0.5rem 1rem 0.35rem;
+  padding-bottom: max(0.35rem, env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, transparent 46%),
+    color-mix(in srgb, var(--color-zinc-900) 92%, #050506);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 /* Columna del chat: negro Creativos. Velo rojo contenido, no flood. */

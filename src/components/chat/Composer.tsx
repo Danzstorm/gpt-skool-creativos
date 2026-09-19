@@ -262,7 +262,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   }
 
   return (
-    <div className="bg-transparent px-4 pt-2.5 pb-2">
+    <div className="bg-transparent">
       {(attachedFiles.length > 0 || isUploading) && (
         <div className="flex flex-wrap gap-2 mb-3 max-w-3xl mx-auto">
           {attachedFiles.map((f, i) => {
@@ -495,7 +495,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
         )}
       </div>
       </div>
-      <p className="text-center text-[11px] text-zinc-600 mt-1.5">
+      <p className="mt-1 text-center text-[11px] leading-4 text-zinc-600">
         Los GPTs pueden cometer errores. Verifica información importante.
       </p>
     </div>

@@ -309,7 +309,8 @@ export default function UnifiedChat({
   );
 
   return (
-    <div className="chat-shell fixed inset-0 flex overflow-hidden bg-zinc-950 text-zinc-100">
+    <div className="chat-shell fixed inset-0 overflow-hidden bg-zinc-950 text-zinc-100">
+      <div className="chat-zoom">
       <ChatSidebar
         communityName={communityName}
         gpts={gpts}
@@ -440,10 +441,10 @@ export default function UnifiedChat({
         <div
           ref={scrollRef}
           onScroll={handleScroll}
-          className="relative z-[1] flex-1 overflow-y-auto px-4 py-4"
+          className="relative z-[1] min-h-0 flex-1 overflow-y-auto px-4"
         >
           {isLoadingHistory && (
-            <div className="space-y-4 animate-pulse max-w-2xl mx-auto w-full">
+            <div className="mx-auto w-full max-w-2xl animate-pulse space-y-4 py-4">
               <div className="flex justify-end">
                 <div className="h-10 w-2/5 bg-white/[0.06] rounded-2xl rounded-br-sm" />
               </div>
@@ -489,7 +490,8 @@ export default function UnifiedChat({
           )}
 
           {messages.length > 0 && (
-            <div className="max-w-3xl mx-auto w-full space-y-5">
+            <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col justify-end">
+            <div className="w-full space-y-5 py-4">
               {messages.map((msg, i) => {
                 const isLast = i === messages.length - 1;
                 const streaming = isLoading && isLast && msg.role === "assistant";
@@ -524,6 +526,7 @@ export default function UnifiedChat({
                 );
               })}
             </div>
+            </div>
           )}
           <div ref={bottomRef} />
         </div>
@@ -538,24 +541,23 @@ export default function UnifiedChat({
           </button>
         )}
 
-        {showComposer && uploadError && (
-          <div className="mx-auto w-full max-w-3xl px-4">
-            <div className="mb-2 flex items-start gap-3 rounded-xl border border-red-800/50 bg-red-950/40 px-4 py-2.5 text-sm text-red-300">
-              <span className="flex-1">{uploadError}</span>
-              <button
-                type="button"
-                onClick={dismissUploadError}
-                className="shrink-0 text-red-400/70 transition hover:text-red-300"
-                aria-label="Cerrar aviso"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          </div>
-        )}
-
         {showComposer && (
-          <div className="relative z-[1]">
+          <div className="chat-dock relative z-[1]">
+            {uploadError && (
+              <div className="mx-auto mb-2 w-full max-w-3xl">
+                <div className="flex items-start gap-3 rounded-xl border border-red-800/50 bg-red-950/40 px-4 py-2.5 text-sm text-red-300">
+                  <span className="flex-1">{uploadError}</span>
+                  <button
+                    type="button"
+                    onClick={dismissUploadError}
+                    className="shrink-0 text-red-400/70 transition hover:text-red-300"
+                    aria-label="Cerrar aviso"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
           <Composer
             ref={composerRef}
             isLoading={isLoading}
@@ -574,6 +576,7 @@ export default function UnifiedChat({
           />
           </div>
         )}
+      </div>
       </div>
 
       {gptPickerOpen && (
