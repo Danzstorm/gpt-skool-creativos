@@ -80,7 +80,7 @@ function ThreadListItem({
       }}
       className={cn(
         "group relative flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 cursor-pointer text-[13px] transition",
-        isActive ? "bg-active text-ink" : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200",
+        isActive ? "nav-active text-ink" : "text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200",
         dropTarget && "ring-1 ring-violet-500/70 bg-violet-500/10"
       )}
       onClick={() => onSelect(thread)}

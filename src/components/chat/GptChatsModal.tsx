@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { SquarePen, X } from "lucide-react";
 import type { Gpt, ThreadSummary } from "@/lib/types";
-import { useDismissable } from "@/hooks/useDismissable";
+import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import GptGlyph from "./GptGlyph";
 import ThreadListItem from "./ThreadListItem";
 
@@ -36,8 +36,6 @@ export default function GptChatsModal({
   onCancelRename,
   onDeleteThread,
 }: Props) {
-  const panelRef = useDismissable<HTMLDivElement>(true, onClose);
-
   const selectAndClose = useCallback(
     (t: ThreadSummary) => {
       onSelectThread(t);
@@ -51,28 +49,35 @@ export default function GptChatsModal({
     onClose();
   }, [onNewChat, onClose]);
 
+  // Siempre montado abierto: el padre lo desmonta al cerrar. Radix solo pide
+  // cerrar (Escape / click fuera); `onClose` decide.
   return (
-    <div className="modal-backdrop fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-      <div
-        ref={panelRef}
-        className="modal-panel w-full max-w-md max-h-[80vh] bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl flex flex-col"
-      >
-        <div className="flex items-center gap-2.5 px-4 py-3 border-b border-zinc-800/80">
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <DialogContent className="max-w-md max-h-[80vh] flex flex-col">
+        <div className="flex items-center gap-2.5 px-4 py-3 border-b border-white/[0.06]">
           <GptGlyph gpt={gpt} size="lg" />
-          <h2 className="flex-1 min-w-0 truncate text-sm font-semibold text-zinc-100">{gpt.name}</h2>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-zinc-500 hover:text-ink hover:bg-zinc-800 transition"
-            aria-label="Cerrar"
-          >
-            <X size={16} />
-          </button>
+          <DialogTitle className="flex-1 min-w-0 truncate text-sm font-semibold text-zinc-100">
+            {gpt.name}
+          </DialogTitle>
+          <DialogClose asChild>
+            <button
+              className="p-1.5 rounded-lg text-zinc-500 hover:text-ink hover:bg-white/[0.06] transition"
+              aria-label="Cerrar"
+            >
+              <X size={16} />
+            </button>
+          </DialogClose>
         </div>
 
         <div className="p-3">
           <button
             onClick={newChatAndClose}
-            className="w-full flex items-center justify-center gap-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/70 hover:border-zinc-600 text-zinc-100 text-sm font-medium rounded-xl px-3 py-2 transition"
+            className="w-full flex items-center justify-center gap-2 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/20 text-zinc-100 text-sm font-medium rounded-xl px-3 py-2 transition"
           >
             <SquarePen size={15} />
             Nuevo chat con {gpt.name}
@@ -100,7 +105,7 @@ export default function GptChatsModal({
             ))
           )}
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

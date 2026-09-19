@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Fraunces } from "next/font/google";
+import { Geist, Archivo } from "next/font/google";
 import { getAppSettings } from "@/lib/app-settings";
 import "./globals.css";
 
@@ -8,12 +8,13 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
-// Display serif alto-contraste para titulares (look editorial de estudio).
-// Variable: peso + optical sizing. Cuerpo/UI siguen en Geist.
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
+// Display condensada para titulares y wordmark (eco de la tipografía del logo).
+// Variable: peso + eje de ancho (wdth), normal e itálica. Cuerpo/UI siguen en Geist.
+const archivo = Archivo({
+  variable: "--font-archivo",
   subsets: ["latin"],
-  axes: ["opsz", "SOFT"],
+  axes: ["wdth"],
+  style: ["normal", "italic"],
   display: "swap",
 });
 
@@ -36,7 +37,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`${geistSans.variable} ${fraunces.variable} h-full`}>
+    <html lang="es" className={`${geistSans.variable} ${archivo.variable} h-full`}>
       <body className="min-h-full antialiased">
         {children}
       </body>

@@ -63,7 +63,7 @@ function MessageBubble({
             <img
               src={f.previewUrl}
               alt={position !== null ? imageLabel(position) : "imagen"}
-              className="w-24 h-24 object-cover rounded-lg border border-white/20"
+              className="w-24 h-24 object-cover rounded-lg border border-white/[0.08]"
             />
             {position !== null && (
               <span className="absolute bottom-0.5 left-0.5 text-[10px] bg-black/70 text-white rounded px-1">
@@ -72,7 +72,7 @@ function MessageBubble({
             )}
           </div>
         ) : (
-          <span key={fi} className="inline-flex items-center gap-1 text-xs bg-zinc-700/40 rounded-lg px-2 py-1">
+          <span key={fi} className="inline-flex items-center gap-1 text-xs bg-white/[0.06] border border-white/[0.08] rounded-lg px-2 py-1">
             <Paperclip size={12} className="flex-shrink-0" />
             {f.name}
           </span>
@@ -96,7 +96,7 @@ function MessageBubble({
       {msg.content && (
         <button
           onClick={() => onCopy(index, msg.content)}
-          className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition"
+          className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-100 hover:bg-white/[0.06] transition"
           title="Copiar"
         >
           {isCopied ? <Check size={14} /> : <Copy size={14} />}
@@ -105,7 +105,7 @@ function MessageBubble({
       {!isUser && isLast && canRegenerate && (
         <button
           onClick={onRegenerate}
-          className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition"
+          className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-100 hover:bg-white/[0.06] transition"
           title="Regenerar"
         >
           <RotateCcw size={14} />
@@ -114,7 +114,7 @@ function MessageBubble({
       {isUser && canEdit && (
         <button
           onClick={() => onEdit(index)}
-          className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition"
+          className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-100 hover:bg-white/[0.06] transition"
           title="Editar"
         >
           <Pencil size={14} />
@@ -124,9 +124,11 @@ function MessageBubble({
   );
 
   // Asistente: ancho completo de la columna, sin burbuja ni avatar.
+  // `msg-in` anima una sola vez por montaje: las keys son índices estables y el
+  // streaming muta el texto in place, así que no se re-dispara por token.
   if (!isUser) {
     return (
-      <div className="group">
+      <div className="group msg-in">
         {files}
         {msg.content ? (
           <div className="flex items-end text-zinc-100">
@@ -163,11 +165,12 @@ function MessageBubble({
     );
   }
 
-  // Usuario: burbuja compacta alineada a la derecha.
+  // Usuario: burbuja compacta alineada a la derecha. `msg-in`: misma nota que
+  // arriba, una sola animación por montaje.
   return (
-    <div className="group flex justify-end">
+    <div className="group msg-in flex justify-end">
       <div className="flex flex-col gap-1 max-w-[80%]">
-        <div className="rounded-2xl rounded-br-sm bg-zinc-800 text-ink px-4 py-2.5">
+        <div className="rounded-2xl rounded-br-sm bg-white/[0.06] border border-white/[0.08] text-zinc-100 px-4 py-2.5">
           {files}
           <p className="text-[15px] whitespace-pre-wrap leading-relaxed">{msg.content}</p>
         </div>

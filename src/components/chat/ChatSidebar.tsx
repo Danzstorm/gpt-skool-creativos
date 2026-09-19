@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -10,14 +10,20 @@ import {
   SquarePen,
   Trash2,
 } from "lucide-react";
-import type { Gpt, Project, ThreadSummary, Theme } from "@/lib/types";
+import type { Gpt, Project, ThreadSummary } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { groupThreadsByProject } from "@/lib/project-grouping";
+import Orb from "@/components/ui/Orb";
 import GptGlyph from "./GptGlyph";
 import ThreadListItem, { THREAD_DND_TYPE } from "./ThreadListItem";
 import SidebarFooter from "./SidebarFooter";
 
+// Solo para el hint del atajo (⌘K vs Ctrl K); el atajo acepta ambas teclas.
+const APPLE_UA = /Mac|iPhone|iPad/;
+const noSubscribe = () => () => {};
+
 interface Props {
+  communityName: string;
   gpts: Gpt[];
   threadList: ThreadSummary[];
   projects: Project[];
@@ -33,8 +39,6 @@ interface Props {
     avatarUrl: string | null;
     isAdmin: boolean;
   };
-  theme: Theme;
-  onThemeChange: (theme: Theme) => void;
   chatSearch: string;
   onSearchChange: (value: string) => void;
   onSelectGpt: (gptId: string) => void;
@@ -64,6 +68,7 @@ interface Props {
 }
 
 function ChatSidebar({
+  communityName,
   gpts,
   threadList,
   projects,
@@ -74,8 +79,6 @@ function ChatSidebar({
   collapsed,
   onToggleCollapse,
   profile,
-  theme,
-  onThemeChange,
   chatSearch,
   onSearchChange,
   onSelectGpt,
@@ -105,6 +108,28 @@ function ChatSidebar({
 }: Props) {
   const [dropProjectId, setDropProjectId] = useState<string | null>(null);
   const [dropLoose, setDropLoose] = useState(false);
+
+  const searchRef = useRef<HTMLInputElement>(null);
+  // El user agent solo existe en el navegador; en el servidor se asume Ctrl.
+  const isMac = useSyncExternalStore(
+    noSubscribe,
+    () => APPLE_UA.test(navigator.userAgent),
+    () => false
+  );
+
+  // ⌘K / Ctrl K enfoca el buscador; si el panel está contraído lo abre antes.
+  // El input ya existe en el DOM (aside de ancho 0), pero se espera un frame
+  // para que el re-render y el foco no se pisen. No setea estado propio.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "k") return;
+      e.preventDefault();
+      if (collapsed) onToggleCollapse();
+      requestAnimationFrame(() => searchRef.current?.focus());
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [collapsed, onToggleCollapse]);
 
   const gptNameById = useMemo(() => new Map(gpts.map((g) => [g.id, g.name])), [gpts]);
 
@@ -147,7 +172,7 @@ function ChatSidebar({
 
       <aside
         className={cn(
-          "flex-col border-r border-zinc-800/80 bg-zinc-950 z-30 overflow-hidden",
+          "flex-col glass rounded-none border-y-0 border-l-0 z-30 overflow-hidden",
           "md:flex md:relative md:translate-x-0 transition-[width] duration-200 ease-out",
           collapsed ? "md:w-0 md:border-r-0" : "md:w-64",
           "fixed top-0 bottom-0 left-0 flex w-64 transition-transform duration-200",
@@ -155,41 +180,48 @@ function ChatSidebar({
         )}
       >
         <div className="w-64 h-full flex flex-col flex-shrink-0">
-          <div className="flex items-center justify-between px-2 pt-2 pb-1">
+          <div className="flex items-center justify-between gap-2 px-3 pt-3 pb-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <Orb size="xs" />
+              <span className="font-display wordmark italic uppercase brand-text font-extrabold text-[15px] tracking-tight truncate">
+                {communityName}
+              </span>
+            </div>
             <button
               onClick={onToggleCollapse}
-              className="hidden md:flex items-center justify-center w-8 h-8 rounded-lg text-zinc-400 hover:text-ink hover:bg-zinc-900 transition"
+              className="hidden md:flex flex-shrink-0 items-center justify-center w-8 h-8 rounded-lg text-zinc-400 hover:text-ink hover:bg-white/[0.06] transition"
               title="Contraer panel"
               aria-label="Contraer panel"
             >
               <PanelLeftClose size={16} />
             </button>
-            <button
-              onClick={onNewChat}
-              className="flex items-center justify-center w-8 h-8 rounded-lg text-zinc-400 hover:text-ink hover:bg-zinc-900 transition"
-              title="Nuevo chat"
-              aria-label="Nuevo chat"
-            >
-              <SquarePen size={16} />
-            </button>
           </div>
 
-          <div className="px-2 pb-2">
+          <div className="px-2 pb-2 space-y-2">
+            <button
+              onClick={onNewChat}
+              className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium text-zinc-100 bg-white/[0.06] hover:bg-white/[0.10] border border-white/[0.08] transition"
+            >
+              <SquarePen size={16} />
+              Nuevo chat
+            </button>
             <div className="relative">
               <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-600" />
               <input
+                ref={searchRef}
                 value={chatSearch}
                 onChange={(e) => onSearchChange(e.target.value)}
                 placeholder="Buscar..."
-                className="w-full bg-zinc-900/70 border border-zinc-800 rounded-lg pl-7 pr-2.5 py-1.5 text-[13px] text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-600 transition"
+                className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl pl-7 pr-14 py-1.5 text-[13px] text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-white/20 transition"
               />
+              <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md border border-white/10 bg-white/[0.05] px-1.5 py-0.5 text-[10px] font-medium text-zinc-500">
+                {isMac ? "⌘K" : "Ctrl K"}
+              </kbd>
             </div>
           </div>
 
           <div className="flex-1 overflow-y-auto px-2 pb-3">
-            <p className="text-[11px] uppercase tracking-wider text-zinc-600 font-medium px-2.5 pt-1.5 pb-1">
-              GPTs
-            </p>
+            <p className="eyebrow text-zinc-500 px-2.5 pt-1.5 pb-1">GPTs</p>
             <div className="space-y-0.5 mb-3">
               {gpts.map((g) => (
                 <div key={g.id} className="group relative flex items-center">
@@ -198,8 +230,8 @@ function ChatSidebar({
                     className={cn(
                       "flex-1 min-w-0 flex items-center gap-2 rounded-lg pl-2.5 pr-7 py-1.5 text-[13px] transition text-left cursor-pointer active:scale-[0.99]",
                       activeGptId === g.id && !activeThreadId
-                        ? "bg-active text-ink"
-                        : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
+                        ? "nav-active text-ink"
+                        : "text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200"
                     )}
                   >
                     <GptGlyph gpt={g} size="xs" />
@@ -222,9 +254,7 @@ function ChatSidebar({
 
             {groups.length > 0 && (
               <>
-                <p className="text-[11px] uppercase tracking-wider text-zinc-600 font-medium px-2.5 pt-2 pb-1">
-                  Proyectos
-                </p>
+                <p className="eyebrow text-zinc-500 px-2.5 pt-2 pb-1">Proyectos</p>
                 <div className="space-y-0.5 mb-3">
                   {groups.map(({ project, threads, forceOpen }) => {
                     const isOpen = forceOpen || openProjectIds.includes(project.id);
@@ -247,7 +277,7 @@ function ChatSidebar({
                             if (threadId) onMoveToProject(threadId, project.id);
                           }}
                           className={cn(
-                            "group flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 cursor-pointer text-[13px] transition text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200",
+                            "group flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 cursor-pointer text-[13px] transition text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200",
                             dropProjectId === project.id && "ring-1 ring-violet-500/70 bg-violet-500/10"
                           )}
                           onClick={() => onToggleProject(project.id)}
@@ -363,9 +393,7 @@ function ChatSidebar({
                 su texto, además, es el lugar donde soltar para sacarlos. */}
             {(loose.length > 0 || groups.length > 0) && (
               <>
-                <p className="text-[11px] uppercase tracking-wider text-zinc-600 font-medium px-2.5 pt-2 pb-1">
-                  Chats
-                </p>
+                <p className="eyebrow text-zinc-500 px-2.5 pt-2 pb-1">Chats</p>
                 <div
                   onDragOver={(e) => {
                     if (!e.dataTransfer.types.includes(THREAD_DND_TYPE)) return;
@@ -404,8 +432,6 @@ function ChatSidebar({
             email={profile.email}
             avatarUrl={profile.avatarUrl}
             isAdmin={profile.isAdmin}
-            theme={theme}
-            onThemeChange={onThemeChange}
           />
         </div>
       </aside>

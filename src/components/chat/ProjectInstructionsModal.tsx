@@ -1,8 +1,8 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Folder, X } from "lucide-react";
 import type { Project } from "@/lib/types";
 import { MAX_PROJECT_INSTRUCTIONS_CHARS } from "@/lib/project-instructions";
-import { useDismissable } from "@/hooks/useDismissable";
+import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 interface Props {
   project: Project;
@@ -14,6 +14,7 @@ export default function ProjectInstructionsModal({ project, onClose, onSave }: P
   const [value, setValue] = useState(project.instructions ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const dirty = value.trim() !== (project.instructions ?? "").trim();
 
@@ -38,27 +39,37 @@ export default function ProjectInstructionsModal({ project, onClose, onSave }: P
     }
   }, [dirty, onClose, onSave, project.id, value]);
 
-  const panelRef = useDismissable<HTMLDivElement>(true, closeSaving);
-
+  // Radix solo pide cerrar (Escape / click fuera / X); `closeSaving` decide.
+  // El foco inicial va al textarea a mano: el FocusScope de Radix corre después
+  // del `autoFocus` de React y se lo llevaría al primer focusable (la X).
   return (
-    <div className="modal-backdrop fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-      <div
-        ref={panelRef}
-        className="modal-panel w-full max-w-lg bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl flex flex-col"
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) closeSaving();
+      }}
+    >
+      <DialogContent
+        className="max-w-lg flex flex-col"
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          textareaRef.current?.focus();
+        }}
       >
-        <div className="flex items-center gap-2.5 px-4 py-3 border-b border-zinc-800/80">
+        <div className="flex items-center gap-2.5 px-4 py-3 border-b border-white/[0.06]">
           <Folder size={16} className="text-zinc-500 flex-shrink-0" />
-          <h2 className="flex-1 min-w-0 truncate text-sm font-semibold text-zinc-100">
+          <DialogTitle className="flex-1 min-w-0 truncate text-sm font-semibold text-zinc-100">
             {project.name}
-          </h2>
-          <button
-            onClick={closeSaving}
-            disabled={saving}
-            className="p-1.5 rounded-lg text-zinc-500 hover:text-ink hover:bg-zinc-800 transition disabled:opacity-50"
-            aria-label="Cerrar"
-          >
-            <X size={16} />
-          </button>
+          </DialogTitle>
+          <DialogClose asChild>
+            <button
+              disabled={saving}
+              className="p-1.5 rounded-lg text-zinc-500 hover:text-ink hover:bg-white/[0.06] transition disabled:opacity-50"
+              aria-label="Cerrar"
+            >
+              <X size={16} />
+            </button>
+          </DialogClose>
         </div>
 
         <div className="p-4 space-y-3">
@@ -77,7 +88,7 @@ export default function ProjectInstructionsModal({ project, onClose, onSave }: P
 
           <textarea
             id="project-instructions"
-            autoFocus
+            ref={textareaRef}
             value={value}
             onChange={(e) => setValue(e.target.value)}
             // `maxLength` nativo además del tope de la ruta y del CHECK de la
@@ -104,7 +115,7 @@ export default function ProjectInstructionsModal({ project, onClose, onSave }: P
 
           {error && <p className="text-xs text-red-400">{error}</p>}
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

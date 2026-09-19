@@ -312,7 +312,7 @@ export default function AdminGptsPage() {
                       <Image src={form.icon_url} alt="" fill sizes="64px" className="object-cover" />
                     ) : (
                       (() => {
-                        const { Icon } = getGptVisual(form.category);
+                        const { Icon } = getGptVisual(form.category, form.name);
                         return <Icon size={26} className="text-zinc-500" />;
                       })()
                     )}
@@ -537,7 +537,7 @@ export default function AdminGptsPage() {
                 <GripVertical size={16} />
               </span>
               {(() => {
-                const { Icon, accentClasses } = getGptVisual(gpt.category);
+                const { Icon, accentClasses } = getGptVisual(gpt.category, gpt.name);
                 return (
                   <div
                     className={`relative w-10 h-10 rounded-xl bg-gradient-to-br border flex items-center justify-center flex-shrink-0 overflow-hidden ${accentClasses}`}
@@ -554,7 +554,7 @@ export default function AdminGptsPage() {
                 <div className="flex items-center gap-2">
                   <h3 className="text-white font-semibold truncate">{gpt.name}</h3>
                   <span
-                    className={`text-xs px-2 py-0.5 rounded-full border bg-gradient-to-br ${getGptVisual(gpt.category).accentClasses}`}
+                    className={`text-xs px-2 py-0.5 rounded-full border bg-gradient-to-br ${getGptVisual(gpt.category, gpt.name).accentClasses}`}
                   >
                     {gpt.category}
                   </span>

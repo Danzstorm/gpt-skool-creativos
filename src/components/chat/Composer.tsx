@@ -285,7 +285,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   }
 
   return (
-    <div className="bg-zinc-950 px-4 pt-2.5 pb-2">
+    <div className="bg-transparent px-4 pt-2.5 pb-2">
       {(attachedFiles.length > 0 || isUploading) && (
         <div className="flex flex-wrap gap-2 mb-3 max-w-3xl mx-auto">
           {attachedFiles.map((f, i) => {
@@ -300,7 +300,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
                 <img
                   src={f.previewUrl}
                   alt={f.name}
-                  className="w-16 h-16 object-cover rounded-xl border border-zinc-700"
+                  className="w-16 h-16 object-cover glass rounded-xl"
                 />
                 <span className="absolute bottom-0.5 left-0.5 text-[10px] bg-black/70 text-white rounded px-1">
                   {position !== null ? imageLabel(position) : "imagen"}
@@ -315,7 +315,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             ) : (
               <div
                 key={i}
-                className="flex items-center gap-1.5 bg-zinc-800 rounded-xl px-3 py-1.5 text-xs text-zinc-300 h-16"
+                className="flex items-center gap-1.5 glass rounded-xl px-3 py-1.5 text-xs text-zinc-300 h-16"
               >
                 {f.type === "video" ? (
                   <Video size={13} className="text-zinc-400 flex-shrink-0" />
@@ -333,7 +333,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
               decía "Analizando video..." y hacía sentir que el campo estaba
               ocupado, cuando escribir siempre estuvo permitido. */}
           {isUploading && (
-            <div className="flex items-center gap-2 bg-zinc-800 rounded-xl px-3 py-1.5 text-xs text-zinc-400 h-16">
+            <div className="flex items-center gap-2 glass rounded-xl px-3 py-1.5 text-xs text-zinc-400 h-16">
               <span className="w-3 h-3 rounded-full border-2 border-zinc-600 border-t-zinc-300 animate-spin" />
               {isUploadingVideo ? (
                 <span>
@@ -349,7 +349,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
       )}
 
       {isEditing && (
-        <div className="flex items-center justify-between max-w-3xl mx-auto mb-2 text-xs text-violet-300 bg-violet-600/10 border border-violet-500/20 rounded-lg px-3 py-1.5">
+        <div className="flex items-center justify-between max-w-3xl mx-auto mb-2 text-xs text-violet-200 bg-violet-500/10 border border-violet-500/30 rounded-xl px-3 py-1.5">
           <span>Editando mensaje — al enviar se reemplaza la respuesta anterior.</span>
           <button
             onClick={() => {
@@ -364,12 +364,12 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
       )}
 
       {micError && (
-        <div className="max-w-3xl mx-auto mb-2 text-xs rounded-lg px-3 py-1.5 border flex items-center gap-2 text-amber-300 bg-amber-500/10 border-amber-500/20">
+        <div className="max-w-3xl mx-auto mb-2 text-xs rounded-xl px-3 py-1.5 flex items-center gap-2 text-amber-200 bg-amber-500/10 border border-amber-500/30">
           {micError}
         </div>
       )}
 
-      <div ref={mentionRef} className="relative flex items-end gap-2 bg-zinc-900/80 border border-zinc-700/70 focus-within:border-zinc-500 rounded-2xl px-3.5 py-2 transition-colors shadow-[0_1px_0_rgba(255,255,255,0.03)_inset] max-w-3xl mx-auto">
+      <div ref={mentionRef} className="relative flex items-end gap-2 glass-strong rounded-3xl px-4 py-3 focus-within:border-white/20 transition-colors max-w-3xl mx-auto">
         {mention && (
           <FilePicker
             files={library}
@@ -394,7 +394,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
 
         <button
           onClick={openFilePicker}
-          className="w-8 h-8 flex items-center justify-center rounded-full text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/60 transition flex-shrink-0"
+          className="h-9 w-9 flex-shrink-0 rounded-full border border-white/[0.08] bg-white/[0.04] text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.08] flex items-center justify-center transition"
           // Arrastrar archivos acá no existe (el único drag&drop es mover chats
           // a una carpeta en el sidebar) y `handlePaste` solo acepta image/*,
           // así que el globo nombra pegar únicamente para imágenes.
@@ -419,7 +419,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           </>
         ) : (
           <>
-            {/* Micrófono y controles de grabación usan la misma caja de 32px que
+            {/* Micrófono y controles de grabación usan la misma caja de 36px que
                 el botón de enviar: con items-end, dos alturas distintas dejan los
                 centros ópticos desalineados. */}
             <textarea
@@ -442,13 +442,13 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
               }
               disabled={isLoading || isTranscribing}
               rows={1}
-              className="flex-1 bg-transparent text-ink placeholder-zinc-500 resize-none focus:outline-none text-[15px] py-1.5 max-h-[180px] leading-normal"
+              className="flex-1 bg-transparent text-ink placeholder:text-zinc-500 resize-none focus:outline-none text-[16px] leading-6 py-2 max-h-[180px]"
             />
 
             <button
               onClick={startRecording}
               disabled={isLoading || isTranscribing || isUploading}
-              className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/60 transition"
+              className="flex-shrink-0 h-9 w-9 rounded-full border border-white/[0.08] bg-white/[0.04] text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.08] flex items-center justify-center transition"
               title="Toca para grabar"
               aria-label="Grabar audio"
             >
@@ -461,7 +461,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           <>
             <button
               onClick={() => stopRecording(true)}
-              className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-zinc-400 hover:text-ink hover:bg-zinc-800/60 transition"
+              className="flex-shrink-0 h-9 w-9 rounded-full border border-white/[0.08] bg-white/[0.04] text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.08] flex items-center justify-center transition"
               title="Descartar grabación"
               aria-label="Descartar grabación"
             >
@@ -469,7 +469,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             </button>
             <button
               onClick={() => stopRecording(false)}
-              className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-zinc-200 hover:text-ink hover:bg-zinc-800/60 transition active:scale-95"
+              className="flex-shrink-0 h-9 w-9 rounded-full border border-violet-500/40 bg-violet-500/10 text-violet-200 hover:text-zinc-100 hover:bg-violet-500/20 flex items-center justify-center transition active:scale-95"
               title="Listo, transcribir"
               aria-label="Terminar grabación y transcribir"
             >
@@ -479,7 +479,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
         ) : isLoading ? (
           <button
             onClick={onStop}
-            className="bg-zinc-700 hover:bg-zinc-600 text-ink rounded-full p-2 flex-shrink-0 transition"
+            className="h-9 w-9 flex-shrink-0 rounded-full flex items-center justify-center bg-white/[0.10] hover:bg-white/[0.14] text-zinc-100 border border-white/[0.12] transition"
             title="Detener respuesta"
           >
             <Square size={14} className="fill-current" />
@@ -488,7 +488,9 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           <button
             onClick={submit}
             disabled={isUploading || (!input.trim() && attachedFiles.length === 0)}
-            className="bg-cta hover:bg-cta-active disabled:bg-zinc-700 disabled:text-zinc-500 text-cta-fg disabled:cursor-not-allowed rounded-full p-2 flex-shrink-0 transition active:scale-95"
+            // `disabled:bg-none` es obligatorio: `.brand-gradient` pinta con
+            // background-image y `disabled:bg-zinc-800` solo cambia el color.
+            className="brand-gradient text-white h-9 w-9 flex-shrink-0 rounded-full flex items-center justify-center shadow-[0_0_24px_rgba(169,30,255,.35)] hover:shadow-[0_0_36px_rgba(169,30,255,.55)] hover:scale-105 active:scale-95 transition disabled:bg-none disabled:bg-zinc-800 disabled:text-zinc-500 disabled:shadow-none disabled:hover:scale-100 disabled:cursor-not-allowed"
             // Enviar sigue esperando al adjunto: mandar antes dejaría el mensaje
             // sin el archivo que lo motivó. Escribir, en cambio, nunca se bloquea.
             title={isUploading ? "Esperando a que termine el adjunto" : "Enviar"}

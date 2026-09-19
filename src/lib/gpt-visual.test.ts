@@ -1,0 +1,49 @@
+import { describe, expect, it } from "vitest";
+import { getGptVisual, resolveGptCraft } from "./gpt-visual";
+
+const CATALOG = [
+  ["Seedance Director", "Crea videos cinematográficos con Seedance", "video"],
+  ["Characters", "Crea personajes consistentes en segundos.", "characters"],
+  ["Locations", "Crea locaciones cinematográficas para tus videos.", "locations"],
+  ["Photoshoot", "Crea fotos profesionales con Inteligencia Artificial", "photo"],
+  ["CinePrompt", "Crea imágenes cinematográficas en segundos.", "images"],
+  ["iPhone Look", "Crea imágenes con look de iPhone en segundos", "photo"],
+  ["Luxury Prompt", "Crea imágenes premium en segundos", "images"],
+  ["Kling Director", "Crea videos cinematográficos con Kling 3.0", "video"],
+  ["UGC Models", "Crea modelos UGC en segundos", "characters"],
+  ["UGC Director", "Crea escenas para tus videos UGC", "video"],
+  ["UGC Scripts", "Crea guiones para tus videos UGC", "scripts"],
+] as const;
+
+describe("resolveGptCraft", () => {
+  it("infiere el oficio de los GPTs reales aunque la categoría sea General", () => {
+    for (const [name, description, craft] of CATALOG) {
+      expect(resolveGptCraft("General", name, description), name).toBe(craft);
+    }
+  });
+
+  it("respeta una categoría explícita por encima del nombre", () => {
+    expect(resolveGptCraft("Copywriting", "Kling Director", "video")).toBe("scripts");
+    expect(resolveGptCraft("Imágenes", "Algo", "")).toBe("images");
+    expect(resolveGptCraft("Educación")).toBe("education");
+  });
+
+  it("cae a null cuando no hay oficio reconocible", () => {
+    expect(resolveGptCraft("General", "Oráculo", "Responde lo que sea")).toBeNull();
+    expect(resolveGptCraft(null, "", "")).toBeNull();
+  });
+});
+
+describe("getGptVisual", () => {
+  it("expone marca + placa uniforme, o Hexagon si no hay oficio", () => {
+    const known = getGptVisual("General", "UGC Scripts", "Crea guiones para tus videos UGC");
+    expect(known.craft).toBe("scripts");
+    expect(known.label).toBe("Guiones");
+    expect(known.accentClasses).toContain("text-zinc-100");
+    expect(known.accentClasses).not.toMatch(/sky|emerald|rose|cyan/);
+
+    const unknown = getGptVisual("General", "Oráculo");
+    expect(unknown.craft).toBeNull();
+    expect(unknown.Icon.displayName || unknown.Icon.name).toMatch(/Hexagon/i);
+  });
+});

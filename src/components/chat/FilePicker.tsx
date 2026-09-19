@@ -44,8 +44,8 @@ function FilePicker({ files, activeIndex, loading, query, onPick, onHover }: Pro
   }, [activeIndex]);
 
   return (
-    <div className="absolute bottom-full left-0 mb-2 w-80 max-w-[calc(100vw-2rem)] bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl overflow-hidden z-20">
-      <p className="px-3 py-2 text-[11px] uppercase tracking-wide text-zinc-500 border-b border-zinc-800">
+    <div className="absolute bottom-full left-0 mb-2 w-80 max-w-[calc(100vw-2rem)] glass-strong rounded-xl overflow-hidden z-20">
+      <p className="px-3 py-2 text-[11px] uppercase tracking-wide text-zinc-500 border-b border-white/[0.08]">
         Tus archivos
       </p>
 
@@ -70,8 +70,8 @@ function FilePicker({ files, activeIndex, loading, query, onPick, onHover }: Pro
                 onPick(file);
               }}
               onMouseEnter={() => onHover(i)}
-              className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer ${
-                i === activeIndex ? "bg-zinc-800" : ""
+              className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-white/[0.06] ${
+                i === activeIndex ? "bg-white/[0.08]" : ""
               }`}
             >
               {file.type === "image" && file.previewUrl ? (
@@ -79,10 +79,10 @@ function FilePicker({ files, activeIndex, loading, query, onPick, onHover }: Pro
                 <img
                   src={file.previewUrl}
                   alt=""
-                  className="w-8 h-8 object-cover rounded flex-shrink-0 border border-zinc-700"
+                  className="w-8 h-8 object-cover rounded flex-shrink-0 border border-white/[0.08]"
                 />
               ) : (
-                <span className="w-8 h-8 rounded bg-zinc-800 flex items-center justify-center flex-shrink-0">
+                <span className="w-8 h-8 rounded bg-white/[0.06] flex items-center justify-center flex-shrink-0">
                   <Paperclip size={14} className="text-zinc-400" />
                 </span>
               )}

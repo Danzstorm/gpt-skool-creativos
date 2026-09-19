@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import type { Gpt, Project, ThreadSummary, Theme } from "@/lib/types";
-import { Menu, ArrowDown, ChevronDown, Folder, PanelLeftOpen, SquarePen } from "lucide-react";
-import Sparkle from "./Sparkle";
+import type { Gpt, Project, ThreadSummary } from "@/lib/types";
+import { Menu, ArrowDown, ChevronDown, Folder, PanelLeftOpen, SquarePen, X } from "lucide-react";
+import Aurora from "@/components/ui/Aurora";
+import Orb from "@/components/ui/Orb";
+import GptCatalog from "@/components/GptCatalog";
 import GptGlyph from "./chat/GptGlyph";
 import ChatSidebar from "./chat/ChatSidebar";
 import MessageBubble from "./chat/MessageBubble";
@@ -43,10 +45,13 @@ interface Props {
     email: string | null;
     avatarUrl: string | null;
     isAdmin: boolean;
-    theme: Theme;
   };
   /** Hay GEMINI_API_KEY en el servidor; sin ella no se ofrece adjuntar video. */
   videoEnabled: boolean;
+  /** Marca (app_settings) para el lockup del sidebar. */
+  communityName: string;
+  /** Aviso ya resuelto (texto) que llega por `?notice=` desde /admin. */
+  notice?: string | null;
 }
 
 export default function UnifiedChat({
@@ -57,21 +62,16 @@ export default function UnifiedChat({
   initialGptId,
   profile,
   videoEnabled,
+  communityName,
+  notice: initialNotice,
 }: Props) {
+  // Solo valor inicial: al elegir un GPT el `?notice=` desaparece de la URL
+  // (replaceState) y el banner se cierra a mano, no se re-sincroniza.
+  const [notice, setNotice] = useState<string | null>(initialNotice ?? null);
   const [gptChatsModalId, setGptChatsModalId] = useState<string | null>(null);
-  const [theme, setTheme] = useState<Theme>(profile.theme);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [instructionsProjectId, setInstructionsProjectId] = useState<string | null>(null);
-
-  const changeTheme = useCallback((next: Theme) => {
-    setTheme(next);
-    fetch("/api/me/theme", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ theme: next }),
-    }).catch(() => {});
-  }, []);
 
   const {
     sidebarOpen,
@@ -258,6 +258,7 @@ export default function UnifiedChat({
 
   const lastUserIndex = messages.map((m) => m.role).lastIndexOf("user");
   const showComposer = !!activeGpt;
+  const firstName = profile.fullName?.trim().split(/\s+/)[0] ?? "";
   const gptChatsModalGpt = gptChatsModalId ? gpts.find((g) => g.id === gptChatsModalId) : null;
   const gptChatsModalThreads = useMemo(
     () => (gptChatsModalId ? threadList.filter((t) => t.gpt_id === gptChatsModalId) : []),
@@ -266,9 +267,7 @@ export default function UnifiedChat({
 
   return (
     // bg-zinc-950 en el root: el área principal (mensajes, empty-state) no fija
-    // fondo propio y antes dejaba pasar el `--background` oscuro del <body> —
-    // invisible en temas oscuros, pero en Papel el sidebar se volvía crema y el
-    // centro seguía negro (split roto). Tematizar el root cubre toda la superficie.
+    // fondo propio; tematizar el root cubre toda la superficie.
     // zoom 1.15 = interfaz de chat 15% más grande (pedido del cliente). El tamaño
     // del shell NO usa unidades de viewport: `fixed inset-0` lo ata al área de
     // cliente, que es lo único que todos los motores miden igual. La versión previa
@@ -279,12 +278,12 @@ export default function UnifiedChat({
     // del contenido — la pantalla rota que reportó el cliente. Con inset el zoom sigue
     // aplicando (el bloque contenedor se resuelve en el espacio ya escalado) y, si el
     // navegador no soporta `zoom`, degrada a interfaz sin escalar pero bien armada.
-    <div
-      className="fixed inset-0 flex bg-zinc-950 text-zinc-100"
-      data-theme={theme}
-      style={{ zoom: 1.15 }}
-    >
+    // `fixed` crea stacking context: Aurora (-z-10) pinta ENCIMA del fondo del
+    // root y debajo del resto, sin quitar bg-zinc-950.
+    <div className="fixed inset-0 flex bg-zinc-950 text-zinc-100" style={{ zoom: 1.15 }}>
+      <Aurora />
       <ChatSidebar
+        communityName={communityName}
         gpts={gpts}
         threadList={threadList}
         projects={projects}
@@ -295,8 +294,6 @@ export default function UnifiedChat({
         collapsed={sidebarCollapsed}
         onToggleCollapse={toggleSidebarCollapsed}
         profile={profile}
-        theme={theme}
-        onThemeChange={changeTheme}
         chatSearch={chatSearch}
         onSearchChange={onSearchChange}
         onSelectGpt={selectGpt}
@@ -332,11 +329,11 @@ export default function UnifiedChat({
         onDrop={onDrop}
       >
         {isDragging && showComposer && (
-          <div className="absolute inset-0 z-10 bg-zinc-800/40 border-2 border-dashed border-zinc-600 rounded-2xl m-2 flex items-center justify-center pointer-events-none">
-            <p className="text-zinc-200 text-sm font-medium">Suelta imágenes o archivos aquí</p>
+          <div className="absolute inset-0 z-10 bg-violet-500/10 border-2 border-dashed border-violet-500/40 rounded-2xl m-2 flex items-center justify-center pointer-events-none">
+            <p className="text-violet-100 text-sm font-medium">Suelta imágenes o archivos aquí</p>
           </div>
         )}
-        <div className="border-b border-zinc-800/80 px-4 py-2.5 bg-zinc-950/80 backdrop-blur-xl flex items-center gap-3">
+        <div className="glass border-x-0 border-t-0 rounded-none shadow-none px-4 py-2.5 flex items-center gap-3">
           <button
             onClick={openSidebar}
             className="text-zinc-400 hover:text-ink transition md:hidden"
@@ -346,6 +343,7 @@ export default function UnifiedChat({
           </button>
           {sidebarCollapsed && (
             <div className="hidden md:flex items-center gap-1 -ml-1">
+              <Orb size="xs" className="mr-1" />
               <button
                 onClick={toggleSidebarCollapsed}
                 className="p-1.5 rounded-lg text-zinc-400 hover:text-ink hover:bg-zinc-800/60 transition"
@@ -379,6 +377,20 @@ export default function UnifiedChat({
           )}
         </div>
 
+        {notice && (
+          <div className="mx-4 mt-3 flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+            <span className="flex-1">{notice}</span>
+            <button
+              type="button"
+              onClick={() => setNotice(null)}
+              className="shrink-0 text-amber-200/70 transition hover:text-amber-100"
+              aria-label="Cerrar aviso"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
+
         <div
           ref={scrollRef}
           onScroll={handleScroll}
@@ -387,41 +399,27 @@ export default function UnifiedChat({
           {isLoadingHistory && (
             <div className="space-y-4 animate-pulse max-w-2xl mx-auto w-full">
               <div className="flex justify-end">
-                <div className="h-10 w-2/5 bg-zinc-800 rounded-2xl rounded-br-sm" />
+                <div className="h-10 w-2/5 bg-white/[0.06] rounded-2xl rounded-br-sm" />
               </div>
               <div className="flex justify-start gap-2">
-                <div className="w-7 h-7 bg-zinc-800 rounded-lg flex-shrink-0" />
-                <div className="h-20 w-3/5 bg-zinc-800 rounded-2xl rounded-bl-sm" />
+                <div className="w-7 h-7 bg-white/[0.06] rounded-lg flex-shrink-0" />
+                <div className="h-20 w-3/5 bg-white/[0.06] rounded-2xl rounded-bl-sm" />
               </div>
             </div>
           )}
 
           {!activeGpt && !isLoadingHistory && (
-            <div className="flex flex-col items-center justify-center h-full py-12 max-w-2xl mx-auto w-full">
-              <div className="w-12 h-12 rounded-2xl border border-zinc-800 flex items-center justify-center mb-4">
-                <Sparkle className="w-5 h-5 text-zinc-600" />
-              </div>
-              <h3 className="font-display text-xl font-medium tracking-tight text-ink mb-1">
-                ¿Con qué GPT quieres trabajar?
-              </h3>
+            <div className="flex w-full max-w-6xl mx-auto flex-col items-center py-8 md:py-10">
+              <Orb size="xl" className="mb-6" />
+              <p className="eyebrow mb-3 text-zinc-500">
+                Bienvenido de nuevo{firstName ? `, ${firstName}` : ""}
+              </p>
+              <h1 className="font-display mb-2 text-center text-4xl font-bold tracking-tight text-zinc-100 md:text-5xl">
+                ¿Qué vas a crear hoy?
+              </h1>
               {pendingProject && <ProjectDestination name={pendingProject.name} />}
-              <p className="text-sm text-zinc-500 mb-7">Elige uno para empezar una conversación nueva.</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full">
-                {gpts.map((g) => (
-                  <button
-                    key={g.id}
-                    onClick={() => selectGpt(g.id)}
-                    className="flex items-center gap-3 text-left border border-zinc-800 hover:border-zinc-600 bg-zinc-900/50 hover:bg-zinc-900 rounded-2xl px-4 py-3 transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98] active:translate-y-0 cursor-pointer"
-                  >
-                    <GptGlyph gpt={g} size="lg" />
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium text-zinc-100 truncate">{g.name}</div>
-                      {g.description && (
-                        <div className="text-xs text-zinc-500 truncate">{g.description}</div>
-                      )}
-                    </div>
-                  </button>
-                ))}
+              <div className="mt-8 w-full md:mt-10">
+                <GptCatalog gpts={gpts} onSelect={selectGpt} />
               </div>
             </div>
           )}
@@ -431,12 +429,12 @@ export default function UnifiedChat({
               <div className="mb-5">
                 <GptGlyph gpt={activeGpt} size="xl" />
               </div>
-              <h3 className="font-display text-2xl font-medium tracking-tight text-ink mb-2">{activeGpt.name}</h3>
+              <h3 className="font-display text-3xl font-bold tracking-tight text-zinc-100 mb-2">{activeGpt.name}</h3>
               {activeGpt.description && (
                 <p className="text-zinc-400 text-sm max-w-md">{activeGpt.description}</p>
               )}
               {activeGpt.author && (
-                <p className="text-zinc-600 text-xs mt-1.5">By {activeGpt.author}</p>
+                <p className="text-zinc-500 text-xs mt-1.5">By {activeGpt.author}</p>
               )}
               {/* Sigue visible después de elegir el GPT: el destino recién se
                   aplica al enviar el primer mensaje, y hasta entonces es la
@@ -448,7 +446,7 @@ export default function UnifiedChat({
                     <button
                       key={i}
                       onClick={() => sendMessage(starter)}
-                      className="text-left border border-zinc-800 hover:border-zinc-600 bg-zinc-900/50 hover:bg-zinc-900 rounded-2xl px-4 py-3 text-sm text-zinc-300 hover:text-zinc-100 transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98] active:translate-y-0 cursor-pointer"
+                      className="text-left glass rounded-2xl px-4 py-3 text-sm text-zinc-300 hover:text-zinc-100 hover:-translate-y-0.5 active:scale-[0.98] active:translate-y-0 transition-all cursor-pointer"
                     >
                       {starter}
                     </button>
@@ -500,7 +498,7 @@ export default function UnifiedChat({
         {showScrollBtn && (
           <button
             onClick={scrollToBottom}
-            className="absolute bottom-28 left-1/2 -translate-x-1/2 z-10 bg-zinc-800 border border-zinc-700 text-zinc-200 rounded-full p-2 shadow-lg hover:bg-zinc-700 transition"
+            className="absolute bottom-28 left-1/2 -translate-x-1/2 z-10 glass rounded-full h-9 w-9 flex items-center justify-center text-zinc-300 hover:text-zinc-100 transition"
             aria-label="Bajar al final"
           >
             <ArrowDown size={16} />
@@ -517,7 +515,7 @@ export default function UnifiedChat({
                 className="shrink-0 text-red-400/70 transition hover:text-red-300"
                 aria-label="Cerrar aviso"
               >
-                ✕
+                <X size={14} />
               </button>
             </div>
           </div>

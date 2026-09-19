@@ -16,40 +16,42 @@ export default async function OpengraphImage() {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          background: "#09090b",
+          background: "#050506",
           position: "relative",
         }}
       >
+        {/* Luz ambiental: violeta al centro y un ámbar suave arriba-izquierda.
+            Satori no soporta conic-gradient ni backdrop-filter: solo lineal/radial. */}
         <div
           style={{
             position: "absolute",
-            width: 700,
-            height: 700,
-            top: -260,
-            left: 250,
-            borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(139,92,246,0.35) 0%, rgba(139,92,246,0) 70%)",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            background: "radial-gradient(circle at 50% 40%, rgba(169,30,255,.35), transparent 60%)",
           }}
         />
         <div
           style={{
-            width: 120,
-            height: 120,
-            borderRadius: 28,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)",
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            background: "radial-gradient(circle at 15% 10%, rgba(254,194,0,.18), transparent 45%)",
+          }}
+        />
+        <div
+          style={{
+            width: 160,
+            height: 160,
+            borderRadius: "50%",
+            background: "linear-gradient(135deg, #FEC200, #F400EB 55%, #4A44FE)",
+            boxShadow: "0 0 80px rgba(244,0,235,.45)",
             marginBottom: 36,
           }}
-        >
-          <svg width="66" height="66" viewBox="0 0 100 100">
-            <path
-              d="M50,0 L64.14,35.86 L100,50 L64.14,64.14 L50,100 L35.86,64.14 L0,50 L35.86,35.86 Z"
-              fill="white"
-            />
-          </svg>
-        </div>
+        />
         <div style={{ fontSize: 62, fontWeight: 700, color: "#f4f4f5", letterSpacing: "-0.02em" }}>
           {`GPT ${settings.community_name}`}
         </div>

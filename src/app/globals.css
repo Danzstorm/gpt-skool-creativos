@@ -1,112 +1,70 @@
 @import "tailwindcss";
 
 /* ============================================================
-   Tema único: Oscuro Premium
-   Base casi-negra con superficies en capas, un solo acento (violeta),
-   bordes sutiles y foco consistente. No mezclar con light mode.
+   Tema único: Creativos
+   Base neutra-fría casi negra, superficies de vidrio y el gradiente de
+   marca muestreado del logo (ámbar → rojo → magenta → violeta → índigo)
+   como firma. Acento sólido: el violeta del gradiente.
    ============================================================ */
 :root {
-  --background: #0b0a09;   /* paper-black cálido (no zinc frío) */
-  --surface: #14110f;      /* superficie elevada cálida */
-  --foreground: #f3efe7;   /* bone — texto principal cálido */
-  --accent: #8b5cf6;       /* violet-500 — acento único */
-  --accent-strong: #7c3aed;/* violet-600 */
+  --background: #050506;
+  --foreground: #EDEDEF;
+  --accent: #A91EFF;
+  --accent-strong: #8F0FE0;
+  --brand-gradient: linear-gradient(
+    135deg,
+    #FEC200 0%,
+    #FF6D1A 16%,
+    #FF003C 32%,
+    #F80092 50%,
+    #F400EB 64%,
+    #A91EFF 82%,
+    #4A44FE 100%
+  );
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
-  --font-display: var(--font-fraunces);
+  --font-display: var(--font-archivo);
 }
 
-/* Registra los tokens nuevos (ink/cta/cta-active/cta-fg) como colores reales
-   de Tailwind — solo así genera utilities como text-ink / bg-cta. Los
-   valores acá son los del tema "Creativo" (default); los otros temas los
-   pisan más abajo con selectores [data-theme=...]. */
+/* Registra ink/cta/cta-active/cta-fg como colores reales de Tailwind — solo
+   así genera utilities como text-ink / bg-cta. */
 @theme {
   --color-ink: #ffffff;
-  --color-cta: #f4f4f5;
-  --color-cta-active: #ffffff;
-  --color-cta-fg: #18181b;
-  /* Fondo del item activo (GPT/chat seleccionado en el sidebar). Separado de
-     zinc-800 —que comparten las burbujas— para poder tintarlo de acento en
-     Papel sin teñir también las burbujas. En los temas oscuros vale lo mismo
-     que su zinc-800, así el look no cambia. */
-  --color-active: #27272a;
-}
+  --color-cta: #A91EFF;
+  --color-cta-active: #BB61FF;
+  --color-cta-fg: #ffffff;
 
-/* ============================================================
-   Temas del chat (elegibles por el usuario, guardados en su cuenta:
-   Creativo / Dark / Light). Tailwind v4 compila bg-zinc-800 /
-   text-violet-400 / etc. como `var(--color-zinc-800)` — redefinir esos
-   tokens alcanza para retemar todo el chat sin tocar cada componente.
-   `creativo` es el look actual y no necesita override (usa los valores
-   reales de Tailwind). El atributo data-theme solo se aplica dentro de
-   /chat — login, landing y admin quedan siempre en el look creativo.
+  /* Remap de las escalas que ya usan todos los componentes. Tailwind v4
+     compila bg-zinc-800 / text-violet-400 como `var(--color-zinc-800)`, así
+     que redefinir los tokens retiñe toda la app sin tocar cada clase.
+     zinc: neutro frío (el zinc de fábrica es cálido y pelea con el ámbar y
+     el magenta de marca). zinc-600 se usa como texto de 11–12px en ~18
+     lugares: #7A7F89 da ≥ 4.5:1 sobre #0a0a0c. violet: la escala del violeta
+     de marca, con #A91EFF como 500. */
+  --color-zinc-50: #F6F6F8;
+  --color-zinc-100: #EDEDEF;
+  --color-zinc-200: #D9DBE0;
+  --color-zinc-300: #C3C6CD;
+  --color-zinc-400: #A6AAB3;
+  --color-zinc-500: #8A8F98;
+  --color-zinc-600: #7A7F89;
+  --color-zinc-700: #2A2A32;
+  --color-zinc-800: #1A1A20;
+  --color-zinc-900: #0F0F12;
+  --color-zinc-950: #050506;
 
-   NOTA: es `[data-theme=...]` sin `:root` a propósito — el atributo vive
-   en el div raíz de UnifiedChat, no en <html>, así que un selector con
-   `:root` (que SIEMPRE apunta a <html>) nunca matchearía.
-
-   --color-ink / --color-cta*: Light es un tema realmente claro (no solo
-   un retinte), así que los `text-white` / `bg-zinc-100 ...  text-zinc-900`
-   escritos a mano en los componentes se volverían invisibles ahí. Estos
-   tokens reemplazan esos literales: `ink` es "el texto más contrastado
-   sobre una superficie de zinc" (blanco en temas oscuros, casi negro en
-   Light); `cta`/`cta-fg` son el botón de acción primaria (enviar), que
-   se invierte completo en vez de solo cambiar de tono.
-   ============================================================ */
-[data-theme="dark"] {
-  --color-zinc-950: #212121;
-  --color-zinc-900: #2a2a2a;
-  --color-zinc-800: #343434;
-  --color-zinc-700: #444444;
-  --color-zinc-600: #5a5a5a;
-  --color-zinc-500: #8e8e8e;
-  --color-zinc-400: #b4b4b4;
-  --color-zinc-300: #c9c9c9;
-  --color-zinc-200: #dddddd;
-  --color-zinc-100: #ececec;
-
-  --color-violet-600: #2f8a6c;
-  --color-violet-500: #3fa080;
-  --color-violet-400: #5fb89a;
-  --color-violet-300: #7fcab0;
-
-  --color-ink: #ececec;
-  --color-cta: #ececec;
-  --color-cta-active: #ffffff;
-  --color-cta-fg: #212121;
-  --color-active: #343434;
-}
-
-/* "Papel" — estética de estudio artesanal: papel TOSTADO (no blanco) con el
-   acento arcilla/coral presente de verdad (botón enviar, item activo, links),
-   no solo insinuado. Fondos de la escala zinc INVERTIDOS respecto a los temas
-   oscuros (zinc-950 = fondo más claro, zinc-100 = texto más oscuro). */
-[data-theme="light"] {
-  --color-zinc-950: #efe7d3; /* fondo principal — papel tostado, no blanco */
-  --color-zinc-900: #e8ddc6; /* sidebar / superficies elevadas */
-  --color-zinc-800: #ddd1b4; /* burbuja de usuario, hover */
-  --color-zinc-700: #cdbf9d; /* bordes */
-  --color-zinc-600: #b3a480; /* bordes más marcados */
-  --color-zinc-500: #897c5d; /* placeholder / texto muy tenue */
-  --color-zinc-400: #675c43; /* texto secundario */
-  --color-zinc-300: #4e4632; /* texto */
-  --color-zinc-200: #352f21; /* texto fuerte */
-  --color-zinc-100: #241f15; /* texto más fuerte */
-
-  --color-violet-600: #a34e2a; /* arcilla oscura */
-  --color-violet-500: #c15f3c; /* arcilla — bordes/acento */
-  --color-violet-400: #b0562f; /* arcilla legible — links en markdown */
-  --color-violet-300: #9c4d2a;
-
-  --color-ink: #241f15;       /* casi-negro cálido — texto de máximo contraste */
-  --color-cta: #c15f3c;       /* botón enviar = ARCILLA (personalidad) */
-  --color-cta-active: #a94f30;
-  --color-cta-fg: #fbf6ea;    /* flecha crema sobre botón arcilla */
-  --color-active: #e7ceac;    /* item activo — crema con tinte arcilla cálido */
+  --color-violet-200: #E3C4FF;
+  --color-violet-300: #CF9BFF;
+  --color-violet-400: #BB61FF;
+  --color-violet-500: #A91EFF;
+  --color-violet-600: #8F0FE0;
+  --color-violet-800: #5B0A90;
+  --color-violet-900: #430A68;
+  --color-violet-950: #2A0642;
 }
 
 body {
@@ -117,11 +75,16 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* Display serif editorial: titulares con carácter de estudio. */
+/* Display condensada (Archivo, eje wdth) para titulares y wordmark. */
 .font-display {
-  font-family: var(--font-display), ui-serif, Georgia, serif;
-  font-optical-sizing: auto;
+  font-family: var(--font-display), var(--font-sans), system-ui, sans-serif;
+  font-stretch: 90%;
   letter-spacing: -0.02em;
+}
+
+/* Wordmark de marca: más condensada que los titulares, eco del logo. */
+.wordmark {
+  font-stretch: 75%;
 }
 
 /* Grano de film: textura sutil "hecho a mano" sobre el fondo digital.
@@ -151,13 +114,13 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #27272a;               /* zinc-800 */
+  background: var(--color-zinc-800);
   border-radius: 9999px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #3f3f46;               /* zinc-700 */
+  background: var(--color-zinc-700);
   background-clip: padding-box;
 }
 
@@ -191,18 +154,85 @@ body {
    Todo bajo reduce-motion para accesibilidad.
    ============================================================ */
 
-/* Titular con gradiente vivo (violeta → fucsia) */
-.text-gradient {
-  background: linear-gradient(
-    100deg,
-    var(--foreground) 0%,
-    #c4b5fd 42%,
-    #f0abfc 72%,
-    #fbbf24 100%
+/* Clases de marca y vidrio. Van en @layer components por el mismo motivo que
+   el anillo de foco de arriba: sin capa ganarían siempre sobre las utilities
+   de Tailwind, y `border-x-0` / `shadow-none` / `disabled:bg-none` encima de
+   `.glass` o `.brand-gradient` no harían nada. */
+@layer components {
+  /* Gradiente de marca como fondo y recortado en texto (wordmark, titulares).
+     `-webkit-text-fill-color` es para Safari, que ignora `color: transparent`
+     con background-clip: text. */
+  .brand-gradient {
+    background: var(--brand-gradient);
+  }
+  .brand-text {
+    background: var(--brand-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* Vidrio: superficies translúcidas sobre la luz ambiental. Solo en sidebar,
+     top bar, composer, diálogos y tarjetas — no en burbujas (muchos nodos). */
+  .glass {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 8px 32px rgba(0, 0, 0, 0.35);
+  }
+  .glass-strong {
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(28px) saturate(140%);
+    -webkit-backdrop-filter: blur(28px) saturate(140%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 8px 32px rgba(0, 0, 0, 0.35);
+  }
+
+  /* Etiqueta de sección (GPTS / PROYECTOS / CHATS, "Bienvenido de nuevo"). */
+  .eyebrow {
+    font-family: var(--font-display), var(--font-sans), sans-serif;
+    font-stretch: 85%;
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  /* Item activo del sidebar: pill del acento que se desvanece a la derecha +
+     barra izquierda de 2px con el gradiente vertical de marca. */
+  .nav-active {
+    background: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--accent) 25%, transparent),
+      transparent 85%
+    );
+    position: relative;
+  }
+  .nav-active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 20%;
+    bottom: 20%;
+    width: 2px;
+    border-radius: 9999px;
+    background: linear-gradient(180deg, #F80092, #A91EFF, #4A44FE);
+  }
+}
+
+/* Núcleo del Orb (ver components/ui/Orb.tsx). */
+.orb-core {
+  background: conic-gradient(
+    from 210deg,
+    #FEC200,
+    #FF003C,
+    #F400EB,
+    #A91EFF,
+    #4A44FE,
+    #FEC200
   );
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
 }
 
 /* Borde con degradado para tarjetas premium */
@@ -217,8 +247,9 @@ body {
   padding: 1px;
   background: linear-gradient(
     140deg,
-    color-mix(in srgb, var(--accent) 55%, transparent),
-    transparent 45%
+    color-mix(in srgb, #F400EB 60%, transparent),
+    color-mix(in srgb, #4A44FE 40%, transparent) 60%,
+    transparent 100%
   );
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
@@ -272,7 +303,38 @@ body {
       background-position: 220% 0;
     }
   }
+  @keyframes orb-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  @keyframes orb-breathe {
+    0%,
+    100% {
+      transform: scale(1);
+      opacity: 0.35;
+    }
+    50% {
+      transform: scale(1.12);
+      opacity: 0.55;
+    }
+  }
+  @keyframes msg-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
 
+  .orb-spin {
+    animation: orb-spin 24s linear infinite;
+  }
+  .orb-breathe {
+    animation: orb-breathe 6s ease-in-out infinite;
+  }
+  .msg-in {
+    animation: msg-in 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  }
   .aurora-a {
     animation: aurora-drift 14s ease-in-out infinite;
   }
@@ -296,7 +358,7 @@ body {
     /* Sin `currentColor`: al recortar el degradado con background-clip hay que
        poner `color: transparent`, y entonces `currentColor` se resuelve a
        transparente y el texto desaparece. Los dos extremos salen de los tokens
-       del tema, así que esto funciona igual en creativo, dark y Papel. */
+       del tema. */
     background: linear-gradient(
       90deg,
       color-mix(in oklab, var(--foreground) 50%, var(--background)) 0%,

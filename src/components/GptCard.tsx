@@ -1,47 +1,47 @@
-import Link from "next/link";
+import type { CSSProperties } from "react";
+import { ArrowUpRight } from "lucide-react";
 import type { Gpt } from "@/lib/types";
 import GptGlyph from "@/components/chat/GptGlyph";
-import { getGptVisual } from "@/lib/gpt-visual";
 
 interface Props {
   gpt: Gpt;
+  onSelect: (id: string) => void;
+  /** Para escalonar la entrada (`animationDelay`) desde el grid. */
+  style?: CSSProperties;
 }
 
-export default function GptCard({ gpt }: Props) {
-  const { accentClasses } = getGptVisual(gpt.category);
+// Botón y no Link: un Link a /chat?gpt= remontaría UnifiedChat (y sus queries);
+// `onSelect` cambia el GPT activo en cliente sin recargar nada.
+export default function GptCard({ gpt, onSelect, style }: Props) {
+  const author = gpt.author?.trim() || "";
+  const description = gpt.description?.trim() || "";
 
   return (
-    <Link
-      href={`/chat?gpt=${gpt.id}`}
-      className="group relative block rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-zinc-700 hover:bg-zinc-900/70"
+    <button
+      type="button"
+      onClick={() => onSelect(gpt.id)}
+      style={style}
+      aria-label={`Abrir ${gpt.name}`}
+      className="group relative glass ring-gradient fade-up flex h-full min-h-[13.75rem] w-full cursor-pointer flex-col items-start rounded-3xl p-6 text-left motion-safe:transition-transform motion-safe:duration-200 motion-safe:hover:-translate-y-0.5 motion-safe:active:scale-[0.99]"
     >
-      <div className="flex items-start gap-4">
-        <GptGlyph
-          gpt={gpt}
-          className="h-12 w-12 rounded-xl"
-          sizePx="48px"
-          textClassName="text-xl"
-        />
+      <ArrowUpRight
+        size={18}
+        className="absolute right-5 top-5 text-zinc-500 transition-colors group-hover:text-zinc-100"
+        aria-hidden
+      />
 
-        <div className="min-w-0 flex-1">
-          <h3 className="font-display truncate text-lg font-medium text-zinc-50 transition group-hover:text-white">
-            {gpt.name}
-          </h3>
-          {gpt.category && (
-            <span
-              className={`inline-block mt-0.5 rounded-full border bg-gradient-to-br px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.1em] ${accentClasses}`}
-            >
-              {gpt.category}
-            </span>
-          )}
-          {gpt.description && (
-            <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-zinc-400">
-              {gpt.description}
-            </p>
-          )}
-          {gpt.author && <p className="mt-1.5 text-xs text-zinc-600">By {gpt.author}</p>}
-        </div>
-      </div>
-    </Link>
+      <GptGlyph gpt={gpt} size="xl" />
+
+      <h3 className="font-display mt-5 line-clamp-2 pr-8 text-xl font-semibold leading-tight tracking-tight text-zinc-100">
+        {gpt.name}
+      </h3>
+      <p
+        className="mt-2 line-clamp-1 min-h-[1.25rem] text-sm leading-relaxed text-zinc-400"
+        title={description || undefined}
+      >
+        {description || "\u00a0"}
+      </p>
+      <p className="mt-auto pt-6 text-xs text-zinc-500">{author ? `By ${author}` : "\u00a0"}</p>
+    </button>
   );
 }

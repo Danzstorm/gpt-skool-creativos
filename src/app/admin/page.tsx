@@ -88,7 +88,7 @@ export default async function AdminDashboard({ searchParams }: Props) {
   // Esta página es además la única que abre un cliente service_role y lee emails
   // de miembros y costos, o sea la que menos puede permitirse el atajo. Todas sus
   // hermanas (/api/admin/*) revalidan; esta también.
-  if (!(await requireAdmin())) redirect("/dashboard?notice=not_admin");
+  if (!(await requireAdmin())) redirect("/chat?notice=not_admin");
 
   const { range } = await searchParams;
   const rangeKey: RangeKey = range && range in RANGES ? (range as RangeKey) : "30d";

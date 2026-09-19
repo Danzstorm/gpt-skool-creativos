@@ -16,8 +16,8 @@ function CodeBlock({ children }: { children: string }) {
   }
 
   return (
-    <div className="relative my-1.5 rounded-lg border border-zinc-800 overflow-hidden">
-      <div className="flex items-center justify-between bg-zinc-900 border-b border-zinc-800 px-2.5 py-0.5">
+    <div className="relative my-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] overflow-hidden">
+      <div className="flex items-center justify-between bg-white/[0.04] border-b border-white/[0.08] px-2.5 py-0.5">
         <span className="text-[10px] uppercase tracking-wider text-zinc-500">Prompt</span>
         <button
           onClick={copy}
@@ -25,14 +25,14 @@ function CodeBlock({ children }: { children: string }) {
             "flex items-center gap-1 text-[11px] rounded-md px-1.5 py-0.5 transition",
             copied
               ? "text-emerald-400 bg-emerald-500/10"
-              : "text-zinc-300 hover:text-ink bg-zinc-800 hover:bg-zinc-700"
+              : "text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.06]"
           )}
         >
           {copied ? <Check size={11} /> : <Copy size={11} />}
           {copied ? "Copiado" : "Copiar"}
         </button>
       </div>
-      <pre className="bg-zinc-950 px-3 py-1.5 overflow-x-auto text-[12px] leading-[1.4] font-mono whitespace-pre-wrap tracking-tight">
+      <pre className="px-3 py-1.5 overflow-x-auto text-[12px] leading-[1.4] font-mono whitespace-pre-wrap tracking-tight">
         {children}
       </pre>
     </div>
@@ -70,7 +70,7 @@ export default function MessageContent({ content }: { content: string }) {
           hr: () => <hr className="my-2.5 border-zinc-800" />,
           strong: ({ children }) => <strong className="font-semibold text-ink">{children}</strong>,
           a: ({ children, href }) => (
-            <a href={href} target="_blank" rel="noreferrer" className="text-violet-400 underline">
+            <a href={href} target="_blank" rel="noreferrer" className="text-violet-400 hover:text-violet-300 underline">
               {children}
             </a>
           ),
@@ -80,18 +80,18 @@ export default function MessageContent({ content }: { content: string }) {
             </div>
           ),
           th: ({ children }) => (
-            <th className="border border-zinc-700 bg-zinc-800/60 px-2 py-1 text-left font-medium">
+            <th className="border border-white/[0.08] bg-white/[0.04] px-2 py-1 text-left font-medium">
               {children}
             </th>
           ),
           td: ({ children }) => (
-            <td className="border border-zinc-700 px-2 py-1">{children}</td>
+            <td className="border border-white/[0.08] px-2 py-1">{children}</td>
           ),
           code: ({ className, children }) => {
             const isBlock = /language-/.test(className || "") || String(children).includes("\n");
             if (isBlock) return <CodeBlock>{String(children).replace(/\n$/, "")}</CodeBlock>;
             return (
-              <code className="bg-zinc-950 border border-zinc-800 rounded px-1 py-0.5 text-[13px] font-mono">
+              <code className="bg-white/[0.06] border border-white/[0.08] rounded px-1 py-0.5 text-[13px] font-mono">
                 {children}
               </code>
             );

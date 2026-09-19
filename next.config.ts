@@ -7,7 +7,7 @@ const supabaseHost = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseOrigin = supabaseHost ? `https://${supabaseHost}` : "";
 
 // La app no carga NI un solo script, hoja de estilos o fuente de un tercero:
-// next/font auto-hospeda Geist y Fraunces en el build, y el único enlace externo
+// next/font auto-hospeda Geist y Archivo en el build, y el único enlace externo
 // (skool.com) es navegación, no una subcarga. Por eso la política puede ser
 // estricta sin listas de permitidos que mantener.
 //
@@ -58,6 +58,11 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
+  },
+  // El catálogo vive en el hero de /chat; la ruta vieja sigue resolviendo (con
+  // su `?notice=`: Next reenvía el query string en los redirects).
+  async redirects() {
+    return [{ source: "/dashboard", destination: "/chat", permanent: false }];
   },
 };
 

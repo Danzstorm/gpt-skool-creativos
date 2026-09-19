@@ -4,6 +4,8 @@ import { useState, useEffect, useSyncExternalStore, use } from "react";
 import Link from "next/link";
 import { ArrowUpRight, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import Aurora from "@/components/ui/Aurora";
+import Orb from "@/components/ui/Orb";
 
 // Google es la única forma de entrar. El magic link se retiró porque a mucha
 // gente no le llegaba o abría el enlace en otro navegador y no funcionaba.
@@ -118,22 +120,20 @@ export default function LoginPage({
   const loading = status === "loading";
 
   return (
-    <div className="grain relative flex min-h-screen items-center justify-center bg-[var(--background)] px-4 text-stone-100">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute left-1/2 top-[-160px] -z-0 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-violet-600/15 blur-[150px]"
-      />
-      <div className="relative z-10 w-full max-w-sm">
+    // `isolate` crea stacking context: sin él Aurora (-z-10) quedaría detrás
+    // del fondo del root y no se vería.
+    <div className="grain relative isolate flex min-h-screen items-center justify-center overflow-hidden bg-[var(--background)] px-4 text-zinc-100">
+      <Aurora />
+      <div className="glass-strong relative z-10 w-full max-w-sm rounded-3xl p-8">
         <div className="mb-9 text-center">
+          <Orb size="md" className="mx-auto mb-6" />
           <Link href="/" className="inline-flex items-baseline gap-2">
-            <span className="font-display text-3xl font-semibold tracking-tight text-stone-50">
+            <span className="font-display wordmark brand-text text-3xl font-extrabold uppercase italic tracking-tight">
               {communityName}
             </span>
-            <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-stone-500">
-              GPT
-            </span>
+            <span className="eyebrow text-zinc-500">GPT</span>
           </Link>
-          <p className="mt-3 text-sm text-stone-400">
+          <p className="mt-3 text-sm text-zinc-400">
             Acceso exclusivo para la comunidad
           </p>
         </div>
@@ -142,16 +142,16 @@ export default function LoginPage({
           {notice && (
             <div
               role="alert"
-              className="rounded-xl border border-amber-800/50 bg-amber-950/30 px-4 py-3 text-sm"
+              className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200"
             >
-              <p className="font-medium text-amber-200">{notice.title}</p>
+              <p className="font-medium">{notice.title}</p>
               <p className="mt-1 leading-relaxed text-amber-200/70">{notice.body}</p>
             </div>
           )}
 
           {inAppBrowser && (
-            <div className="rounded-xl border border-violet-800/50 bg-violet-950/30 px-4 py-3 text-sm">
-              <p className="font-medium text-violet-200">Abre esta página en tu navegador</p>
+            <div className="rounded-xl border border-violet-500/30 bg-violet-500/10 px-4 py-3 text-sm text-violet-200">
+              <p className="font-medium">Abre esta página en tu navegador</p>
               <p className="mt-1 leading-relaxed text-violet-200/70">
                 Google no permite iniciar sesión desde el navegador de Instagram, Facebook o
                 TikTok. Toca el menú (⋯) y elige «Abrir en el navegador», o copia el enlace en
@@ -164,10 +164,10 @@ export default function LoginPage({
             type="button"
             onClick={handleGoogle}
             disabled={loading}
-            className="flex w-full items-center justify-center gap-3 rounded-xl bg-stone-50 px-4 py-3.5 text-base font-semibold text-stone-900 transition hover:bg-white active:scale-[0.99] disabled:cursor-wait disabled:opacity-70"
+            className="flex w-full items-center justify-center gap-3 rounded-xl bg-zinc-50 px-4 py-3.5 text-base font-semibold text-zinc-950 transition hover:bg-white active:scale-[0.99] disabled:cursor-wait disabled:opacity-70"
           >
             {loading ? (
-              <Loader2 size={20} className="animate-spin text-stone-500" aria-hidden />
+              <Loader2 size={20} className="animate-spin text-zinc-500" aria-hidden />
             ) : (
               <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden>
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -181,18 +181,18 @@ export default function LoginPage({
 
           {/* Ataca en la fuente el rechazo por email distinto: mucha gente
               tiene su Google personal y su Skool a otro nombre. */}
-          <p className="text-center text-sm leading-relaxed text-stone-400">
-            Elige la cuenta de Google con el <span className="text-stone-200">mismo correo</span> que
+          <p className="text-center text-sm leading-relaxed text-zinc-400">
+            Elige la cuenta de Google con el <span className="text-zinc-200">mismo correo</span> que
             usas en Skool {communityName}.
           </p>
 
-          <div className="border-t border-stone-800 pt-4 text-center text-xs leading-relaxed text-stone-500">
+          <div className="border-t border-white/8 pt-4 text-center text-xs leading-relaxed text-zinc-500">
             <p>Acceso solo para miembros. No hay registro abierto.</p>
             <a
               href={skoolUrl}
               target="_blank"
               rel="noreferrer"
-              className="mt-1 inline-flex items-center gap-1 text-stone-400 transition hover:text-white"
+              className="mt-1 inline-flex items-center gap-1 text-zinc-300 underline underline-offset-4 transition hover:text-zinc-100"
             >
               ¿Todavía no eres miembro? Unirme a {communityName}
               <ArrowUpRight size={12} aria-hidden />

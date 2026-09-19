@@ -73,14 +73,11 @@ export interface WebhookEvent {
   created_at: string;
 }
 
-export type Theme = "creativo" | "dark" | "light";
-
 export interface Profile {
   id: string;
   email: string | null;
   full_name: string | null;
   is_admin: boolean;
-  theme: Theme;
   created_at: string;
 }
 

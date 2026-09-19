@@ -17,15 +17,15 @@ export default async function AdminLayout({
   // maybeSingle y no single: si el perfil todavía no existe, `single()` devuelve
   // un error PGRST116 que aquí se descartaba en silencio, colapsando dos casos
   // distintos —"no eres admin" y "tu perfil aún no se creó"— en el mismo
-  // redirect mudo a /dashboard.
+  // redirect mudo a /chat.
   const { data: profile } = await supabase
     .from("profiles")
     .select("is_admin")
     .eq("id", user.id)
     .maybeSingle();
 
-  if (!profile) redirect("/dashboard?notice=profile_pending");
-  if (!profile.is_admin) redirect("/dashboard?notice=not_admin");
+  if (!profile) redirect("/chat?notice=profile_pending");
+  if (!profile.is_admin) redirect("/chat?notice=not_admin");
 
   const settings = await getAppSettings();
 
@@ -34,7 +34,7 @@ export default async function AdminLayout({
       <header className="border-b border-zinc-800 bg-zinc-950 px-4 py-3">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href="/dashboard" className="flex items-baseline gap-2">
+            <Link href="/chat" className="flex items-baseline gap-2">
               <span className="font-display text-xl font-semibold tracking-tight text-stone-50">
                 {settings.community_name}
               </span>
