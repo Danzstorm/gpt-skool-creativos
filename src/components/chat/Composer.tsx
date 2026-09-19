@@ -12,6 +12,7 @@ import {
 import { composerFieldDisabled } from "@/lib/composer-input";
 import { mentionAt, moveIndex, type MentionQuery } from "@/lib/file-search";
 import { VIDEO_ANALYZING_HINT, VIDEO_ANALYZING_LABEL, VIDEO_ATTACH_TITLE } from "@/lib/video-copy";
+import AttachmentStill from "./AttachmentStill";
 import MentionField, { type MentionFieldHandle } from "./MentionField";
 import MentionMenu from "./MentionMenu";
 import MentionPreview from "./MentionPreview";
@@ -31,6 +32,8 @@ interface Props {
   isUploading: boolean;
   /** Un video del batch actual está subiéndose/analizándose (tarda más que un archivo normal). */
   isUploadingVideo?: boolean;
+  /** Archivos de esta tanda (y las que se sumaron) todavía en vuelo. */
+  pendingCount?: number;
   /**
    * Hay GEMINI_API_KEY en el servidor. Sin ella el video no se puede describir,
    * así que la opción no se muestra: un botón que termina en "no está disponible"
@@ -51,7 +54,7 @@ interface Props {
 // Composer aislado: el texto y la grabación viven acá, no en el componente padre.
 // Así escribir no re-renderiza el resto del chat (sidebar, lista de mensajes).
 const Composer = forwardRef<ComposerHandle, Props>(function Composer(
-  { isLoading, isUploading, isUploadingVideo, videoEnabled, isEditing, onCancelEdit, attachedFiles, mentions, onFilesSelected, onRemoveFile, onSend, onStop },
+  { isLoading, isUploading, isUploadingVideo, pendingCount, videoEnabled, isEditing, onCancelEdit, attachedFiles, mentions, onFilesSelected, onRemoveFile, onSend, onStop },
   ref
 ) {
   const [input, setInput] = useState("");
@@ -220,10 +223,20 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
     if (mention) {
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setActiveIndex((i) => moveIndex(i, 1, mentionOptions.length));
+        setActiveIndex((i) => Math.min(i + 2, Math.max(0, mentionOptions.length - 1)));
         return;
       }
       if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setActiveIndex((i) => Math.max(i - 2, 0));
+        return;
+      }
+      if (e.key === "ArrowRight") {
+        e.preventDefault();
+        setActiveIndex((i) => moveIndex(i, 1, mentionOptions.length));
+        return;
+      }
+      if (e.key === "ArrowLeft") {
         e.preventDefault();
         setActiveIndex((i) => moveIndex(i, -1, mentionOptions.length));
         return;
@@ -253,14 +266,20 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
       {(attachedFiles.length > 0 || isUploading) && (
         <div className="flex flex-wrap gap-2 mb-3 max-w-3xl mx-auto">
           {attachedFiles.map((f, i) => {
-            return f.type === "image" ? (
+            const visual = f.type === "image" || (f.type === "video" && f.previewUrl);
+            return visual ? (
               <div key={i} className="relative group/thumb">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={f.previewUrl}
-                  alt={f.name}
-                  className="h-16 w-16 rounded-xl border border-zinc-800 object-cover"
-                />
+                <span className="block h-16 w-16 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
+                  <AttachmentStill
+                    file={{
+                      kind: f.type,
+                      previewUrl: f.previewUrl,
+                      durationSeconds: f.durationSeconds,
+                    }}
+                    className="h-16 w-16 object-cover"
+                    iconSize={16}
+                  />
+                </span>
                 <button
                   onClick={() => onRemoveFile(i)}
                   className="absolute -top-1.5 -right-1.5 bg-zinc-800 border border-zinc-600 rounded-full p-0.5 text-zinc-300 hover:text-ink opacity-0 group-hover/thumb:opacity-100 transition"
@@ -285,6 +304,15 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
               </div>
             );
           })}
+          <button
+            type="button"
+            onClick={openFilePicker}
+            className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-xl border border-dashed border-zinc-700 text-zinc-500 transition hover:border-zinc-500 hover:text-zinc-300"
+            title="Adjuntar más archivos"
+            aria-label="Adjuntar más archivos"
+          >
+            <Plus size={18} />
+          </button>
           {/* El progreso vive acá y no en el placeholder del textarea: ahí
               decía "Analizando video..." y hacía sentir que el campo estaba
               ocupado, cuando escribir siempre estuvo permitido. */}
@@ -297,7 +325,11 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
                   <span className="block text-zinc-500">{VIDEO_ANALYZING_HINT}</span>
                 </span>
               ) : (
-                <span>Subiendo...</span>
+                <span>
+                  {pendingCount && pendingCount > 1
+                    ? `Subiendo ${pendingCount} archivos...`
+                    : "Subiendo..."}
+                </span>
               )}
             </div>
           )}
@@ -363,7 +395,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           title={
             videoEnabled
               ? VIDEO_ATTACH_TITLE
-              : "Adjuntar imágenes o archivos (las imágenes también se pegan con Ctrl+V)"
+              : "Adjuntar varias imágenes o archivos (las imágenes también se pegan con Ctrl+V)"
           }
           aria-label="Adjuntar"
         >

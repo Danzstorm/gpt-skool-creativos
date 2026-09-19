@@ -29,6 +29,7 @@ export interface MentionCandidate {
   modelLabel: string;
   name: string;
   previewUrl?: string;
+  durationSeconds?: number;
 }
 
 export type MentionSourceFile = AttachmentLike & {
@@ -36,6 +37,7 @@ export type MentionSourceFile = AttachmentLike & {
   name?: unknown;
   previewUrl?: unknown;
   n?: unknown;
+  durationSeconds?: unknown;
 };
 
 /** Token completo ya insertado: `@Imagen 12`, `@Video 1`, `@Archivo 3`. */
@@ -59,6 +61,7 @@ function asFile(raw: unknown): MentionSourceFile | null {
     name: (raw as MentionSourceFile).name,
     previewUrl: (raw as MentionSourceFile).previewUrl,
     n: (raw as MentionSourceFile).n,
+    durationSeconds: (raw as MentionSourceFile).durationSeconds,
   };
 }
 
@@ -74,6 +77,11 @@ function fileName(file: MentionSourceFile, kind: MentionKind): string {
 
 function previewOf(file: MentionSourceFile): string | undefined {
   return typeof file.previewUrl === "string" && file.previewUrl ? file.previewUrl : undefined;
+}
+
+function durationOf(file: MentionSourceFile): number | undefined {
+  const value = file.durationSeconds;
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : undefined;
 }
 
 /**
@@ -135,6 +143,7 @@ function candidateFor(
       modelLabel: videoLabel(n),
       name: fileName(file, "video"),
       previewUrl: previewOf(file),
+      durationSeconds: durationOf(file),
     };
   }
   const n = documents.get(id);
@@ -183,7 +192,11 @@ export function listMentionCandidates(
     if (seen.has(id)) {
       const existing = list.find((item) => item.id === id);
       const preview = previewOf(file);
+      const duration = durationOf(file);
       if (existing && !existing.previewUrl && preview) existing.previewUrl = preview;
+      if (existing && existing.durationSeconds == null && duration != null) {
+        existing.durationSeconds = duration;
+      }
       return;
     }
     const candidate = candidateFor(file, numbers, documents);

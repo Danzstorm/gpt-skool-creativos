@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { DragEvent } from "react";
 import type { UploadedFile } from "@/lib/types";
 import { downscaleImage } from "@/lib/image-resize";
@@ -15,7 +15,7 @@ import {
   type LibraryAttachment,
 } from "@/lib/chat-uploads";
 import { videoDurationRejectReason } from "@/lib/video-copy";
-import { probeBrowserVideoDuration } from "@/lib/video-duration";
+import { probeBrowserVideoPreview } from "@/lib/video-duration";
 
 // Solo se usa para subir adjuntos a Storage con URL firmada; el resto de los
 // datos del chat viaja por las rutas de /api.
@@ -30,6 +30,13 @@ export function useChatUploads(canAttach: boolean) {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
+  // Refs: dos tandas pueden arrancar antes del re-render. El plan reserva
+  // cupo contra estos números, no contra el state que todavía no pintó.
+  const pendingRef = useRef(0);
+  const videoPendingRef = useRef(0);
+  const attachedCountRef = useRef(0);
+  attachedCountRef.current = attachedFiles.length;
+
   const dismissUploadError = useCallback(() => setUploadError(null), []);
   const clearAttachments = useCallback(() => setAttachedFiles([]), []);
   const restoreAttachments = useCallback((files: UploadedFile[] | undefined) => {
@@ -40,27 +47,38 @@ export function useChatUploads(canAttach: boolean) {
     setUploadError(null);
     const plan = planUploadBatch({
       files,
-      attachedCount: attachedFiles.length,
-      pendingUploads,
+      attachedCount: attachedCountRef.current,
+      pendingUploads: pendingRef.current,
     });
     if (!plan.ok) {
       setUploadError(plan.error);
       return;
     }
 
-    setPendingUploads(plan.batch.length);
-    setUploadingVideo(plan.uploadingVideo);
+    const videoCount = plan.batch.filter((file) => file.type.startsWith("video/")).length;
+    pendingRef.current += plan.batch.length;
+    videoPendingRef.current += videoCount;
+    setPendingUploads(pendingRef.current);
+    setUploadingVideo(videoPendingRef.current > 0);
 
-    // En paralelo: antes iban de a uno y adjuntar 3 imágenes tardaba el triple.
+    // En paralelo dentro del lote; otra tanda puede sumarse sin esperar.
     const results = await Promise.all(
       plan.batch.map(async (original) => {
-        const fail = (msg: string) => ({ error: namedUploadError(original.name, msg) });
+        const fail = (msg: string, posterUrl?: string) => {
+          if (posterUrl) URL.revokeObjectURL(posterUrl);
+          return { error: namedUploadError(original.name, msg) };
+        };
+        let posterUrl: string | undefined;
+        let durationSeconds: number | undefined;
         try {
           const sizeReason = fileSizeRejectReason(original);
           if (sizeReason) return fail(sizeReason);
           if (original.type.startsWith("video/")) {
-            const durationReason = videoDurationRejectReason(await probeBrowserVideoDuration(original));
-            if (durationReason) return fail(durationReason);
+            const preview = await probeBrowserVideoPreview(original);
+            posterUrl = preview.posterUrl;
+            if (preview.durationSeconds != null) durationSeconds = preview.durationSeconds;
+            const durationReason = videoDurationRejectReason(preview.durationSeconds);
+            if (durationReason) return fail(durationReason, posterUrl);
           }
           // Las imágenes se achican igual: no por el límite (ya no aplica) sino
           // porque subir 8MB de foto no mejora la respuesta y se siente lento.
@@ -75,14 +93,14 @@ export function useChatUploads(canAttach: boolean) {
             body: JSON.stringify({ name: file.name, type: file.type, size: file.size }),
           });
           if (!signRes.ok) {
-            return fail((await signRes.json().catch(() => null))?.error ?? "no se pudo subir");
+            return fail((await signRes.json().catch(() => null))?.error ?? "no se pudo subir", posterUrl);
           }
           const { path, token } = await signRes.json();
 
           const { error: upErr } = await supabase.storage
             .from("chat-uploads")
             .uploadToSignedUrl(path, token, file);
-          if (upErr) return fail("falló la subida, revisa tu conexión");
+          if (upErr) return fail("falló la subida, revisa tu conexión", posterUrl);
 
           const regRes = await fetch("/api/upload/register", {
             method: "POST",
@@ -90,7 +108,7 @@ export function useChatUploads(canAttach: boolean) {
             body: JSON.stringify({ path, name: file.name, type: file.type }),
           });
           if (!regRes.ok) {
-            return fail((await regRes.json().catch(() => null))?.error ?? "no se pudo procesar");
+            return fail((await regRes.json().catch(() => null))?.error ?? "no se pudo procesar", posterUrl);
           }
 
           const data = await regRes.json();
@@ -102,17 +120,20 @@ export function useChatUploads(canAttach: boolean) {
               name: original.name,
               openai_file_id: data.file_id,
               type: kind,
-              previewUrl: uploadedAsImage ? URL.createObjectURL(previewBlob) : undefined,
+              previewUrl: uploadedAsImage ? URL.createObjectURL(previewBlob) : posterUrl,
+              ...(durationSeconds != null ? { durationSeconds } : {}),
             },
           };
         } catch {
-          return fail("no se pudo subir");
+          return fail("no se pudo subir", posterUrl);
         }
       })
     );
 
-    setPendingUploads(0);
-    setUploadingVideo(false);
+    pendingRef.current = Math.max(0, pendingRef.current - plan.batch.length);
+    videoPendingRef.current = Math.max(0, videoPendingRef.current - videoCount);
+    setPendingUploads(pendingRef.current);
+    setUploadingVideo(videoPendingRef.current > 0);
 
     const ok = results.flatMap((r) => ("file" in r && r.file ? [r.file] : []));
     // El cupo se decide contra `prev`, no contra el conteo de cuando arrancó
@@ -140,7 +161,7 @@ export function useChatUploads(canAttach: boolean) {
       ...results.flatMap((r) => ("error" in r && r.error ? [r.error] : [])),
     ]);
     if (error) setUploadError(error);
-  }, [attachedFiles.length, pendingUploads]);
+  }, []);
 
   /**
    * Adjunta un archivo que ya vive en la biblioteca del usuario.

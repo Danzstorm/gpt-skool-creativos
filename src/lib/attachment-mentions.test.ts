@@ -81,6 +81,17 @@ describe("listMentionCandidates", () => {
       expect.objectContaining({ token: "@Imagen 1", id: "nueva" }),
     ]);
   });
+
+  it("el video de la bandeja lleva poster y duración al menú", () => {
+    const outgoing = [{ ...vid("clip", 1), previewUrl: "blob:poster", durationSeconds: 95 }];
+    const list = listMentionCandidates([], outgoing, assignThreadNumbers([], outgoing));
+    expect(list[0]).toMatchObject({
+      id: "clip",
+      token: "@Video 1",
+      previewUrl: "blob:poster",
+      durationSeconds: 95,
+    });
+  });
 });
 
 describe("assignDocumentNumbers", () => {

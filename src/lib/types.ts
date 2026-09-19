@@ -121,7 +121,9 @@ export interface UploadedFile {
   name: string;
   openai_file_id: string;
   type: "image" | "document" | "video";
-  previewUrl?: string; // URL local (object URL) para vista previa de imágenes en la sesión
+  previewUrl?: string; // Miniatura: object URL de imagen/poster, o URL firmada del archivo
+  /** Duración del video en segundos, si el navegador pudo leerla al adjuntar. */
+  durationSeconds?: number;
   /**
    * Número con el que se rotuló este archivo para el modelo ("imagen 3"),
    * guardado al mandarlo. Tiene que viajar hasta el cliente: si la interfaz lo

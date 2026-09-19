@@ -563,6 +563,7 @@ export default function UnifiedChat({
             mentions={mentionables}
             isUploading={pendingUploads > 0}
             isUploadingVideo={uploadingVideo}
+            pendingCount={pendingUploads}
             isEditing={isEditing}
             onCancelEdit={cancelEdit}
             attachedFiles={attachedFiles}

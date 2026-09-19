@@ -4,6 +4,7 @@ import {
   VIDEO_ANALYZING_HINT,
   VIDEO_ANALYZING_LABEL,
   VIDEO_ATTACH_TITLE,
+  formatVideoBadge,
   formatVideoClock,
   videoDurationRejectReason,
 } from "./video-copy";
@@ -18,6 +19,15 @@ describe("video-copy", () => {
   it("el estado de análisis invita a seguir escribiendo", () => {
     expect(VIDEO_ANALYZING_LABEL.toLowerCase()).toMatch(/transcribiendo/);
     expect(VIDEO_ANALYZING_HINT.toLowerCase()).toMatch(/seguir escribiendo/);
+  });
+});
+
+describe("formatVideoBadge", () => {
+  it("escribe el reloj compacto del still", () => {
+    expect(formatVideoBadge(0)).toBe("0:00");
+    expect(formatVideoBadge(5)).toBe("0:05");
+    expect(formatVideoBadge(65)).toBe("1:05");
+    expect(formatVideoBadge(125.4)).toBe("2:05");
   });
 });
 

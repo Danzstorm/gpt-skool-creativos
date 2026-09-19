@@ -8,7 +8,7 @@ export const VIDEO_ANALYZING_LABEL = "Transcribiendo audio y escenas...";
 export const VIDEO_ANALYZING_HINT = "Puedes seguir escribiendo. Enviar espera al adjunto.";
 
 export const VIDEO_ATTACH_TITLE =
-  `Adjuntar imágenes, archivos o video (hasta ${MAX_VIDEO_SIZE_MB} MB / ${MAX_VIDEO_MINUTES} min). ` +
+  `Adjuntar varias imágenes, archivos o video (hasta ${MAX_VIDEO_SIZE_MB} MB / ${MAX_VIDEO_MINUTES} min). ` +
   "El video se transcribe (voz o letra) y se describe por escenas. " +
   "Las imágenes también se pegan con Ctrl+V";
 
@@ -19,6 +19,14 @@ export function formatVideoClock(seconds: number): string {
   if (minutes === 0) return `${rest} s`;
   if (rest === 0) return `${minutes} min`;
   return `${minutes} min ${rest} s`;
+}
+
+/** Reloj compacto para el badge del still (1:05). */
+export function formatVideoBadge(seconds: number): string {
+  const total = Math.max(0, Math.round(seconds));
+  const minutes = Math.floor(total / 60);
+  const rest = total % 60;
+  return `${minutes}:${rest.toString().padStart(2, "0")}`;
 }
 
 /** Motivo si el clip es más largo de lo que cubrimos. Sin duración leíble, no corta. */

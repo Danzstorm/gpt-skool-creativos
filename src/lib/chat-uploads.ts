@@ -2,9 +2,6 @@ import type { UploadedFile } from "./types";
 import { MAX_FILES_PER_MESSAGE } from "./upload-file";
 import { MAX_SIZE_BYTES, MAX_SIZE_MB, MAX_VIDEO_SIZE_BYTES, MAX_VIDEO_SIZE_MB } from "./upload-limits";
 
-export const UPLOAD_BUSY_MESSAGE =
-  "Espera a que termine la subida actual antes de adjuntar más archivos.";
-
 export function maxFilesMessage(maxFiles = MAX_FILES_PER_MESSAGE): string {
   return `Puedes adjuntar hasta ${maxFiles} archivos por mensaje.`;
 }
@@ -23,9 +20,11 @@ export type UploadPlan<T extends { type: string }> =
 /**
  * Decide qué archivos entran en esta subida y qué aviso mostrar, sin I/O.
  *
- * El tope y el “espera a que termine” viven acá porque el hook solo orquesta
- * la subida: si estas reglas se reescribieran junto al fetch, un test tendría
- * que mockear Storage para comprobar un slice y un mensaje.
+ * El tope vive acá porque el hook solo orquesta la subida: si estas reglas
+ * se reescribieran junto al fetch, un test tendría que mockear Storage para
+ * comprobar un slice y un mensaje. Las subidas en vuelo no bloquean otra
+ * tanda: reservan cupo para no mandar 20 archivos a Storage y recortar
+ * después.
  */
 export function planUploadBatch<T extends { type: string }>(input: {
   files: T[];
@@ -34,11 +33,7 @@ export function planUploadBatch<T extends { type: string }>(input: {
   maxFiles?: number;
 }): UploadPlan<T> {
   const maxFiles = input.maxFiles ?? MAX_FILES_PER_MESSAGE;
-  if (input.pendingUploads > 0) {
-    return { ok: false, error: UPLOAD_BUSY_MESSAGE };
-  }
-
-  const remaining = maxFiles - input.attachedCount;
+  const remaining = maxFiles - input.attachedCount - input.pendingUploads;
   if (remaining <= 0) {
     return { ok: false, error: maxFilesMessage(maxFiles) };
   }

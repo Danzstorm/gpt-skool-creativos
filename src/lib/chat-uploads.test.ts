@@ -3,7 +3,6 @@ import type { UploadedFile } from "./types";
 import { MAX_FILES_PER_MESSAGE } from "./upload-file";
 import { MAX_SIZE_BYTES, MAX_SIZE_MB, MAX_VIDEO_SIZE_BYTES, MAX_VIDEO_SIZE_MB } from "./upload-limits";
 import {
-  UPLOAD_BUSY_MESSAGE,
   attachmentPreviewBlob,
   commitUploadResults,
   composeUploadError,
@@ -26,14 +25,44 @@ const libraryFile = {
 };
 
 describe("planUploadBatch", () => {
-  it("bloquea una segunda tanda mientras hay subidas en vuelo", () => {
+  it("deja entrar otra tanda y reserva el cupo de las subidas en vuelo", () => {
+    expect(
+      planUploadBatch({
+        files: [img, img, img],
+        attachedCount: 2,
+        pendingUploads: 3,
+      })
+    ).toEqual({
+      ok: true,
+      batch: [img, img, img],
+      skippedCount: 0,
+      uploadingVideo: false,
+    });
+  });
+
+  it("rechaza si adjuntos más subidas en vuelo ya ocupan el tope", () => {
     expect(
       planUploadBatch({
         files: [img],
-        attachedCount: 0,
+        attachedCount: MAX_FILES_PER_MESSAGE - 2,
         pendingUploads: 2,
       })
-    ).toEqual({ ok: false, error: UPLOAD_BUSY_MESSAGE });
+    ).toEqual({ ok: false, error: maxFilesMessage() });
+  });
+
+  it("recorta al cupo que queda después de reservar las subidas en vuelo", () => {
+    expect(
+      planUploadBatch({
+        files: [img, img, img],
+        attachedCount: MAX_FILES_PER_MESSAGE - 3,
+        pendingUploads: 2,
+      })
+    ).toEqual({
+      ok: true,
+      batch: [img],
+      skippedCount: 2,
+      uploadingVideo: false,
+    });
   });
 
   it("rechaza cuando el mensaje ya tiene el máximo de adjuntos", () => {
