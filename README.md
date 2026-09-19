@@ -99,6 +99,8 @@ Ver [`.env.example`](.env.example) para la lista completa con comentarios.
 | `GEMINI_API_KEY` | ➖ | Habilita adjuntar video ([AI Studio](https://aistudio.google.com/apikey); se factura a esa cuenta). Sin ella el botón `+` sigue ahí: el selector deja de listar videos y `/api/upload/sign` los rechaza antes de firmar. El resto del chat funciona igual. Ver guía §5 |
 | `UPSTASH_REDIS_REST_URL` / `_TOKEN` | ➖ | Recomendado en prod |
 | `NEXT_PUBLIC_SITE_URL` | ➖ | Dominio propio (canonical/OG) |
+| `STORAGE_QUOTA_GB` | ➖ | Techo del plan de Storage. Default **100** (Pro). Free 1 GB hay que setearlo. |
+| `STORAGE_CLEAN_THRESHOLD_GB` | ➖ | Auto-limpieza solo sobre este uso medido. Default **80** (80% de Pro). |
 
 ---
 
@@ -222,11 +224,14 @@ Todos leen las credenciales de `.env.local`.
 |---|---|
 | `npm run admin:bootstrap -- <email>` | Da acceso y admin. Idempotente. |
 | `npm run cleanup:orphans` | **Solo informa** (dry-run). Lista huérfanos nunca enviados (>30 días) y blobs de Storage sin registrar (>7 días), con GB medidos. **Nunca toca lo enviado alguna vez**. Para borrar de verdad: `npm run cleanup:orphans -- --confirm`. `--keep-days=N` y `--keep-unregistered-days=N` cambian las ventanas. |
+| `npm run cleanup:orphans:auto` | Misma lógica que la Action semanal: informa siempre; borra solo si el uso medido ≥ `STORAGE_CLEAN_THRESHOLD_GB` (default 80 GB). |
 | `npm run cleanup:orphan-users` | Borra cuentas de quien autenticó sin ser miembro (sin conversaciones, >7 días). **Solo informa**; hay que pasar `-- --confirm` para borrar. |
 | `npm run backfill:gpt-config` | Migración puntual de configuración de GPTs. |
 | `npm run backfill:messages` | Migración puntual de mensajes de threads. |
 | `npm run audit:data-model` | Auditoría agregada de integridad y permisos. |
 | `npm run report:storage` | Informe de solo lectura: uso de `chat-uploads` por tipo, edad y usuario, más miembros revocados/quietos. No borra nada. |
+
+La Action [`.github/workflows/storage-governance.yml`](.github/workflows/storage-governance.yml) corre **domingo 10:00 UTC** (05:00 Colombia) como informe. Auto-borra solo basura never-sent cerca del techo (default 80 GB de 100). **Nunca** historial, mensajes, configs de GPT ni whitelist Skool. No es un cron de Vercel: el chat no se bloquea. Fail-closed si no puede clasificar un archivo.
 
 ---
 

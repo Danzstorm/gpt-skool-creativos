@@ -4,10 +4,16 @@ import { describe, expect, it } from "vitest";
 // irreversibles en Storage, OpenAI y la base a la vez.
 import {
   DEFAULT_KEEP_DAYS,
+  DEFAULT_STORAGE_QUOTA_GB,
   DEFAULT_UNREGISTERED_KEEP_DAYS,
   formatBytes,
+  formatCleanupMarkdown,
+  planStorageCleanup,
+  resolveCleanThresholdGb,
+  resolveStorageQuotaGb,
   selectOrphans,
   selectUnregisteredBlobs,
+  shouldAutoClean,
   summarizeBytes,
 } from "../../scripts/lib/orphan-files.mjs";
 
@@ -146,6 +152,135 @@ describe("selectUnregisteredBlobs", () => {
 
   it("la gracia por defecto de blobs sin registrar es 7 días", () => {
     expect(DEFAULT_UNREGISTERED_KEEP_DAYS).toBe(7);
+  });
+});
+
+describe("umbral de auto-limpieza", () => {
+  const umbral80 = 80;
+
+  it("no dispara con 19 GB de un Pro de 100 GB", () => {
+    expect(
+      shouldAutoClean({ usedBytes: 19e9, thresholdGb: umbral80, listingFailed: false })
+    ).toBe(false);
+  });
+
+  it("dispara al cruzar el umbral (80 GB inclusive)", () => {
+    expect(shouldAutoClean({ usedBytes: 80e9, thresholdGb: umbral80, listingFailed: false })).toBe(true);
+    expect(shouldAutoClean({ usedBytes: 81e9, thresholdGb: umbral80, listingFailed: false })).toBe(true);
+  });
+
+  it("fail-closed si el listado de Storage falló", () => {
+    expect(shouldAutoClean({ usedBytes: 90e9, thresholdGb: umbral80, listingFailed: true })).toBe(false);
+  });
+
+  it("fail-closed si los bytes medidos no son un número", () => {
+    expect(shouldAutoClean({ usedBytes: null, thresholdGb: umbral80, listingFailed: false })).toBe(false);
+    expect(shouldAutoClean({ usedBytes: Number.NaN, thresholdGb: umbral80, listingFailed: false })).toBe(
+      false
+    );
+  });
+
+  it("el default es 80 GB (80% de Pro 100 GB)", () => {
+    expect(DEFAULT_STORAGE_QUOTA_GB).toBe(100);
+    expect(resolveStorageQuotaGb({})).toBe(100);
+    expect(resolveCleanThresholdGb({})).toBe(80);
+  });
+
+  it("STORAGE_QUOTA_GB=1 (Free) deja el umbral en 0.8 GB", () => {
+    expect(resolveCleanThresholdGb({ STORAGE_QUOTA_GB: "1" })).toBe(0.8);
+  });
+
+  it("STORAGE_CLEAN_THRESHOLD_GB pisa el 80% de la cuota", () => {
+    expect(
+      resolveCleanThresholdGb({ STORAGE_QUOTA_GB: "1", STORAGE_CLEAN_THRESHOLD_GB: "0.95" })
+    ).toBe(0.95);
+  });
+
+  it("un env inválido no baja el umbral: cae al default alto", () => {
+    expect(resolveStorageQuotaGb({ STORAGE_QUOTA_GB: "nope" })).toBe(100);
+    expect(resolveCleanThresholdGb({ STORAGE_CLEAN_THRESHOLD_GB: "-5" })).toBe(80);
+    expect(resolveCleanThresholdGb({ STORAGE_CLEAN_THRESHOLD_GB: "" })).toBe(80);
+  });
+
+  it("bajo umbral no selecciona nada aunque haya huérfanos elegibles", () => {
+    const orphans = selectOrphans([nuncaEnviado("file-basura", 40)], new Set(), 30, AHORA);
+    expect(orphans).toHaveLength(1);
+    const plan = planStorageCleanup({
+      orphans,
+      unregistered: [],
+      usedBytes: 19e9,
+      thresholdGb: 80,
+      quotaGb: 100,
+      listingFailed: false,
+      classificationComplete: true,
+    });
+    expect(plan.mode).toBe("report");
+    expect(plan.deleteOrphans).toEqual([]);
+    expect(plan.willDelete).toBe(false);
+  });
+
+  it("sobre umbral selecciona solo huérfanos never-sent (no biblioteca)", () => {
+    const lote = [
+      enviado("file-biblioteca", 400),
+      nuncaEnviado("file-referenciado", 400),
+      nuncaEnviado("file-basura", 400),
+      nuncaEnviado("file-reciente", 3),
+    ];
+    const orphans = selectOrphans(lote, new Set(["file-referenciado"]), 30, AHORA);
+    expect(ids(orphans)).toEqual(["file-basura"]);
+    const plan = planStorageCleanup({
+      orphans,
+      unregistered: [{ name: "u/abandonado.bin", bytes: 10 }],
+      usedBytes: 90e9,
+      thresholdGb: 80,
+      quotaGb: 100,
+      listingFailed: false,
+      classificationComplete: true,
+    });
+    expect(plan.mode).toBe("delete");
+    expect(ids(plan.deleteOrphans)).toEqual(["file-basura"]);
+    expect(plan.deleteUnregistered.map((b) => b.name)).toEqual(["u/abandonado.bin"]);
+  });
+
+  it("si no se pudieron leer messages, no borra huérfanos registrados", () => {
+    const orphans = selectOrphans([nuncaEnviado("file-basura", 40)], new Set(), 30, AHORA);
+    const plan = planStorageCleanup({
+      orphans,
+      unregistered: [],
+      usedBytes: 90e9,
+      thresholdGb: 80,
+      quotaGb: 100,
+      listingFailed: false,
+      classificationComplete: false,
+    });
+    expect(plan.deleteOrphans).toEqual([]);
+    expect(plan.skippedUnclassified).toBe(true);
+    expect(plan.willDelete).toBe(false);
+  });
+
+  it("el markdown dice si solo informó o si borró", () => {
+    const report = formatCleanupMarkdown(
+      {
+        mode: "report",
+        overThreshold: false,
+        willDelete: false,
+        deleteOrphans: [],
+        deleteUnregistered: [],
+        skippedUnclassified: false,
+        listingFailed: false,
+        usedBytes: 19e9,
+        thresholdGb: 80,
+        quotaGb: 100,
+        orphanCount: 2,
+        unregisteredCount: 1,
+      },
+      { orphanBytes: 5e6, unregisteredBytes: 1e6, deleted: { orphans: 0, unregistered: 0 } }
+    );
+    expect(report).toContain("solo informe (dry-run)");
+    expect(report).toContain("19.00 GB");
+    expect(report).toContain("Umbral de auto-limpieza: 80 GB");
+    expect(report).toContain("Nunca se borra");
+    expect(report).not.toContain("borró candidatos");
   });
 });
 

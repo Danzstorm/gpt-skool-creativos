@@ -282,6 +282,10 @@ entrar" en producción.
 2. Cargar todas las env vars de §4 en Vercel (Production + Preview si se va a probar Zapier en preview).
 3. Dominio propio → actualizar en Supabase Auth: Site URL + Redirect URLs allowlist al dominio real (si no, Google devuelve al dominio equivocado y el login falla).
 4. Activar **Upstash Redis** (integración nativa de Vercel, un clic) y cargar `UPSTASH_REDIS_REST_URL`/`TOKEN` — sin esto el rate limiting es por instancia serverless, no global, y en tráfico real dos instancias distintas no comparten el contador.
+
+### Gobernanza de Storage (automática, no toca el chat)
+Una Action semanal (domingo 05:00 Colombia) **solo informa**. Auto-borra únicamente subidas del composer que nunca se enviaron (>30 días) y blobs firmados sin `/register` (>7 días), y solo si el uso medido supera **80 GB** (80% del techo Pro de 100 GB; configurable con `STORAGE_CLEAN_THRESHOLD_GB`). **Nunca** borra historial, mensajes, configs de GPT ni la whitelist de Skool. No hay banners en el chat. Local: `npm run report:storage` y `npm run cleanup:orphans` (dry-run). Si el plan es Free (1 GB), hay que setear `STORAGE_QUOTA_GB`.
+
 ### Chats en paralelo y contexto — cómo funciona (para que quede claro)
 - **Cada conversación (thread) tiene su propia Conversation de OpenAI** (`openai_conversation_id`). El contexto completo de esa conversación **vive del lado de OpenAI**, no en nuestra base de datos — la tabla `messages` local es solo una caché para pintar la UI al instante sin re-pedir todo el historial. Por eso nunca se "pierde contexto": cada vez que se envía un mensaje, se manda a la misma Conversation y OpenAI ya sabe todo lo anterior.
 - **Concurrencia entre usuarios**: cada request es una función serverless independiente en Vercel — dos alumnos distintos chateando al mismo tiempo no se bloquean entre sí, escalan horizontalmente sin configuración extra.

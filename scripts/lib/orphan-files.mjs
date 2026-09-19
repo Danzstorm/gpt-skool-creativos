@@ -96,6 +96,134 @@ export function selectUnregisteredBlobs(
   });
 }
 
+/**
+ * Techo documentado del plan Pro de Supabase Storage (100 GB).
+ * Free es 1 GB: hay que setear `STORAGE_QUOTA_GB` o el umbral se queda en 80 GB
+ * y el auto-borrado no dispara nunca — que es la dirección segura.
+ */
+export const DEFAULT_STORAGE_QUOTA_GB = 100;
+
+/**
+ * Fracción de la cuota a partir de la cual `--auto` puede borrar.
+ * 80% de 100 GB = 80 GB. Con ~19 GB de un Pro no dispara.
+ */
+export const DEFAULT_STORAGE_CLEAN_THRESHOLD_RATIO = 0.8;
+
+/** Mismo GB de dashboard que `formatBytes` (1 GB = 1e9). */
+export const BYTES_PER_GB = 1e9;
+
+/**
+ * Número > 0 o el fallback. Vacío, NaN o negativo no cuentan:
+ * un env mal puesto no puede bajar el umbral por accidente.
+ */
+export function parsePositiveNumber(value, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return fallback;
+  return n;
+}
+
+export function resolveStorageQuotaGb(env = {}) {
+  return parsePositiveNumber(env.STORAGE_QUOTA_GB, DEFAULT_STORAGE_QUOTA_GB);
+}
+
+export function resolveCleanThresholdGb(env = {}) {
+  const quotaGb = resolveStorageQuotaGb(env);
+  const defaultThreshold = quotaGb * DEFAULT_STORAGE_CLEAN_THRESHOLD_RATIO;
+  return parsePositiveNumber(env.STORAGE_CLEAN_THRESHOLD_GB, defaultThreshold);
+}
+
+/**
+ * ¿Puede `--auto` borrar? Fail-closed: si el listado falló o no hay bytes
+ * medidos, no se borra. Solo dispara cuando el uso CONOCIDO supera el umbral.
+ * Bytes desconocidos no se inventan — si known < umbral, se conserva todo.
+ */
+export function shouldAutoClean({ usedBytes, thresholdGb, listingFailed }) {
+  if (listingFailed) return false;
+  if (!Number.isFinite(usedBytes) || usedBytes < 0) return false;
+  if (!Number.isFinite(thresholdGb) || thresholdGb <= 0) return false;
+  return usedBytes >= thresholdGb * BYTES_PER_GB;
+}
+
+/**
+ * Plan de una corrida: informe siempre; candidatos a borrar solo si hay
+ * umbral cruzado Y cada archivo se pudo clasificar como never-sent.
+ *
+ * @param {object} input
+ * @param {Array} input.orphans  ya filtrados por `selectOrphans`
+ * @param {Array} input.unregistered  ya filtrados por `selectUnregisteredBlobs`
+ * @param {number|null} input.usedBytes
+ * @param {number} input.thresholdGb
+ * @param {number} input.quotaGb
+ * @param {boolean} input.listingFailed
+ * @param {boolean} input.classificationComplete  false si no se pudieron leer messages
+ */
+export function planStorageCleanup({
+  orphans,
+  unregistered,
+  usedBytes,
+  thresholdGb,
+  quotaGb,
+  listingFailed,
+  classificationComplete,
+}) {
+  const overThreshold = shouldAutoClean({ usedBytes, thresholdGb, listingFailed });
+  // Sin messages no se puede probar "nunca enviado": se omiten huérfanos registrados.
+  const eligibleOrphans = classificationComplete ? orphans : [];
+  // Sin listado no hay blobs clasificables.
+  const eligibleUnregistered = listingFailed ? [] : unregistered;
+  const willDelete =
+    overThreshold && (eligibleOrphans.length > 0 || eligibleUnregistered.length > 0);
+
+  return {
+    overThreshold,
+    willDelete,
+    mode: willDelete ? "delete" : "report",
+    deleteOrphans: willDelete ? eligibleOrphans : [],
+    deleteUnregistered: willDelete ? eligibleUnregistered : [],
+    skippedUnclassified: !classificationComplete,
+    listingFailed: Boolean(listingFailed),
+    usedBytes: Number.isFinite(usedBytes) ? usedBytes : null,
+    thresholdGb,
+    quotaGb,
+    orphanCount: orphans.length,
+    unregisteredCount: unregistered.length,
+  };
+}
+
+export function formatCleanupMarkdown(plan, extras = {}) {
+  const usedLabel =
+    plan.usedBytes == null ? "desconocido" : `${(plan.usedBytes / BYTES_PER_GB).toFixed(2)} GB`;
+  const orphanBytes = extras.orphanBytes;
+  const unregBytes = extras.unregisteredBytes;
+  const deleted = extras.deleted ?? { orphans: 0, unregistered: 0 };
+  const lines = [
+    "## Gobernanza de Storage",
+    "",
+    `- Modo: ${plan.mode === "delete" ? "borró candidatos elegibles" : "solo informe (dry-run)"}`,
+    `- Uso medido: ${usedLabel} / ${plan.quotaGb} GB de cuota (Pro documentado = 100 GB)`,
+    `- Umbral de auto-limpieza: ${plan.thresholdGb} GB`,
+    `- Sobre umbral: ${plan.overThreshold ? "sí" : "no"}`,
+    `- Huérfanos nunca enviados (>30d, recolectables): ${plan.orphanCount}` +
+      (orphanBytes != null ? `, ${formatBytes(orphanBytes)}` : ""),
+    `- Blobs sin registrar (>7d, recolectables): ${plan.unregisteredCount}` +
+      (unregBytes != null ? `, ${formatBytes(unregBytes)}` : ""),
+    `- Borrados en esta corrida: ${deleted.orphans} huérfanos, ${deleted.unregistered} blobs`,
+  ];
+  if (plan.listingFailed) {
+    lines.push("- Listado de Storage incompleto: no se borra nada (fail-closed).");
+  }
+  if (plan.skippedUnclassified) {
+    lines.push("- No se pudieron leer messages: se omiten huérfanos registrados (fail-closed).");
+  }
+  lines.push(
+    "",
+    "Nunca se borra: archivos enviados en un chat (`attached_at` o referenciados),",
+    "historial de hilos, mensajes, configs de GPT, perfiles activos / whitelist Skool,",
+    "ni nada dentro de las ventanas de gracia (30d composer, 7d blobs sin /register)."
+  );
+  return lines.join("\n") + "\n";
+}
+
 /** Tamaño para humanos. Usa base 10 (1 GB = 1e9) para alinearse al dashboard. */
 export function formatBytes(bytes) {
   if (!Number.isFinite(bytes) || bytes < 0) return "tamaño desconocido";

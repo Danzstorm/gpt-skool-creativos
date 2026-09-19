@@ -19,6 +19,7 @@
     "backfill:gpt-config": "node --env-file=.env.local scripts/backfill-gpt-config.mjs",
     "backfill:messages": "node --env-file=.env.local scripts/backfill-thread-messages.mjs",
     "cleanup:orphans": "node --env-file=.env.local scripts/cleanup-orphans.mjs",
+    "cleanup:orphans:auto": "node --env-file=.env.local scripts/cleanup-orphans.mjs --auto --markdown",
     "cleanup:orphan-users": "node --env-file=.env.local scripts/cleanup-orphan-users.mjs",
     "report:storage": "node --env-file=.env.local scripts/report-storage.mjs",
     "admin:bootstrap": "node --env-file=.env.local scripts/bootstrap-admin.mjs",

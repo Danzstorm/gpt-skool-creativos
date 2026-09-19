@@ -1,0 +1,60 @@
+name: Storage governance
+
+# Informe semanal SIEMPRE. Auto-borrado SOLO si el uso medido cruza el umbral
+# (default 80 GB = 80% de un Pro de 100 GB). No corre en Vercel: así el chat
+# no comparte cola ni Storage list con un cron en hora pico.
+#
+# Nunca borra: archivos enviados, historial, configs de GPT, whitelist Skool.
+# Fail-closed: si no puede clasificar never-sent o listar el bucket, informa y no borra.
+
+on:
+  schedule:
+    # Domingo 10:00 UTC = 05:00 Colombia (UTC-5). Fuera del uso diurno.
+    - cron: "0 10 * * 0"
+  workflow_dispatch:
+
+concurrency:
+  group: storage-governance
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  report-and-maybe-clean:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: ¿Hay credenciales de Supabase?
+        id: guard
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          if [ -z "$NEXT_PUBLIC_SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::error::Faltan secrets NEXT_PUBLIC_SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en el environment production. No se borra nada."
+            exit 1
+          fi
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
+      # --auto: dry-run siempre; --confirm interno solo sobre umbral.
+      # No se pasa --confirm a mano. STORAGE_* vacíos caen al default alto (80 GB).
+      - name: Informe semanal (borra solo sobre umbral)
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          STORAGE_QUOTA_GB: ${{ vars.STORAGE_QUOTA_GB }}
+          STORAGE_CLEAN_THRESHOLD_GB: ${{ vars.STORAGE_CLEAN_THRESHOLD_GB }}
+        run: node scripts/cleanup-orphans.mjs --auto --markdown

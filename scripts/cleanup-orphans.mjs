@@ -15,14 +15,25 @@
 // Uso:
 //   node --env-file=.env.local scripts/cleanup-orphans.mjs
 //   node --env-file=.env.local scripts/cleanup-orphans.mjs --confirm
+//   node --env-file=.env.local scripts/cleanup-orphans.mjs --auto --markdown
 //   node --env-file=.env.local scripts/cleanup-orphans.mjs --keep-days=30 --keep-unregistered-days=7
+//
+// `--auto` (Action semanal): siempre informa; solo borra si el uso medido
+// supera STORAGE_CLEAN_THRESHOLD_GB (default 80 GB = 80% de un Pro de 100 GB).
+// `--confirm` a mano sigue siendo el override del operador y no mira el umbral.
+// `--auto --confirm` no relaja el umbral: --auto manda.
 
 import { createClient } from "@supabase/supabase-js";
+import { writeFileSync } from "node:fs";
 import OpenAI from "openai";
 import {
   DEFAULT_KEEP_DAYS,
   DEFAULT_UNREGISTERED_KEEP_DAYS,
   formatBytes,
+  formatCleanupMarkdown,
+  planStorageCleanup,
+  resolveCleanThresholdGb,
+  resolveStorageQuotaGb,
   selectOrphans,
   selectUnregisteredBlobs,
   summarizeBytes,
@@ -30,17 +41,17 @@ import {
 import { fetchAllRows } from "./lib/fetch-all.mjs";
 import { listChatUploadObjects, sizeByPath } from "./lib/storage-list.mjs";
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
 const confirm = process.argv.includes("--confirm");
-const dryRun = !confirm;
+const auto = process.argv.includes("--auto");
+const markdown = process.argv.includes("--markdown") || Boolean(process.env.GITHUB_STEP_SUMMARY);
 const keepDaysArg = process.argv.find((a) => a.startsWith("--keep-days="));
 const keepDays = keepDaysArg ? Number(keepDaysArg.split("=")[1]) : DEFAULT_KEEP_DAYS;
 const unregDaysArg = process.argv.find((a) => a.startsWith("--keep-unregistered-days="));
 const unregisteredKeepDays = unregDaysArg
   ? Number(unregDaysArg.split("=")[1])
   : DEFAULT_UNREGISTERED_KEEP_DAYS;
+const quotaGb = resolveStorageQuotaGb(process.env);
+const thresholdGb = resolveCleanThresholdGb(process.env);
 
 if (!Number.isFinite(keepDays) || keepDays < 0) {
   console.error("--keep-days tiene que ser un número de días >= 0");
@@ -60,7 +71,7 @@ if (!Number.isFinite(unregisteredKeepDays) || unregisteredKeepDays < 0) {
  * se acaba de usar. Son dos consultas por candidato, y se pagan de buena gana:
  * los candidatos son pocos y el borrado no se puede deshacer.
  */
-async function sigueSiendoBasura(fileId) {
+async function sigueSiendoBasura(supabase, fileId) {
   const { data: row, error } = await supabase
     .from("uploaded_files")
     .select("attached_at")
@@ -79,7 +90,7 @@ async function sigueSiendoBasura(fileId) {
   return (usos ?? []).length === 0;
 }
 
-async function sigueSinRegistrar(storagePath) {
+async function sigueSinRegistrar(supabase, storagePath) {
   const { data, error } = await supabase
     .from("uploaded_files")
     .select("openai_file_id")
@@ -98,7 +109,28 @@ function printByteSummary(label, rows) {
   return summary;
 }
 
+function emitMarkdown(plan, extras) {
+  const text = formatCleanupMarkdown(plan, extras);
+  if (markdown) {
+    console.log("\n" + text);
+  }
+  const summaryPath = process.env.GITHUB_STEP_SUMMARY;
+  if (summaryPath) {
+    writeFileSync(summaryPath, text, { flag: "a" });
+  }
+}
+
 async function main() {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.error("Faltan NEXT_PUBLIC_SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY. No se borra nada.");
+    process.exit(1);
+  }
+
+  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
+
   let uploaded;
   try {
     uploaded = await fetchAllRows((from, to) =>
@@ -122,9 +154,19 @@ async function main() {
     throw error;
   }
 
-  const messages = await fetchAllRows((from, to) =>
-    supabase.from("messages").select("id, files").order("id", { ascending: true }).range(from, to)
-  );
+  let classificationComplete = true;
+  let messages = [];
+  try {
+    messages = await fetchAllRows((from, to) =>
+      supabase.from("messages").select("id, files").order("id", { ascending: true }).range(from, to)
+    );
+  } catch (error) {
+    classificationComplete = false;
+    console.warn(
+      `No se pudieron leer messages (${error instanceof Error ? error.message : error}). ` +
+        "Sin esa lista no se puede clasificar never-sent: se omiten huérfanos registrados."
+    );
+  }
 
   const referenced = new Set();
   for (const m of messages) {
@@ -134,42 +176,86 @@ async function main() {
   }
 
   const listed = await listChatUploadObjects(supabase);
-  if (listed.error) {
+  const listingFailed = Boolean(listed.error);
+  if (listingFailed) {
     console.warn(`No se pudo listar Storage (${listed.error}). El informe de GB y los blobs sin registrar quedan incompletos.`);
+    process.exitCode = 1;
   } else {
     console.log(`Storage: ${listed.objects.length} objetos en chat-uploads (vía ${listed.source}).`);
   }
   const sizes = sizeByPath(listed.objects);
+  const bucketBytes = summarizeBytes(listed.objects);
 
   const enviados = uploaded.filter((u) => u.attached_at || referenced.has(u.openai_file_id)).length;
-  const orphans = selectOrphans(uploaded, referenced, keepDays).map((file) => ({
-    ...file,
-    bytes: sizes.get(file.storage_path) ?? null,
-  }));
+  const orphans = classificationComplete
+    ? selectOrphans(uploaded, referenced, keepDays).map((file) => ({
+        ...file,
+        bytes: sizes.get(file.storage_path) ?? null,
+      }))
+    : [];
   const nuncaEnviados = uploaded.length - enviados;
 
   console.log(
     `${uploaded.length} archivos subidos, ${messages.length} mensajes revisados, ` +
       `${enviados} enviados alguna vez (biblioteca, intocables), ` +
-      `${nuncaEnviados} nunca enviados, ${orphans.length} borrables ` +
-      `(los otros ${nuncaEnviados - orphans.length} son de los últimos ${keepDays} días).`
+      `${nuncaEnviados} nunca enviados, ${orphans.length} recolectables ` +
+      `(los otros ${Math.max(0, nuncaEnviados - orphans.length)} son de los últimos ${keepDays} días).`
   );
-  printByteSummary(`Huérfanos nunca enviados (>${keepDays}d)`, orphans);
+  const orphanSummary = printByteSummary(`Huérfanos nunca enviados (>${keepDays}d)`, orphans);
 
   const registeredPaths = new Set(uploaded.map((file) => file.storage_path).filter(Boolean));
   const unregistered = listed.objects.length
     ? selectUnregisteredBlobs(listed.objects, registeredPaths, unregisteredKeepDays)
     : [];
-  printByteSummary(`Blobs sin registrar (>${unregisteredKeepDays}d)`, unregistered);
+  const unregSummary = printByteSummary(`Blobs sin registrar (>${unregisteredKeepDays}d)`, unregistered);
 
-  if (dryRun) {
+  const usedBytes = listingFailed ? null : bucketBytes.knownBytes;
+  const plan = planStorageCleanup({
+    orphans,
+    unregistered,
+    usedBytes,
+    thresholdGb,
+    quotaGb,
+    listingFailed,
+    classificationComplete,
+  });
+
+  console.log(
+    `Uso medido: ${usedBytes == null ? "desconocido" : formatBytes(usedBytes)} / ${quotaGb} GB. ` +
+      `Umbral de auto-limpieza: ${thresholdGb} GB. Sobre umbral: ${plan.overThreshold ? "sí" : "no"}.`
+  );
+
+  if (!classificationComplete) process.exitCode = 1;
+
+  // `--auto` solo borra sobre umbral. `--confirm` sin `--auto` es el override
+  // manual del operador. `--auto --confirm` no relaja el umbral.
+  const willDelete = auto ? plan.willDelete : confirm && (orphans.length > 0 || unregistered.length > 0);
+  const targets = willDelete
+    ? auto
+      ? { orphans: plan.deleteOrphans, unregistered: plan.deleteUnregistered }
+      : { orphans, unregistered }
+    : { orphans: [], unregistered: [] };
+
+  if (!willDelete) {
     for (const o of orphans) {
       console.log(`[dry-run] borraría ${o.openai_file_id} (${o.storage_path}, ${formatBytes(o.bytes)})`);
     }
     for (const blob of unregistered) {
       console.log(`[dry-run] blob sin registro ${blob.name} (${formatBytes(blob.bytes)})`);
     }
-    console.log("\nNada borrado. Repite con --confirm para aplicar.");
+    if (auto && !plan.overThreshold) {
+      console.log(
+        `\nNada borrado: uso ${usedBytes == null ? "desconocido" : formatBytes(usedBytes)} ` +
+          `está bajo el umbral de ${thresholdGb} GB.`
+      );
+    } else {
+      console.log("\nNada borrado. Repite con --confirm para aplicar (manual) o espera --auto sobre umbral.");
+    }
+    emitMarkdown(plan, {
+      orphanBytes: orphanSummary.knownBytes,
+      unregisteredBytes: unregSummary.knownBytes,
+      deleted: { orphans: 0, unregistered: 0 },
+    });
     return;
   }
 
@@ -177,18 +263,20 @@ async function main() {
   let failed = 0;
   let salvados = 0;
 
-  for (const o of orphans) {
+  for (const o of targets.orphans) {
     try {
-      if (!(await sigueSiendoBasura(o.openai_file_id))) {
+      if (!(await sigueSiendoBasura(supabase, o.openai_file_id))) {
         salvados++;
         console.log(`omitido ${o.openai_file_id}: se usó mientras corría la limpieza.`);
         continue;
       }
       await supabase.storage.from("chat-uploads").remove([o.storage_path]);
-      try {
-        await openai.files.delete(o.openai_file_id);
-      } catch {
-        // ya pudo haber sido borrado en OpenAI antes; no bloquea la limpieza local
+      if (openai) {
+        try {
+          await openai.files.delete(o.openai_file_id);
+        } catch {
+          // ya pudo haber sido borrado en OpenAI antes; no bloquea la limpieza local
+        }
       }
       const { error } = await supabase.from("uploaded_files").delete().eq("openai_file_id", o.openai_file_id);
       if (error) throw error;
@@ -202,9 +290,9 @@ async function main() {
   let unregOk = 0;
   let unregFailed = 0;
   let unregSalvados = 0;
-  for (const blob of unregistered) {
+  for (const blob of targets.unregistered) {
     try {
-      if (!(await sigueSinRegistrar(blob.name))) {
+      if (!(await sigueSinRegistrar(supabase, blob.name))) {
         unregSalvados++;
         console.log(`omitido ${blob.name}: se registró mientras corría la limpieza.`);
         continue;
@@ -220,11 +308,19 @@ async function main() {
 
   console.log(
     `\nCompletado: ${ok} huérfanos borrados, ${salvados} omitidos por uso concurrente, ` +
-      `${failed} fallidos de ${orphans.length}.`
+      `${failed} fallidos de ${targets.orphans.length}.`
   );
   console.log(
     `Blobs sin registrar: ${unregOk} borrados, ${unregSalvados} omitidos, ` +
-      `${unregFailed} fallidos de ${unregistered.length}.`
+      `${unregFailed} fallidos de ${targets.unregistered.length}.`
+  );
+  emitMarkdown(
+    { ...plan, mode: "delete" },
+    {
+      orphanBytes: orphanSummary.knownBytes,
+      unregisteredBytes: unregSummary.knownBytes,
+      deleted: { orphans: ok, unregistered: unregOk },
+    }
   );
   if (failed > 0 || unregFailed > 0) process.exitCode = 1;
 }
