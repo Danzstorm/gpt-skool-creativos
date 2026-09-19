@@ -18,7 +18,7 @@ export const MAX_VIDEO_SIZE_MB = 100;
 export const MAX_VIDEO_SIZE_BYTES = MAX_VIDEO_SIZE_MB * 1024 * 1024;
 // Tope de lo que pedimos a Gemini (reserva de costo + copy de UI). El
 // servidor no tiene ffprobe; el navegador lee `video.duration` y avisa.
-export const MAX_VIDEO_SECONDS = 180;
+export const MAX_VIDEO_SECONDS = 300;
 export const MAX_VIDEO_MINUTES = MAX_VIDEO_SECONDS / 60;
 
 export const ALLOWED_TYPES = [

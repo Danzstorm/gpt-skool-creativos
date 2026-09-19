@@ -5,7 +5,7 @@
 //
 // Preconditions (both checked at startup, before any video is read):
 //   - GEMINI_API_KEY in .env.local (get one at https://aistudio.google.com/app/apikey)
-//   - ffmpeg/ffprobe on PATH — validates the 180s cap locally before any Gemini call
+//   - ffmpeg/ffprobe on PATH — validates the 300s cap locally before any Gemini call
 //
 // Usage: npm run pilot:video -- --gpt <uuid|name> <video1> [video2] [video3]
 

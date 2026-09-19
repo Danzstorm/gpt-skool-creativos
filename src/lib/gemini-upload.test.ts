@@ -30,7 +30,7 @@ describe("worstCaseVideoCost", () => {
   it("is a positive, small constant (reservation ceiling, not a real bill)", () => {
     const cost = worstCaseVideoCost();
     expect(cost).toBeGreaterThan(0);
-    // 2 pases × 180s × 300 tok/s + 2 × 8192 tok out.
+    // 2 pases × MAX_VIDEO_SECONDS × 300 tok/s + 2 × 8192 tok out.
     expect(cost).toBeLessThan(0.05);
   });
 });

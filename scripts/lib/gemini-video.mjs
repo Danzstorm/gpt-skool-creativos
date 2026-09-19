@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 
 export const MAX_VIDEO_MB = 100;
-export const MAX_VIDEO_SECONDS = 180;
+export const MAX_VIDEO_SECONDS = 300;
 
 const MAX_VIDEO_BYTES = MAX_VIDEO_MB * 1024 * 1024;
 
