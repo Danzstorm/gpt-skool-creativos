@@ -243,7 +243,7 @@ function ChatSidebar({
                       isActive ? "nav-active text-ink" : "text-zinc-400"
                     )}
                   >
-                    <GptGlyph gpt={g} size="xs" />
+                    <GptGlyph gpt={g} size="xs" variant="nav" />
                     <span className="truncate">{g.name}</span>
                   </button>
                   <button

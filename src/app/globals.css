@@ -908,6 +908,33 @@ body {
   color: var(--craft, var(--color-zinc-300));
 }
 
+/* Sidebar: lockup tipo lista. Rojo de marca, silueta de oficio, sin gema 3D. */
+.gpt-nav-mark {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, #18181b);
+  color: var(--accent);
+}
+
+.gpt-nav-mark-sm {
+  width: 24px;
+  height: 24px;
+}
+
+.nav-active .gpt-nav-mark {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: color-mix(in srgb, var(--accent) 28%, #18181b);
+  color: #fff;
+}
+
 .gpt-nav {
   transition: background-color 200ms ease, color 200ms ease;
 }
