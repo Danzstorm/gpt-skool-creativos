@@ -178,7 +178,7 @@ function ChatSidebar({
 
       <aside
         className={cn(
-          "flex-col border-r border-zinc-800 bg-zinc-950 z-30 overflow-hidden",
+          "chat-sidebar flex-col border-r border-zinc-800 z-30 overflow-hidden",
           "md:flex md:relative md:translate-x-0 transition-[width] duration-200 ease-out",
           collapsed ? "md:w-0 md:border-r-0" : "md:w-64",
           "fixed top-0 bottom-0 left-0 flex w-64 transition-transform duration-200",
@@ -189,7 +189,7 @@ function ChatSidebar({
           <div className="flex items-center justify-between gap-2 px-3 pt-3 pb-2">
             <div className="flex items-center gap-2 min-w-0">
               <Orb size="xs" />
-              <span className="font-display wordmark italic uppercase brand-text font-extrabold text-[15px] tracking-tight truncate">
+              <span className="font-display wordmark italic uppercase font-extrabold text-[15px] tracking-tight truncate text-zinc-100">
                 {communityName}
               </span>
             </div>

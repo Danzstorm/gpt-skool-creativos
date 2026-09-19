@@ -72,24 +72,24 @@ const DEFAULT_ICON = Hexagon;
 export const GPT_MARK_SURFACE =
   "from-white/[0.08] to-white/[0.02] border-white/[0.12] text-zinc-100";
 
-// Acento de marca: rojo del logo. Rosa solo en el wordmark. No teñir cards.
+// Acento de marca: rojo del logo. El espectro vive en el orb, no en cada card.
 export const LOGO_REST_ACCENT = "#FF003C";
 
-// Núcleos de gema por oficio: saturados (no pastel, no gunmetal, no neón).
-// Video azul de verdad, foto ámbar, locación verdosa, guión ocre-papel.
-// El rojo de marca no vive aquí: solo rim / selección.
+// Núcleos de gema por oficio: familia Creativos, saturados, no gunmetal.
+// Video azul, foto ámbar de marca, locación verdosa, guión ocre-papel.
+// El rojo de marca no vive aquí: solo rim / selección / chrome.
 export const GPT_CRAFT_ACCENTS: Record<GptCraft, string> = {
-  video: "#1578B4",
-  photo: "#C98412",
-  images: "#8A48B8",
-  characters: "#C86A38",
-  locations: "#1C8F58",
-  scripts: "#B8922E",
-  marketing: "#C45A5A",
-  design: "#7A52B8",
-  sales: "#C46A32",
-  productivity: "#3D6FA8",
-  education: "#B88620",
+  video: "#1B6FCB",
+  photo: "#E08E12",
+  images: "#A43BC4",
+  characters: "#D85A2A",
+  locations: "#1A9B55",
+  scripts: "#C8941C",
+  marketing: "#D44848",
+  design: "#8A40CC",
+  sales: "#D86228",
+  productivity: "#3A6BB8",
+  education: "#C88818",
 };
 
 export function craftAccentHex(craft: GptCraft | null | undefined): string {

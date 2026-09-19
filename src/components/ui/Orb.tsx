@@ -13,8 +13,9 @@ interface Props {
   className?: string;
 }
 
-// Firma: esfera de vidrio líquido con el wordmark oficial. Nunca una C.
-// En xs el lockup del sidebar ya lleva "CREATIVOS" al lado — la gema va sola.
+// Firma: gota de vidrio líquido con volumen de color Creativos.
+// Wordmark CREATIVOS en blanco. Nunca una C ni un disco que gira.
+// En xs la gema va sola; el lockup del sidebar pone CREATIVOS al lado.
 export default function Orb({ size, className }: Props) {
   const px = SIZES[size];
   const word = size === "xs" ? null : "CREATIVOS";
@@ -28,6 +29,7 @@ export default function Orb({ size, className }: Props) {
       <div className="orb-halo orb-breathe" />
       <div className="orb-sphere">
         <div className="orb-atmosphere" />
+        <div className="orb-volume orb-volume-shift" />
         <div className="orb-caustic orb-water" />
         <div className="orb-refract orb-refract-drift" />
         {word && (
