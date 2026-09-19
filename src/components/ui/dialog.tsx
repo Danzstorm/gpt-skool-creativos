@@ -19,7 +19,7 @@ export function DialogContent({
     <DialogPrimitive.Overlay className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <DialogPrimitive.Content
         aria-describedby={undefined}
-        className={cn("modal-panel w-full rounded-2xl border border-zinc-800 bg-zinc-900 shadow-2xl outline-none", className)}
+        className={cn("frost modal-panel w-full rounded-2xl shadow-2xl outline-none", className)}
         {...props}
       >
         {children}

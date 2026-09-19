@@ -1,11 +1,11 @@
 import { cn } from "@/lib/utils";
 
-// Sombra interna a escala: el desplazamiento de md/xl aplastaría la esfera de
-// 20px del sidebar.
+// Sombra y highlight a escala: el desplazamiento de md/xl aplastaría la
+// esfera de 20px del sidebar.
 const SIZES = {
-  xs: { px: 20, shadow: "inset -2px -3px 6px rgba(0,0,0,.45)" },
-  md: { px: 96, shadow: "inset -8px -12px 24px rgba(0,0,0,.45)" },
-  xl: { px: 160, shadow: "inset -8px -12px 24px rgba(0,0,0,.45)" },
+  xs: { px: 20, mark: "C" },
+  md: { px: 104, mark: "CREATIVOS" },
+  xl: { px: 168, mark: "CREATIVOS" },
 } as const;
 
 interface Props {
@@ -13,31 +13,36 @@ interface Props {
   className?: string;
 }
 
-// Firma de marca: esfera 100% CSS. Halo exterior con el gradiente de marca,
-// núcleo cónico que gira lento, brillo radial arriba-izquierda y sombra
-// interna. orb-core / orb-spin / orb-breathe viven en globals.css; las
-// animaciones solo corren bajo prefers-reduced-motion: no-preference.
+// Firma de marca: burbuja de vidrio 3D con el wordmark Creativos como núcleo.
+// Halo rojo/rosa, atmósfera estática (no rueda cónica), caústico que gira,
+// highlight que respira. orb-* viven en globals.css; las animaciones solo
+// corren bajo prefers-reduced-motion: no-preference.
 export default function Orb({ size, className }: Props) {
-  const { px, shadow } = SIZES[size];
+  const { px, mark } = SIZES[size];
+  const compact = size === "xs";
+
   return (
     <div
       aria-hidden="true"
-      className={cn("relative rounded-full shrink-0", className)}
+      className={cn("orb relative shrink-0", `orb-${size}`, className)}
       style={{ width: px, height: px }}
     >
-      <div
-        className="orb-breathe absolute inset-0 rounded-full blur-2xl opacity-40"
-        style={{ background: "var(--brand-gradient)" }}
-      />
-      <div className="orb-core orb-spin absolute inset-0 rounded-full overflow-hidden" />
-      <div
-        className="absolute inset-0 rounded-full"
-        style={{
-          background:
-            "radial-gradient(circle at 30% 25%, rgba(255,255,255,.55), rgba(255,255,255,0) 45%)",
-        }}
-      />
-      <div className="absolute inset-0 rounded-full" style={{ boxShadow: shadow }} />
+      <div className="orb-halo orb-breathe" />
+      <div className="orb-sphere">
+        <div className="orb-atmosphere" />
+        <div className="orb-caustic orb-spin" />
+        <span
+          className={cn(
+            "orb-mark font-display italic uppercase font-extrabold",
+            compact ? "orb-mark-glyph" : "orb-mark-word"
+          )}
+        >
+          {mark}
+        </span>
+        <div className="orb-film" />
+        <div className="orb-highlight orb-shimmer" />
+        <div className="orb-shade" />
+      </div>
     </div>
   );
 }

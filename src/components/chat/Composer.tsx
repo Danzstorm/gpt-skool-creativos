@@ -369,7 +369,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
         </div>
       )}
 
-      <div ref={mentionRef} className="relative mx-auto flex max-w-3xl items-end gap-2 rounded-3xl border border-zinc-800 bg-zinc-900 px-4 py-2.5 transition-colors focus-within:border-brand/40 focus-within:ring-2 focus-within:ring-brand/25">
+      <div ref={mentionRef} className="frost relative mx-auto flex max-w-3xl items-end gap-2 rounded-3xl px-4 py-2.5 transition-colors focus-within:border-brand/40 focus-within:ring-2 focus-within:ring-brand/25">
         {mention && (
           <FilePicker
             files={library}

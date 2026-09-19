@@ -394,15 +394,18 @@ export default function UnifiedChat({
           )}
 
           {!activeGpt && !isLoadingHistory && (
-            <div className="flex w-full max-w-6xl mx-auto flex-col items-center py-8 md:py-10">
-              <p className="mb-3 text-sm text-zinc-500">
-                {firstName ? `Bienvenido de nuevo, ${firstName}` : "Bienvenido de nuevo"}
-              </p>
-              <h1 className="font-display mb-2 text-center text-4xl font-bold tracking-tight text-zinc-100 md:text-5xl">
-                ¿Qué vas a crear hoy?
-              </h1>
-              {pendingProject && <ProjectDestination name={pendingProject.name} />}
-              <div className="mt-8 w-full md:mt-10">
+            <div className="flex w-full max-w-6xl mx-auto flex-col items-center py-10 md:py-14">
+              <div className="mb-8 flex flex-col items-center text-center md:mb-10">
+                <Orb size="xl" className="mb-7 md:mb-8" />
+                <p className="eyebrow mb-3 text-zinc-500">
+                  {firstName ? `Bienvenido de nuevo, ${firstName}` : "Bienvenido de nuevo"}
+                </p>
+                <h1 className="font-display text-center text-4xl font-bold tracking-tight text-zinc-100 md:text-5xl">
+                  ¿Qué vas a crear hoy?
+                </h1>
+                {pendingProject && <ProjectDestination name={pendingProject.name} />}
+              </div>
+              <div className="w-full">
                 <GptCatalog gpts={gpts} onSelect={selectGpt} />
               </div>
             </div>
