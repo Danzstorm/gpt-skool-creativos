@@ -28,9 +28,9 @@ function secondaryName(file: MentionCandidate): string | null {
 }
 
 /**
- * Picker visual al escribir `@`: stills grandes de ESTE hilo.
- * Vive FUERA del .frost del composer — backdrop-filter recortaba la grilla
- * y solo asomaba una pastilla con el rótulo. El tamaño está en CSS explícito.
+ * Picker visual al escribir `@`: grilla de ESTE hilo.
+ * Cada still va en placa oscura con contain (letterbox, nunca cover-crop).
+ * Vive FUERA del .frost — backdrop-filter recortaba la grilla.
  */
 function MentionMenu({
   files,
@@ -90,7 +90,11 @@ function MentionMenu({
                 className={`mention-menu-card${selected ? " mention-menu-card--active" : ""}`}
               >
                 <span className="mention-menu-still">
-                  <AttachmentStill file={file} iconSize={36} />
+                  <AttachmentStill
+                    file={file}
+                    className="max-h-full max-w-full object-contain"
+                    iconSize={36}
+                  />
                 </span>
                 <span className="mention-menu-meta">
                   <span className="mention-menu-label">{label}</span>

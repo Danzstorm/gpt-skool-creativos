@@ -16,15 +16,17 @@ interface Props {
 }
 
 function previewPosition(anchor: DOMRect) {
-  const size = MENTION_HOVER_PREVIEW_PX;
+  const max = MENTION_HOVER_PREVIEW_PX;
   const gap = 10;
-  let top = anchor.top - size - gap;
-  if (top < 8) top = anchor.bottom + gap;
-  const left = Math.max(
-    8,
-    Math.min(anchor.left + anchor.width / 2 - size / 2, window.innerWidth - size - 8)
-  );
-  return { top, left };
+  const placeBelow = anchor.top < max + gap + 8;
+  const centerX = anchor.left + anchor.width / 2;
+  const half = max / 2;
+  const left = Math.max(8 + half, Math.min(centerX, window.innerWidth - 8 - half));
+  return {
+    top: placeBelow ? anchor.bottom + gap : anchor.top - gap,
+    left,
+    transform: placeBelow ? "translateX(-50%)" : "translate(-50%, -100%)",
+  };
 }
 
 /**
@@ -42,12 +44,12 @@ export default function MentionPreview({ candidate, anchor }: Props) {
     <div
       role="tooltip"
       className="mention-preview pointer-events-none"
-      style={{ top: pos.top, left: pos.left }}
+      style={{ top: pos.top, left: pos.left, transform: pos.transform }}
     >
       <div className="mention-preview-still">
         <AttachmentStill
           file={candidate}
-          className="h-full w-full object-cover"
+          className="max-h-full max-w-full object-contain"
           iconSize={36}
         />
       </div>

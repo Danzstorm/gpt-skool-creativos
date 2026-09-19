@@ -12,6 +12,7 @@ import {
   MENTION_STILL_MIN_PX,
   mentionChipLabel,
   mentionMenuColumns,
+  mentionTokenLabel,
   parseMentionTokens,
   resolveMentionTokens,
   type MentionCandidate,
@@ -204,7 +205,13 @@ describe("resolveMentionTokens", () => {
 });
 
 describe("rótulos y layout del picker", () => {
-  it("el chip muestra Imagen N, no el @", () => {
+  it("en la línea el token conserva el @", () => {
+    expect(mentionTokenLabel("@Imagen 1")).toBe("@Imagen 1");
+    expect(mentionTokenLabel("@Video 2")).toBe("@Video 2");
+    expect(mentionTokenLabel("Imagen 3")).toBe("@Imagen 3");
+  });
+
+  it("el picker rota Imagen N, sin duplicar el @", () => {
     expect(mentionChipLabel("@Imagen 1")).toBe("Imagen 1");
     expect(mentionChipLabel("@Video 2")).toBe("Video 2");
     expect(mentionChipLabel("Imagen 3")).toBe("Imagen 3");

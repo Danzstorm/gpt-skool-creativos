@@ -23,7 +23,7 @@ export interface MentionCandidate {
   id: string;
   kind: MentionKind;
   n: number;
-  /** Chip del composer: `@Imagen 2`. */
+  /** Token del composer: `@Imagen 2` (el @ se queda a la vista). */
   token: string;
   /** Lo que debe leer el modelo: `imagen 2`. */
   modelLabel: string;
@@ -43,14 +43,20 @@ export type MentionSourceFile = AttachmentLike & {
 /** Token completo ya insertado: `@Imagen 12`, `@Video 1`, `@Archivo 3`. */
 export const MENTION_TOKEN_RE = /@(?:Imagen|Video|Archivo)\s+\d+/g;
 
-/** Still del picker `@`. En CSS, no en utilidades que se pueden colapsar. */
+/** Still del picker `@`. Placa fija; la foto se adapta con contain. */
 export const MENTION_STILL_MIN_PX = 148;
-/** Preview Higgsfield al hover/focus del chip o de una tarjeta. */
+/** Preview al hover: tope, no un recorte cuadrado. */
 export const MENTION_HOVER_PREVIEW_PX = 300;
 /** Mini-still del token inline: reconocible, no un blur de 12px. */
 export const MENTION_CHIP_STILL_PX = 22;
 
-/** Rótulo visible: `@Imagen 2` → `Imagen 2`. */
+/** En la línea: `@Imagen 2`. El @ no se come. */
+export function mentionTokenLabel(token: string): string {
+  const trimmed = token.trim();
+  return trimmed.startsWith("@") ? trimmed : `@${trimmed}`;
+}
+
+/** Rótulo del picker: `@Imagen 2` → `Imagen 2`. */
 export function mentionChipLabel(token: string): string {
   return token.replace(/^@/, "");
 }

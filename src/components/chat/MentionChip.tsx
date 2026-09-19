@@ -1,6 +1,6 @@
 "use client";
 
-import { mentionChipLabel, type MentionCandidate } from "@/lib/attachment-mentions";
+import { mentionChipLabel, mentionTokenLabel, type MentionCandidate } from "@/lib/attachment-mentions";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -24,6 +24,7 @@ export default function MentionChip({
     <span
       data-mention={token}
       data-preview={still ?? ""}
+      title={mentionTokenLabel(token)}
       contentEditable={false}
       tabIndex={interactive ? 0 : undefined}
       className={cn("mention-chip", still && "mention-chip--has-preview")}
@@ -38,7 +39,10 @@ export default function MentionChip({
       ) : (
         <span className="mention-chip-still mention-chip-still--empty" />
       )}
-      <span className="mention-chip-label">{mentionChipLabel(token)}</span>
+      <span className="mention-chip-label">
+        <span className="mention-chip-at">@</span>
+        {mentionChipLabel(token)}
+      </span>
     </span>
   );
 }

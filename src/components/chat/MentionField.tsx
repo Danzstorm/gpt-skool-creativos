@@ -10,6 +10,7 @@ import {
 import {
   findCandidateByToken,
   mentionChipLabel,
+  mentionTokenLabel,
   parseMentionTokens,
   type MentionCandidate,
 } from "@/lib/attachment-mentions";
@@ -144,6 +145,7 @@ function tokenSpan(
   const still = candidate?.previewUrl ?? "";
   span.dataset.mention = token;
   span.dataset.preview = still;
+  span.title = mentionTokenLabel(token);
   span.contentEditable = "false";
   span.tabIndex = 0;
   span.className = still ? "mention-chip mention-chip--has-preview" : "mention-chip";
@@ -163,7 +165,11 @@ function tokenSpan(
 
   const label = document.createElement("span");
   label.className = "mention-chip-label";
-  label.textContent = mentionChipLabel(token);
+  const at = document.createElement("span");
+  at.className = "mention-chip-at";
+  at.textContent = "@";
+  label.appendChild(at);
+  label.appendChild(document.createTextNode(mentionChipLabel(token)));
   span.appendChild(label);
 
   span.addEventListener("mouseenter", () => onPreview(span, token));
