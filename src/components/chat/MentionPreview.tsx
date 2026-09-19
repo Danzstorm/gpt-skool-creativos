@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import {
   MENTION_HOVER_PREVIEW_PX,
@@ -8,39 +8,38 @@ import {
 } from "@/lib/attachment-mentions";
 import AttachmentStill from "./AttachmentStill";
 
+const noSubscribe = () => () => {};
+
 interface Props {
   candidate: MentionCandidate;
   anchor: DOMRect;
 }
 
+function previewPosition(anchor: DOMRect) {
+  const size = MENTION_HOVER_PREVIEW_PX;
+  const gap = 10;
+  let top = anchor.top - size - gap;
+  if (top < 8) top = anchor.bottom + gap;
+  const left = Math.max(
+    8,
+    Math.min(anchor.left + anchor.width / 2 - size / 2, window.innerWidth - size - 8)
+  );
+  return { top, left };
+}
+
 /**
  * Foto Higgsfield: ~300px, portal al body para no recortarse con .frost.
+ * El "ya monté" va por useSyncExternalStore para no setear estado en un effect
+ * (eslint react-hooks/set-state-in-effect), que bloqueaba el deploy.
  */
 export default function MentionPreview({ candidate, anchor }: Props) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState({ top: 0, left: 0 });
-  const [mounted, setMounted] = useState(false);
-
-  useLayoutEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useLayoutEffect(() => {
-    const el = ref.current;
-    const height = el?.offsetHeight ?? MENTION_HOVER_PREVIEW_PX;
-    const gap = 10;
-    let top = anchor.top - height - gap;
-    if (top < 8) top = anchor.bottom + gap;
-    let left = anchor.left + anchor.width / 2 - MENTION_HOVER_PREVIEW_PX / 2;
-    left = Math.max(8, Math.min(left, window.innerWidth - MENTION_HOVER_PREVIEW_PX - 8));
-    setPos({ top, left });
-  }, [anchor]);
-
+  const mounted = useSyncExternalStore(noSubscribe, () => true, () => false);
   if (!mounted) return null;
+
+  const pos = previewPosition(anchor);
 
   return createPortal(
     <div
-      ref={ref}
       role="tooltip"
       className="mention-preview pointer-events-none"
       style={{ top: pos.top, left: pos.left }}
