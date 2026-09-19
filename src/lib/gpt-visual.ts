@@ -75,20 +75,21 @@ export const GPT_MARK_SURFACE =
 // Acento de marca: rojo del logo. Rosa solo en el wordmark. No teñir cards.
 export const LOGO_REST_ACCENT = "#FF003C";
 
-// Tintes suaves del oficio para el símbolo (no el magenta de marca).
-// Distintos a ojo: video frío, foto cálida, locación verdosa.
+// Tintes muted pero visibles en negro (Higgsfield: un acento claro, base oscura).
+// Un paso más ricos que el gris desaturado; no esmalte ni arcoíris.
+// Video frío, foto cálida, locación verdosa. Rojo de marca no vive aquí.
 export const GPT_CRAFT_ACCENTS: Record<GptCraft, string> = {
-  video: "#8BA3B8",
-  photo: "#C4A574",
-  images: "#A89BB8",
-  characters: "#C9A08A",
-  locations: "#7FA8A0",
-  scripts: "#C8B896",
-  marketing: "#C47A7A",
-  design: "#9B8FB8",
-  sales: "#C48A70",
-  productivity: "#8A96A8",
-  education: "#B8A06A",
+  video: "#6A9EC4",
+  photo: "#D0A45E",
+  images: "#B18CC6",
+  characters: "#D49A76",
+  locations: "#4FB89A",
+  scripts: "#D2B46C",
+  marketing: "#D06E6E",
+  design: "#9C7EC6",
+  sales: "#D27E54",
+  productivity: "#7A94B8",
+  education: "#C9A24E",
 };
 
 export function craftAccentHex(craft: GptCraft | null | undefined): string {

@@ -20,11 +20,11 @@ interface Props {
 }
 
 // Misma familia que el Orb de Creativos: vidrio, halo, caústico y shimmer.
+// Siempre el emblema de oficio; la letra solo si GptEmblem no tiene craft (gem).
 // El oficio tiñe el interior; el motion es el fluir del logo, no un tilt de juguete.
 export default function GptMark({ kind, letter = "G", size = "xl", className, children }: Props) {
   const uid = useId().replace(/:/g, "");
   const px = SIZES[size];
-  const compact = size === "xs" || size === "sm";
 
   return (
     <div
@@ -39,8 +39,6 @@ export default function GptMark({ kind, letter = "G", size = "xl", className, ch
         <span className="gpt-mark-emblem">
           {children ? (
             <span className="relative block h-full w-full overflow-hidden">{children}</span>
-          ) : compact && kind !== "gem" ? (
-            <span className="gpt-mark-letter font-display italic uppercase font-extrabold">{letter}</span>
           ) : (
             <GptEmblem kind={kind} uid={uid} letter={letter} />
           )}

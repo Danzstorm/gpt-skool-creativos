@@ -18,17 +18,17 @@ export default function GptHero({ gpt, onStarter, children }: Props) {
 
   return (
     <div
-      className="gpt-hero flex min-h-full w-full max-w-2xl mx-auto flex-col items-center justify-center px-1 py-10 text-center"
+      className="gpt-hero relative flex min-h-full w-full max-w-2xl mx-auto flex-col items-center justify-center px-1 py-10 text-center"
       style={{ "--craft": accentHex } as CSSProperties}
     >
       <GptGlyph gpt={gpt} size="hero" className="mb-8" />
 
-      {label && <p className="mb-3 text-[13px] tracking-wide text-zinc-500">{label}</p>}
+      {label && <p className="mb-3 text-[13px] tracking-wide text-zinc-400">{label}</p>}
       <h3 className="font-display italic text-2xl font-semibold tracking-tight text-zinc-100 md:text-3xl">
         {gpt.name}
       </h3>
       {description && (
-        <p className="mt-3 max-w-md text-base leading-normal text-zinc-400">{description}</p>
+        <p className="mt-3 max-w-md text-base leading-normal text-zinc-300">{description}</p>
       )}
       {author && <p className="mt-2 text-sm leading-normal text-zinc-500">By {author}</p>}
       {children}

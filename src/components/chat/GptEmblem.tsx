@@ -23,29 +23,29 @@ function glassPaint(uid: string): { defs: ReactNode; paint: Paint } {
   const defs = (
     <defs>
       <linearGradient id={paint.face} x1="12%" y1="4%" x2="90%" y2="96%">
-        <stop offset="0" stopColor="#fff" stopOpacity="0.72" />
-        <stop offset="0.36" stopColor="#fff" stopOpacity="0.28" />
-        <stop offset="0.7" stopColor="var(--craft)" stopOpacity="0.18" />
-        <stop offset="1" stopColor="#141016" stopOpacity="0.7" />
+        <stop offset="0" stopColor="#fff" stopOpacity="0.88" />
+        <stop offset="0.34" stopColor="#fff" stopOpacity="0.4" />
+        <stop offset="0.68" stopColor="var(--craft)" stopOpacity="0.42" />
+        <stop offset="1" stopColor="#1c1418" stopOpacity="0.42" />
       </linearGradient>
       <linearGradient id={paint.edge} x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stopColor="#fff" stopOpacity="0.55" />
-        <stop offset="0.5" stopColor="var(--craft)" stopOpacity="0.32" />
-        <stop offset="1" stopColor="#0c0610" stopOpacity="0.55" />
+        <stop offset="0" stopColor="#fff" stopOpacity="0.7" />
+        <stop offset="0.48" stopColor="var(--craft)" stopOpacity="0.52" />
+        <stop offset="1" stopColor="#161018" stopOpacity="0.32" />
       </linearGradient>
       <radialGradient id={paint.well} cx="34%" cy="28%" r="74%">
-        <stop offset="0" stopColor="#fff" stopOpacity="0.32" />
-        <stop offset="0.46" stopColor="var(--craft)" stopOpacity="0.22" />
-        <stop offset="1" stopColor="#050308" stopOpacity="0.72" />
+        <stop offset="0" stopColor="#fff" stopOpacity="0.42" />
+        <stop offset="0.44" stopColor="var(--craft)" stopOpacity="0.4" />
+        <stop offset="1" stopColor="#0c0810" stopOpacity="0.48" />
       </radialGradient>
       <radialGradient id={paint.sheen} cx="30%" cy="24%" r="50%">
-        <stop offset="0" stopColor="#fff" stopOpacity="0.7" />
-        <stop offset="0.42" stopColor="#fff" stopOpacity="0.14" />
+        <stop offset="0" stopColor="#fff" stopOpacity="0.82" />
+        <stop offset="0.4" stopColor="#fff" stopOpacity="0.2" />
         <stop offset="1" stopColor="#fff" stopOpacity="0" />
       </radialGradient>
       <linearGradient id={paint.core} x1="30%" y1="0" x2="70%" y2="100%">
-        <stop offset="0" stopColor="#fff" stopOpacity="0.5" />
-        <stop offset="1" stopColor="#0a0610" stopOpacity="0.5" />
+        <stop offset="0" stopColor="#fff" stopOpacity="0.62" />
+        <stop offset="1" stopColor="var(--craft)" stopOpacity="0.28" />
       </linearGradient>
       <filter id={paint.depth} x="-30%" y="-30%" width="160%" height="160%">
         <feDropShadow dx="0.6" dy="1.6" stdDeviation="1" floodColor="#000" floodOpacity="0.4" />
@@ -80,7 +80,7 @@ function VideoEmblem({ paint }: { paint: Paint }) {
         stroke="rgba(255,255,255,0.32)"
         strokeWidth="1.2"
       />
-      <path d="M33 42h28M33 50h26M33 58h22" stroke="#fff" strokeOpacity="0.16" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M33 42h28M33 50h26M33 58h22" stroke="#fff" strokeOpacity="0.28" strokeWidth="1.6" strokeLinecap="round" />
       <path
         d="M23.5 32.5 69 24.5 66.5 14.5 25.8 22.8Z"
         fill={`url(#${paint.edge})`}
@@ -176,7 +176,7 @@ function ScriptsEmblem({ paint }: { paint: Paint }) {
         strokeWidth="1.2"
       />
       <path d="M50 10 64 11.2 58.4 22.6Z" fill={`url(#${paint.edge})`} />
-      <path d="M28 26h24M29 36h22M29 46h17" stroke="#fff" strokeOpacity="0.2" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M28 26h24M29 36h22M29 46h17" stroke="#fff" strokeOpacity="0.3" strokeWidth="1.8" strokeLinecap="round" />
       <path
         d="M46 50 60 40l9 9-9 7-4.2-1.6Z"
         fill={`url(#${paint.edge})`}

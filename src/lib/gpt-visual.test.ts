@@ -100,7 +100,7 @@ describe("GPT_LOGO_PX", () => {
 });
 
 describe("GPT_CRAFT_ACCENTS", () => {
-  it("usa tintes suaves distintos por oficio, no el rojo de marca", () => {
+  it("usa tintes muted distintos por oficio, no el rojo de marca", () => {
     const hexes = Object.values(GPT_CRAFT_ACCENTS);
     for (const hex of hexes) {
       expect(hex).toMatch(/^#[0-9A-Fa-f]{6}$/);
