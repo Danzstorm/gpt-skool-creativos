@@ -16,6 +16,10 @@ export const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
 // (supabase/migrations/20260906120000_video_uploads.sql).
 export const MAX_VIDEO_SIZE_MB = 100;
 export const MAX_VIDEO_SIZE_BYTES = MAX_VIDEO_SIZE_MB * 1024 * 1024;
+// Tope de lo que pedimos a Gemini (reserva de costo + copy de UI). El
+// servidor no tiene ffprobe; el navegador lee `video.duration` y avisa.
+export const MAX_VIDEO_SECONDS = 180;
+export const MAX_VIDEO_MINUTES = MAX_VIDEO_SECONDS / 60;
 
 export const ALLOWED_TYPES = [
   "image/jpeg", "image/png", "image/webp", "image/gif",
@@ -29,9 +33,8 @@ export const ALLOWED_TYPES = [
 
 export const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm"];
 
-// ponytail: no local duration probe (no ffprobe in serverless); relies on
-// size cap + Gemini's own rejection. Add a metadata-only MP4/mov duration
-// parser if Gemini cost from long videos becomes a problem.
+// Duración: el servidor no sonda (no hay ffprobe). El cliente lee metadata
+// del video y rechaza con copy de UI si pasa de MAX_VIDEO_SECONDS.
 
 /**
  * Motivo del rechazo, o null si el archivo es aceptable.

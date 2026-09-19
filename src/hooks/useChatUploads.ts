@@ -14,6 +14,8 @@ import {
   skippedFilesMessage,
   type LibraryAttachment,
 } from "@/lib/chat-uploads";
+import { videoDurationRejectReason } from "@/lib/video-copy";
+import { probeBrowserVideoDuration } from "@/lib/video-duration";
 
 // Solo se usa para subir adjuntos a Storage con URL firmada; el resto de los
 // datos del chat viaja por las rutas de /api.
@@ -56,6 +58,10 @@ export function useChatUploads(canAttach: boolean) {
         try {
           const sizeReason = fileSizeRejectReason(original);
           if (sizeReason) return fail(sizeReason);
+          if (original.type.startsWith("video/")) {
+            const durationReason = videoDurationRejectReason(await probeBrowserVideoDuration(original));
+            if (durationReason) return fail(durationReason);
+          }
           // Las imágenes se achican igual: no por el límite (ya no aplica) sino
           // porque subir 8MB de foto no mejora la respuesta y se siente lento.
           const file = await downscaleImage(original);

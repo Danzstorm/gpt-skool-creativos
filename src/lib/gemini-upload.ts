@@ -11,6 +11,8 @@
 // precios de OpenAI (USD por 1M de tokens de los modelos de chat) y Gemini no
 // debe empezar a cubrirse ahí en silencio.
 
+import { MAX_VIDEO_SECONDS } from "./upload-limits";
+
 export const GEMINI_MODEL = "gemini-3.5-flash-lite";
 
 const GEMINI_PRICE_PER_1M_TOKENS = { in: 0.1, out: 0.4 };
@@ -20,9 +22,9 @@ export function estimateGeminiCost(tokensIn: number, tokensOut: number): number 
 }
 
 // Dos generateContent en paralelo sobre el mismo archivo (audio + visual).
-// 1 FPS, sin MEDIA_RESOLUTION_HIGH: en el clip de prueba HIGH+2fps pasó el
-// describe de ~6s a ~37s. Reserva 2× el input de 180s × 300 tok/s.
-const WORST_CASE_DURATION_SECONDS = 180;
+// 1 FPS, sin MEDIA_RESOLUTION_HIGH: HIGH+2fps pasó un clip de prueba de ~6s
+// a ~37s. Reserva 2× el input de MAX_VIDEO_SECONDS × 300 tok/s.
+const WORST_CASE_DURATION_SECONDS = MAX_VIDEO_SECONDS;
 const GEMINI_VIDEO_TOKENS_PER_SECOND = 300;
 const DESCRIBE_PASSES = 2;
 const WORST_CASE_OUTPUT_TOKENS = 8_192 * DESCRIBE_PASSES;
