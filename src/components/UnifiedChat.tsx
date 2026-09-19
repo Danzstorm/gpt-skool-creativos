@@ -9,6 +9,7 @@ import { getGptVisual, LOGO_REST_ACCENT } from "@/lib/gpt-visual";
 import GptCatalog from "@/components/GptCatalog";
 import GptGlyph from "./chat/GptGlyph";
 import GptHero from "./chat/GptHero";
+import GptPicker from "./chat/GptPicker";
 import ChatSidebar from "./chat/ChatSidebar";
 import MessageBubble from "./chat/MessageBubble";
 import Composer, { type ComposerHandle } from "./chat/Composer";
@@ -24,7 +25,9 @@ import {
 import { useChatUploads } from "@/hooks/useChatUploads";
 import { useChatSidebar } from "@/hooks/useChatSidebar";
 import { useChatStream } from "@/hooks/useChatStream";
+import { useRecentGpts } from "@/hooks/useRecentGpts";
 import { useThreadWorkspace } from "@/hooks/useThreadWorkspace";
+import { pickRecentGpts } from "@/lib/gpt-recents";
 
 /** Cartel del proyecto donde va a nacer el chat que todavía no se creó. */
 function ProjectDestination({ name }: { name: string }) {
@@ -71,6 +74,8 @@ export default function UnifiedChat({
   // (replaceState) y el banner se cierra a mano, no se re-sincroniza.
   const [notice, setNotice] = useState<string | null>(initialNotice ?? null);
   const [gptChatsModalId, setGptChatsModalId] = useState<string | null>(null);
+  const [gptPickerOpen, setGptPickerOpen] = useState(false);
+  const [heroCatalogExpanded, setHeroCatalogExpanded] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [instructionsProjectId, setInstructionsProjectId] = useState<string | null>(null);
@@ -88,6 +93,8 @@ export default function UnifiedChat({
     onSearchChange,
     clearSearch,
   } = useChatSidebar();
+
+  const { recentIds, touchRecent } = useRecentGpts();
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -214,19 +221,37 @@ export default function UnifiedChat({
 
   const selectGpt = useCallback(
     (gptId: string) => {
+      touchRecent(gptId);
       selectGptWorkspace(gptId);
       clearMessages();
+      setGptPickerOpen(false);
     },
-    [selectGptWorkspace, clearMessages]
+    [selectGptWorkspace, clearMessages, touchRecent]
   );
 
   const selectThread = useCallback(
     (t: ThreadSummary) => {
       if (!selectThreadWorkspace(t, isLoadingHistory)) return;
+      touchRecent(t.gpt_id);
       void loadHistory(t.id);
     },
-    [selectThreadWorkspace, isLoadingHistory, loadHistory]
+    [selectThreadWorkspace, isLoadingHistory, loadHistory, touchRecent]
   );
+
+  const openGptPicker = useCallback(() => setGptPickerOpen(true), []);
+  const closeGptPicker = useCallback(() => setGptPickerOpen(false), []);
+  const expandHeroCatalog = useCallback(() => setHeroCatalogExpanded(true), []);
+  const openAllGpts = useCallback(() => {
+    if (activeGptId) {
+      setGptPickerOpen(true);
+      return;
+    }
+    if (!heroCatalogExpanded) {
+      setHeroCatalogExpanded(true);
+      return;
+    }
+    setGptPickerOpen(true);
+  }, [activeGptId, heroCatalogExpanded]);
 
   const newChat = useCallback(() => {
     newChatWorkspace();
@@ -277,12 +302,17 @@ export default function UnifiedChat({
     () => (gptChatsModalId ? threadList.filter((t) => t.gpt_id === gptChatsModalId) : []),
     [threadList, gptChatsModalId]
   );
+  const recentGpts = useMemo(
+    () => pickRecentGpts(gpts, recentIds, threadList, activeGptId),
+    [gpts, recentIds, threadList, activeGptId]
+  );
 
   return (
     <div className="fixed inset-0 flex bg-zinc-950 text-zinc-100">
       <ChatSidebar
         communityName={communityName}
         gpts={gpts}
+        recentGpts={recentGpts}
         threadList={threadList}
         projects={projects}
         openProjectIds={openProjectIds}
@@ -295,6 +325,7 @@ export default function UnifiedChat({
         chatSearch={chatSearch}
         onSearchChange={onSearchChange}
         onSelectGpt={selectGpt}
+        onOpenAllGpts={openAllGpts}
         onAccentHover={onAccentHover}
         onSelectThread={selectThread}
         onNewChat={newChat}
@@ -367,16 +398,28 @@ export default function UnifiedChat({
           )}
           {activeGpt ? (
             <button
-              onClick={() => openGptChats(activeGpt.id)}
-              className="flex min-w-0 items-center gap-2 rounded-lg px-1.5 py-1 -ml-1.5 transition hover:bg-zinc-900"
-              title="Ver conversaciones de este GPT"
+              type="button"
+              onClick={openGptPicker}
+              className="flex min-h-11 min-w-0 items-center gap-2 rounded-lg px-2 py-1 -ml-2 transition hover:bg-zinc-900"
+              title="Cambiar de GPT"
+              aria-haspopup="dialog"
+              aria-expanded={gptPickerOpen}
             >
               <GptGlyph gpt={activeGpt} size="sm" />
               <h2 className="text-zinc-100 font-medium text-sm truncate">{activeGpt.name}</h2>
               <ChevronDown size={14} className="text-zinc-600 flex-shrink-0" />
             </button>
           ) : (
-            <h2 className="text-zinc-400 font-medium text-sm">Elige un GPT para empezar</h2>
+            <button
+              type="button"
+              onClick={openGptPicker}
+              className="flex min-h-11 min-w-0 items-center gap-2 rounded-lg px-2 py-1 -ml-2 text-zinc-400 transition hover:bg-zinc-900 hover:text-zinc-200"
+              aria-haspopup="dialog"
+              aria-expanded={gptPickerOpen}
+            >
+              <h2 className="text-sm font-medium">Elige un GPT</h2>
+              <ChevronDown size={14} className="text-zinc-600 flex-shrink-0" />
+            </button>
           )}
         </div>
 
@@ -425,7 +468,13 @@ export default function UnifiedChat({
                 {pendingProject && <ProjectDestination name={pendingProject.name} />}
               </div>
               <div className="relative z-[1] w-full">
-                <GptCatalog gpts={gpts} onSelect={selectGpt} onAccentHover={onAccentHover} />
+                <GptCatalog
+                  gpts={gpts}
+                  onSelect={selectGpt}
+                  onAccentHover={onAccentHover}
+                  expanded={heroCatalogExpanded}
+                  onExpand={expandHeroCatalog}
+                />
               </div>
             </div>
           )}
@@ -526,6 +575,16 @@ export default function UnifiedChat({
           </div>
         )}
       </div>
+
+      {gptPickerOpen && (
+        <GptPicker
+          gpts={gpts}
+          activeGptId={activeGptId}
+          onClose={closeGptPicker}
+          onSelect={selectGpt}
+          onAccentHover={onAccentHover}
+        />
+      )}
 
       {gptChatsModalGpt && (
         <GptChatsModal

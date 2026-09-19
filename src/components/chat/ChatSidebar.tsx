@@ -4,6 +4,7 @@ import {
   ChevronRight,
   FileText,
   Folder,
+  LayoutGrid,
   PanelLeftClose,
   Pencil,
   Search,
@@ -26,6 +27,8 @@ const noSubscribe = () => () => {};
 interface Props {
   communityName: string;
   gpts: Gpt[];
+  /** Hasta 6 recientes. El resto vive en el picker / hero. */
+  recentGpts: Gpt[];
   threadList: ThreadSummary[];
   projects: Project[];
   openProjectIds: string[];
@@ -43,6 +46,7 @@ interface Props {
   chatSearch: string;
   onSearchChange: (value: string) => void;
   onSelectGpt: (gptId: string) => void;
+  onOpenAllGpts: () => void;
   onAccentHover: (hex: string | null) => void;
   onSelectThread: (thread: ThreadSummary) => void;
   onNewChat: () => void;
@@ -72,6 +76,7 @@ interface Props {
 function ChatSidebar({
   communityName,
   gpts,
+  recentGpts,
   threadList,
   projects,
   openProjectIds,
@@ -84,6 +89,7 @@ function ChatSidebar({
   chatSearch,
   onSearchChange,
   onSelectGpt,
+  onOpenAllGpts,
   onAccentHover,
   onSelectThread,
   onNewChat,
@@ -226,13 +232,13 @@ function ChatSidebar({
           <div className="flex-1 overflow-y-auto px-2 pb-3">
             <p className="eyebrow text-zinc-500 px-2.5 pt-1.5 pb-1">GPTs</p>
             <div className="space-y-0.5 mb-3">
-              {gpts.map((g) => {
+              {recentGpts.map((g) => {
                 const accentHex = getGptVisual(g.category, g.name, g.description).accentHex;
                 const isActive = activeGptId === g.id && !activeThreadId;
                 return (
                 <div
                   key={g.id}
-                  className="group relative flex items-center"
+                  className="group relative flex min-h-11 items-center"
                   onPointerEnter={() => onAccentHover(accentHex)}
                   onPointerLeave={() => onAccentHover(null)}
                 >
@@ -242,7 +248,7 @@ function ChatSidebar({
                     onBlur={() => onAccentHover(null)}
                     style={{ "--craft": accentHex } as CSSProperties}
                     className={cn(
-                      "gpt-nav flex-1 min-w-0 flex items-center gap-2 rounded-lg pl-2.5 pr-7 py-1.5 text-[13px] transition-colors text-left cursor-pointer active:scale-[0.99]",
+                      "gpt-nav flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-lg py-1.5 pl-2.5 pr-11 text-left text-[13px] transition-colors cursor-pointer active:scale-[0.99]",
                       isActive ? "nav-active text-ink" : "text-zinc-400"
                     )}
                   >
@@ -254,15 +260,23 @@ function ChatSidebar({
                       e.stopPropagation();
                       onOpenGptChats(g.id);
                     }}
-                    className="hidden group-hover:flex items-center justify-center absolute right-1 w-6 h-6 rounded-md text-zinc-500 hover:text-ink hover:bg-zinc-800"
+                    className="absolute right-0 hidden h-11 w-11 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-800 hover:text-ink group-hover:flex"
                     title={`Ver conversaciones de ${g.name}`}
                     aria-label={`Ver conversaciones de ${g.name}`}
                   >
-                    <Search size={12} />
+                    <Search size={14} />
                   </button>
                 </div>
                 );
               })}
+              <button
+                type="button"
+                onClick={onOpenAllGpts}
+                className="flex min-h-11 w-full items-center gap-2 rounded-lg px-2.5 text-[13px] text-zinc-400 transition hover:bg-white/[0.06] hover:text-zinc-200"
+              >
+                <LayoutGrid size={14} aria-hidden />
+                Todos los GPTs
+              </button>
             </div>
 
             {groups.length > 0 && (
