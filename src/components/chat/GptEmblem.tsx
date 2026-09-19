@@ -1,201 +1,97 @@
 import type { ReactNode } from "react";
 import type { GptMarkKind } from "@/lib/gpt-visual";
 
-interface Paint {
-  face: string;
-  edge: string;
-  well: string;
-  depth: string;
-  sheen: string;
-  core: string;
-}
+// Siluetas de oficio: relleno crema + recortes oscuros. Sin pintura de vidrio
+// (eso se vuelve barro a 20px). El disco de gema aporta el color y el brillo.
+const FACE = "#FFF6E8";
+const CUT = "rgba(8,12,18,0.52)";
 
-function glassPaint(uid: string): { defs: ReactNode; paint: Paint } {
-  const paint: Paint = {
-    face: `${uid}-face`,
-    edge: `${uid}-edge`,
-    well: `${uid}-well`,
-    depth: `${uid}-depth`,
-    sheen: `${uid}-sheen`,
-    core: `${uid}-core`,
-  };
-
-  const defs = (
-    <defs>
-      <linearGradient id={paint.face} x1="12%" y1="4%" x2="90%" y2="96%">
-        <stop offset="0" stopColor="#fff" stopOpacity="0.88" />
-        <stop offset="0.34" stopColor="#fff" stopOpacity="0.4" />
-        <stop offset="0.68" stopColor="var(--craft)" stopOpacity="0.42" />
-        <stop offset="1" stopColor="#1c1418" stopOpacity="0.42" />
-      </linearGradient>
-      <linearGradient id={paint.edge} x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stopColor="#fff" stopOpacity="0.7" />
-        <stop offset="0.48" stopColor="var(--craft)" stopOpacity="0.52" />
-        <stop offset="1" stopColor="#161018" stopOpacity="0.32" />
-      </linearGradient>
-      <radialGradient id={paint.well} cx="34%" cy="28%" r="74%">
-        <stop offset="0" stopColor="#fff" stopOpacity="0.42" />
-        <stop offset="0.44" stopColor="var(--craft)" stopOpacity="0.4" />
-        <stop offset="1" stopColor="#0c0810" stopOpacity="0.48" />
-      </radialGradient>
-      <radialGradient id={paint.sheen} cx="30%" cy="24%" r="50%">
-        <stop offset="0" stopColor="#fff" stopOpacity="0.82" />
-        <stop offset="0.4" stopColor="#fff" stopOpacity="0.2" />
-        <stop offset="1" stopColor="#fff" stopOpacity="0" />
-      </radialGradient>
-      <linearGradient id={paint.core} x1="30%" y1="0" x2="70%" y2="100%">
-        <stop offset="0" stopColor="#fff" stopOpacity="0.62" />
-        <stop offset="1" stopColor="var(--craft)" stopOpacity="0.28" />
-      </linearGradient>
-      <filter id={paint.depth} x="-30%" y="-30%" width="160%" height="160%">
-        <feDropShadow dx="0.6" dy="1.6" stdDeviation="1" floodColor="#000" floodOpacity="0.4" />
-      </filter>
-    </defs>
-  );
-
-  return { defs, paint };
-}
-
-function VideoEmblem({ paint }: { paint: Paint }) {
+function VideoEmblem() {
   return (
-    <g filter={`url(#${paint.depth})`}>
-      <ellipse cx="22" cy="54" rx="15" ry="15" fill={`url(#${paint.well})`} stroke={`url(#${paint.edge})`} strokeWidth="1.4" />
-      <ellipse cx="22" cy="54" rx="5.2" ry="5.2" fill={`url(#${paint.face})`} />
-      {[0, 60, 120, 180, 240, 300].map((deg) => {
-        const rad = (deg * Math.PI) / 180;
-        return (
-          <circle
-            key={deg}
-            cx={22 + Math.cos(rad) * 9.2}
-            cy={54 + Math.sin(rad) * 9.2}
-            r="1.7"
-            fill="#08050c"
-            opacity="0.55"
-          />
-        );
-      })}
-      <path
-        d="M24 34 70 27.5 73 64 27 68.5Z"
-        fill={`url(#${paint.face})`}
-        stroke="rgba(255,255,255,0.32)"
-        strokeWidth="1.2"
-      />
-      <path d="M33 42h28M33 50h26M33 58h22" stroke="#fff" strokeOpacity="0.28" strokeWidth="1.6" strokeLinecap="round" />
-      <path
-        d="M23.5 32.5 69 24.5 66.5 14.5 25.8 22.8Z"
-        fill={`url(#${paint.edge})`}
-        stroke="rgba(255,255,255,0.36)"
-        strokeWidth="0.9"
-      />
-      <ellipse cx="42" cy="40" rx="12" ry="5" fill={`url(#${paint.sheen})`} opacity="0.45" />
+    <g>
+      <path d="M14 32h52a4 4 0 0 1 4 4v28a4 4 0 0 1-4 4H14a4 4 0 0 1-4-4V36a4 4 0 0 1 4-4Z" fill={FACE} />
+      <path d="M15 32 19.5 13h43l-4 19H15Z" fill={FACE} />
+      <path d="M27 13.6 29.4 32h8.2L32.2 13.8Z" fill={CUT} />
+      <path d="M43 14.2 45 32h8L49.4 14.6Z" fill={CUT} />
+      <path d="M32 42.5v17.2l16.4-8.6-16.4-8.6Z" fill={CUT} />
     </g>
   );
 }
 
-function PhotoEmblem({ paint }: { paint: Paint }) {
+function PhotoEmblem() {
   return (
-    <g filter={`url(#${paint.depth})`}>
-      <circle cx="40" cy="40" r="26" fill={`url(#${paint.edge})`} />
-      <circle cx="40" cy="40" r="21" fill={`url(#${paint.well})`} />
-      <circle cx="40" cy="40" r="15" fill={`url(#${paint.face})`} stroke="rgba(255,255,255,0.28)" strokeWidth="1" />
-      <path
-        d="M40 28.4 48.4 33.2 48.4 42.8 40 47.6 31.6 42.8 31.6 33.2Z"
-        fill="#08050c"
-        fillOpacity="0.5"
-        stroke={`url(#${paint.edge})`}
-        strokeWidth="0.9"
-      />
-      <circle cx="40" cy="38" r="4" fill={`url(#${paint.well})`} />
-      <ellipse cx="31" cy="29" rx="9" ry="4.2" fill={`url(#${paint.sheen})`} />
+    <g>
+      <rect x="28" y="14" width="18" height="9" rx="2.2" fill={FACE} />
+      <rect x="10" y="21" width="60" height="46" rx="9" fill={FACE} />
+      <circle cx="40" cy="46" r="15.5" fill={CUT} />
+      <circle cx="40" cy="46" r="9" fill={FACE} />
+      <circle cx="40" cy="46" r="4" fill={CUT} />
+      <rect x="16" y="28" width="9" height="7" rx="1.6" fill={CUT} />
     </g>
   );
 }
 
-function ImagesEmblem({ paint }: { paint: Paint }) {
-  const blades = [
-    "M40 12 52.5 27.5 40 34 27.5 27.5Z",
-    "M62 22 68 40 52.5 42.5 46.5 27.5Z",
-    "M68 40 62 58 46.5 52.5 52.5 42.5Z",
-    "M40 68 27.5 52.5 40 46 52.5 52.5Z",
-    "M18 58 12 40 27.5 37.5 33.5 52.5Z",
-    "M12 40 18 22 33.5 27.5 27.5 37.5Z",
-  ];
+function ImagesEmblem() {
   return (
-    <g filter={`url(#${paint.depth})`}>
-      <circle cx="40" cy="40" r="26" fill={`url(#${paint.well})`} stroke={`url(#${paint.edge})`} strokeWidth="1.4" />
-      {blades.map((d) => (
-        <path key={d} d={d} fill={`url(#${paint.face})`} stroke="rgba(255,255,255,0.2)" strokeWidth="0.7" />
-      ))}
-      <circle cx="40" cy="40" r="8.4" fill="#08050c" fillOpacity="0.62" />
-      <circle cx="40" cy="40" r="5.2" fill={`url(#${paint.well})`} />
-      <ellipse cx="30" cy="27" rx="9" ry="3.8" fill={`url(#${paint.sheen})`} />
+    <g>
+      <rect x="24" y="11" width="42" height="32" rx="5" fill={FACE} />
+      <rect x="28" y="15" width="34" height="24" rx="3" fill={CUT} />
+      <rect x="12" y="28" width="44" height="36" rx="5" fill={FACE} />
+      <rect x="17" y="34" width="34" height="24" rx="3" fill={CUT} />
     </g>
   );
 }
 
-function CharactersEmblem({ paint }: { paint: Paint }) {
+function CharactersEmblem() {
   return (
-    <g filter={`url(#${paint.depth})`}>
-      <ellipse cx="40" cy="40" rx="25" ry="28" fill="none" stroke={`url(#${paint.edge})`} strokeWidth="1.2" opacity="0.4" />
-      <path
-        d="M28 62c.8-9.4 6.6-16.2 14.8-18.4C38.4 41 35.2 35.6 35.2 29.4 35.2 21.2 41.6 15 49.2 15c7.4 0 13.6 6 13.6 14.2 0 6.4-3.4 11.8-8.4 14.4 8.6 2.4 14.8 10.2 15.6 18.4H28Z"
-        fill={`url(#${paint.face})`}
-        stroke="rgba(255,255,255,0.28)"
-        strokeWidth="1"
-      />
-      <path className="gpt-mark-scan" d="M18 42h46" stroke="#fff" strokeWidth="2" strokeLinecap="round" opacity="0.5" />
-      <ellipse cx="44" cy="26" rx="7" ry="3.2" fill={`url(#${paint.sheen})`} />
+    <g>
+      <circle cx="40" cy="26" r="15" fill={FACE} />
+      <path d="M15 70c1.4-16 12.2-24 25-24s23.6 8 25 24H15Z" fill={FACE} />
     </g>
   );
 }
 
-function LocationsEmblem({ paint }: { paint: Paint }) {
+function LocationsEmblem() {
   return (
-    <g filter={`url(#${paint.depth})`}>
-      <path d="M10 60c10-9 18-6 26 1 9-12 18-9 28 3 8-7 14-4 22 3" fill="none" stroke={`url(#${paint.edge})`} strokeWidth="1.6" opacity="0.4" />
-      <path d="M12 62 30 44l12 10 18-20 16 22" fill={`url(#${paint.well})`} opacity="0.42" />
+    <g>
       <path
-        d="M40 12c-9.6 0-17.4 7.8-17.4 17.2 0 12.4 17.4 28.8 17.4 28.8S57.4 41.6 57.4 29.2C57.4 19.8 49.6 12 40 12Z"
-        fill={`url(#${paint.face})`}
-        stroke="rgba(255,255,255,0.32)"
-        strokeWidth="1.2"
+        d="M40 10c-12.4 0-22 9.6-22 22.2 0 16.6 22 37.8 22 37.8s22-21.2 22-37.8C62 19.6 52.4 10 40 10Z"
+        fill={FACE}
       />
-      <circle cx="40" cy="28.8" r="6.6" fill={`url(#${paint.well})`} />
-      <ellipse cx="34" cy="22.5" rx="6.4" ry="3" fill={`url(#${paint.sheen})`} />
+      <circle cx="40" cy="31" r="9" fill={CUT} />
     </g>
   );
 }
 
-function ScriptsEmblem({ paint }: { paint: Paint }) {
+function ScriptsEmblem() {
   return (
-    <g filter={`url(#${paint.depth})`}>
-      <path
-        d="M18 14 58 9.5 64 66 23 70.5Z"
-        fill={`url(#${paint.face})`}
-        stroke="rgba(255,255,255,0.3)"
-        strokeWidth="1.2"
-      />
-      <path d="M50 10 64 11.2 58.4 22.6Z" fill={`url(#${paint.edge})`} />
-      <path d="M28 26h24M29 36h22M29 46h17" stroke="#fff" strokeOpacity="0.3" strokeWidth="1.8" strokeLinecap="round" />
-      <path
-        d="M46 50 60 40l9 9-9 7-4.2-1.6Z"
-        fill={`url(#${paint.edge})`}
-        stroke="rgba(255,255,255,0.28)"
-        strokeWidth="0.8"
-      />
-      <path d="M60 40 65 30l9 4.4-6.4 9.2Z" fill={`url(#${paint.core})`} />
-      <ellipse cx="32" cy="20" rx="10" ry="3.6" fill={`url(#${paint.sheen})`} />
+    <g>
+      <path d="M16 12h32l14 14v40a4 4 0 0 1-4 4H16a4 4 0 0 1-4-4V16a4 4 0 0 1 4-4Z" fill={FACE} />
+      <path d="M48 12v12a2 2 0 0 0 2 2h12" fill={CUT} />
+      <path d="M22 34h24M22 44h22M22 54h16" stroke={CUT} strokeWidth="4" strokeLinecap="round" />
+      <path d="M50 48 66 30l7 6-16 18-8.4-2.4Z" fill={CUT} />
+      <path d="M66 30 70 22l8 4-5 9Z" fill={FACE} />
     </g>
   );
 }
 
-const EMBLEMS: Record<Exclude<GptMarkKind, "gem">, (props: { paint: Paint }) => ReactNode> = {
+function GemEmblem() {
+  return (
+    <g>
+      <path d="M40 8 66 24v32L40 72 14 56V24Z" fill={FACE} />
+      <path d="M40 18 56 28v24L40 62 24 52V28Z" fill={CUT} />
+    </g>
+  );
+}
+
+const EMBLEMS: Record<GptMarkKind, () => ReactNode> = {
   video: VideoEmblem,
   photo: PhotoEmblem,
   images: ImagesEmblem,
   characters: CharactersEmblem,
   locations: LocationsEmblem,
   scripts: ScriptsEmblem,
+  gem: GemEmblem,
 };
 
 interface Props {
@@ -204,20 +100,12 @@ interface Props {
   letter: string;
 }
 
-export default function GptEmblem({ kind, uid, letter }: Props) {
-  if (kind === "gem") {
-    return (
-      <span className="gpt-mark-letter font-display italic uppercase font-extrabold">{letter}</span>
-    );
-  }
-
-  const { defs, paint } = glassPaint(uid);
+export default function GptEmblem({ kind }: Props) {
   const Emblem = EMBLEMS[kind];
 
   return (
     <svg viewBox="0 0 80 80" className="gpt-mark-svg" aria-hidden>
-      {defs}
-      <Emblem paint={paint} />
+      <Emblem />
     </svg>
   );
 }

@@ -68,28 +68,28 @@ const DEFAULT_MARK_KIND: GptMarkKind = "gem";
 
 const DEFAULT_ICON = Hexagon;
 
-// Placa en reposo: zinc + vidrio para todos. El tinte de oficio va en el trazo.
+// Placa en reposo: zinc + vidrio para todos. El tinte de oficio va en el núcleo.
 export const GPT_MARK_SURFACE =
   "from-white/[0.08] to-white/[0.02] border-white/[0.12] text-zinc-100";
 
 // Acento de marca: rojo del logo. Rosa solo en el wordmark. No teñir cards.
 export const LOGO_REST_ACCENT = "#FF003C";
 
-// Tintes muted pero visibles en negro (Higgsfield: un acento claro, base oscura).
-// Un paso más ricos que el gris desaturado; no esmalte ni arcoíris.
-// Video frío, foto cálida, locación verdosa. Rojo de marca no vive aquí.
+// Núcleos de gema por oficio: saturados (no pastel, no gunmetal, no neón).
+// Video azul de verdad, foto ámbar, locación verdosa, guión ocre-papel.
+// El rojo de marca no vive aquí: solo rim / selección.
 export const GPT_CRAFT_ACCENTS: Record<GptCraft, string> = {
-  video: "#6A9EC4",
-  photo: "#D0A45E",
-  images: "#B18CC6",
-  characters: "#D49A76",
-  locations: "#4FB89A",
-  scripts: "#D2B46C",
-  marketing: "#D06E6E",
-  design: "#9C7EC6",
-  sales: "#D27E54",
-  productivity: "#7A94B8",
-  education: "#C9A24E",
+  video: "#1578B4",
+  photo: "#C98412",
+  images: "#8A48B8",
+  characters: "#C86A38",
+  locations: "#1C8F58",
+  scripts: "#B8922E",
+  marketing: "#C45A5A",
+  design: "#7A52B8",
+  sales: "#C46A32",
+  productivity: "#3D6FA8",
+  education: "#B88620",
 };
 
 export function craftAccentHex(craft: GptCraft | null | undefined): string {

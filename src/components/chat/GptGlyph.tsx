@@ -21,7 +21,7 @@ interface Props {
   textClassName?: string;
 }
 
-// Marca canónica: esfera de vidrio como el Orb, teñida por oficio.
+// Marca canónica: disco de gema de oficio + silueta, misma familia que el Orb.
 export default function GptGlyph({ gpt, size = "sm", className, sizePx }: Props) {
   const { markKind, accentHex } = getGptVisual(gpt?.category, gpt?.name, gpt?.description);
   const letter = gpt?.name?.trim()?.charAt(0)?.toUpperCase() || "G";

@@ -92,21 +92,50 @@ describe("conversationStartersOf", () => {
 });
 
 describe("GPT_LOGO_PX", () => {
-  it("deja el glyph sidebar a 20px y el de card a ~44, sin esfera ni esmalte", () => {
+  it("deja el glyph sidebar a 20px y el de card a ~44–48", () => {
     expect(GPT_LOGO_PX.xs).toBe(20);
     expect(GPT_LOGO_PX.md).toBeGreaterThanOrEqual(40);
     expect(GPT_LOGO_PX.md).toBeLessThanOrEqual(48);
   });
 });
 
+function hexRgb(hex: string) {
+  const n = Number.parseInt(hex.slice(1), 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+
+function hexChroma(hex: string) {
+  const { r, g, b } = hexRgb(hex);
+  return Math.max(r, g, b) - Math.min(r, g, b);
+}
+
 describe("GPT_CRAFT_ACCENTS", () => {
-  it("usa tintes muted distintos por oficio, no el rojo de marca", () => {
+  it("usa núcleos saturados distintos por oficio, no gunmetal ni el rojo de marca", () => {
     const hexes = Object.values(GPT_CRAFT_ACCENTS);
     for (const hex of hexes) {
       expect(hex).toMatch(/^#[0-9A-Fa-f]{6}$/);
       expect(hex.toUpperCase()).not.toBe(LOGO_REST_ACCENT);
+      expect(hexChroma(hex), hex).toBeGreaterThan(70);
     }
     expect(new Set(hexes).size).toBe((Object.keys(GPT_CRAFT_ACCENTS) as GptCraft[]).length);
     expect(LOGO_REST_ACCENT).toBe("#FF003C");
+  });
+
+  it("pinta video azul, foto ámbar, locación verdosa y guión ocre", () => {
+    const video = hexRgb(GPT_CRAFT_ACCENTS.video);
+    expect(video.b).toBeGreaterThan(video.r);
+    expect(video.b).toBeGreaterThan(video.g);
+
+    const photo = hexRgb(GPT_CRAFT_ACCENTS.photo);
+    expect(photo.r).toBeGreaterThan(photo.g);
+    expect(photo.g).toBeGreaterThan(photo.b + 40);
+
+    const locations = hexRgb(GPT_CRAFT_ACCENTS.locations);
+    expect(locations.g).toBeGreaterThan(locations.r);
+    expect(locations.g).toBeGreaterThan(locations.b);
+
+    const scripts = hexRgb(GPT_CRAFT_ACCENTS.scripts);
+    expect(scripts.r).toBeGreaterThan(scripts.b + 50);
+    expect(scripts.g).toBeGreaterThan(scripts.b + 30);
   });
 });

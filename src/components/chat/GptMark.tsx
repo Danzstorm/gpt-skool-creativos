@@ -19,9 +19,8 @@ interface Props {
   children?: ReactNode;
 }
 
-// Misma familia que el Orb de Creativos: vidrio, halo, caústico y shimmer.
-// Siempre el emblema de oficio; la letra solo si GptEmblem no tiene craft (gem).
-// El oficio tiñe el interior; el motion es el fluir del logo, no un tilt de juguete.
+// Disco de gema de oficio: núcleo de color + silueta bold. El vidrio
+// (halo, film, highlight) envuelve; el emblema no se esconde debajo.
 export default function GptMark({ kind, letter = "G", size = "xl", className, children }: Props) {
   const uid = useId().replace(/:/g, "");
   const px = SIZES[size];
