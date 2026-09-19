@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, type CSSProperties } from "react";
 import type { Gpt, Project, ThreadSummary } from "@/lib/types";
 import { Menu, ArrowDown, ChevronDown, Folder, PanelLeftOpen, SquarePen, X } from "lucide-react";
 import Orb from "@/components/ui/Orb";
 import { firstNameOf } from "@/lib/utils";
+import { getGptVisual, LOGO_REST_ACCENT } from "@/lib/gpt-visual";
 import GptCatalog from "@/components/GptCatalog";
 import GptGlyph from "./chat/GptGlyph";
 import ChatSidebar from "./chat/ChatSidebar";
@@ -258,6 +259,17 @@ export default function UnifiedChat({
 
   const lastUserIndex = messages.map((m) => m.role).lastIndexOf("user");
   const showComposer = !!activeGpt;
+  const [hoverAccent, setHoverAccent] = useState<string | null>(null);
+  const onAccentHover = useCallback((hex: string | null) => {
+    setHoverAccent(hex);
+  }, []);
+  const selectedAccent = activeGpt
+    ? getGptVisual(activeGpt.category, activeGpt.name, activeGpt.description).accentHex
+    : null;
+  const pageAccent = hoverAccent ?? selectedAccent ?? LOGO_REST_ACCENT;
+  const showCraftWash = Boolean(
+    hoverAccent || (activeGpt && messages.length === 0 && !isLoadingHistory)
+  );
   const firstName = firstNameOf(profile.fullName);
   const gptChatsModalGpt = gptChatsModalId ? gpts.find((g) => g.id === gptChatsModalId) : null;
   const gptChatsModalThreads = useMemo(
@@ -282,6 +294,7 @@ export default function UnifiedChat({
         chatSearch={chatSearch}
         onSearchChange={onSearchChange}
         onSelectGpt={selectGpt}
+        onAccentHover={onAccentHover}
         onSelectThread={selectThread}
         onNewChat={newChat}
         onCloseSidebar={closeSidebar}
@@ -308,17 +321,19 @@ export default function UnifiedChat({
       />
 
       <div
-        className="flex flex-col flex-1 min-w-0 relative"
+        className={`chat-main flex flex-col flex-1 min-w-0 relative${showCraftWash ? " is-accented" : ""}`}
+        style={{ "--page-accent": pageAccent } as CSSProperties}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
       >
+        <div className="chat-veil" aria-hidden />
         {isDragging && showComposer && (
           <div className="absolute inset-0 z-10 m-2 flex items-center justify-center rounded-2xl border-2 border-dashed border-brand/40 bg-brand/10 pointer-events-none">
             <p className="text-sm font-medium text-zinc-100">Suelta imágenes o archivos aquí</p>
           </div>
         )}
-        <div className="flex items-center gap-3 border-b border-zinc-800 bg-zinc-950 px-4 py-2">
+        <div className="relative z-[1] flex items-center gap-3 border-b border-zinc-800 bg-zinc-950 px-4 py-2">
           <button
             onClick={openSidebar}
             className="flex h-11 w-11 items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-900 hover:text-ink md:hidden"
@@ -379,7 +394,7 @@ export default function UnifiedChat({
         <div
           ref={scrollRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto px-4 py-4"
+          className="relative z-[1] flex-1 overflow-y-auto px-4 py-4"
         >
           {isLoadingHistory && (
             <div className="space-y-4 animate-pulse max-w-2xl mx-auto w-full">
@@ -395,9 +410,10 @@ export default function UnifiedChat({
 
           {!activeGpt && !isLoadingHistory && (
             <div className="flex w-full max-w-6xl mx-auto flex-col items-center py-10 md:py-14">
-              <div className="mb-8 flex flex-col items-center text-center md:mb-10">
-                <Orb size="xl" className="mb-7 md:mb-8" />
-                <p className="eyebrow mb-3 text-zinc-500">
+              <div className="relative mb-8 flex flex-col items-center text-center md:mb-10">
+                <div className="hero-bloom" aria-hidden />
+                <Orb size="xl" className="relative z-[1] mb-7 md:mb-8" />
+                <p className="eyebrow mb-3 text-zinc-400">
                   {firstName ? `Bienvenido de nuevo, ${firstName}` : "Bienvenido de nuevo"}
                 </p>
                 <h1 className="font-display text-center text-4xl font-bold tracking-tight text-zinc-100 md:text-5xl">
@@ -405,16 +421,22 @@ export default function UnifiedChat({
                 </h1>
                 {pendingProject && <ProjectDestination name={pendingProject.name} />}
               </div>
-              <div className="w-full">
-                <GptCatalog gpts={gpts} onSelect={selectGpt} />
+              <div className="relative z-[1] w-full">
+                <GptCatalog gpts={gpts} onSelect={selectGpt} onAccentHover={onAccentHover} />
               </div>
             </div>
           )}
 
           {activeGpt && messages.length === 0 && !isLoadingHistory && (
             <div className="flex flex-col items-center justify-center h-full text-center py-12 max-w-2xl mx-auto">
-              <div className="mb-5">
-                <GptGlyph gpt={activeGpt} size="xl" />
+              <div
+                className="gpt-empty relative mb-5"
+                style={{ "--craft": selectedAccent ?? pageAccent } as CSSProperties}
+              >
+                <div className="gpt-empty-bloom" aria-hidden />
+                <span className="relative z-[1]">
+                  <GptGlyph gpt={activeGpt} size="xl" />
+                </span>
               </div>
               <h3 className="font-display text-3xl font-bold tracking-tight text-zinc-100 mb-2">{activeGpt.name}</h3>
               {activeGpt.description && (
@@ -509,6 +531,7 @@ export default function UnifiedChat({
         )}
 
         {showComposer && (
+          <div className="relative z-[1]">
           <Composer
             ref={composerRef}
             isLoading={isLoading}
@@ -526,6 +549,7 @@ export default function UnifiedChat({
             onSend={sendMessage}
             onStop={stopStreaming}
           />
+          </div>
         )}
       </div>
 

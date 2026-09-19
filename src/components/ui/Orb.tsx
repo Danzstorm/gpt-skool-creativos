@@ -14,9 +14,9 @@ interface Props {
 }
 
 // Firma de marca: burbuja de vidrio 3D con el wordmark Creativos como núcleo.
-// Halo rojo/rosa, atmósfera estática (no rueda cónica), caústico que gira,
-// highlight que respira. orb-* viven en globals.css; las animaciones solo
-// corren bajo prefers-reduced-motion: no-preference.
+// Halo magenta (banda dominante del logo), atmósfera estática, caústico,
+// rim-light del espectro y highlight que respira. Animaciones solo
+// bajo prefers-reduced-motion: no-preference.
 export default function Orb({ size, className }: Props) {
   const { px, mark } = SIZES[size];
   const compact = size === "xs";
@@ -42,6 +42,7 @@ export default function Orb({ size, className }: Props) {
         <div className="orb-film" />
         <div className="orb-highlight orb-shimmer" />
         <div className="orb-shade" />
+        <div className="orb-rim" />
       </div>
     </div>
   );

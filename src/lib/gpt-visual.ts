@@ -50,10 +50,34 @@ export const GPT_CRAFTS: Record<GptCraft, CraftDef> = {
 
 const DEFAULT_ICON = Hexagon;
 
-// Misma placa para todos: zinc frío + vidrio. Cero sky/emerald/rose — pelean
-// con el gradiente de marca y rompen la uniformidad del grid.
+// Placa en reposo: zinc + vidrio para todos. El color de oficio vive en
+// `accentHex` (espectro muestreado del logo) y solo se enciende en hover/selected.
 export const GPT_MARK_SURFACE =
   "from-white/[0.08] to-white/[0.02] border-white/[0.12] text-zinc-100";
+
+// Banda dominante del JPG: magenta/rosa (~#FF1B8D), no el ámbar del borde.
+// El velo en reposo y el halo del orb salen de acá.
+export const LOGO_REST_ACCENT = "#FF1B8D";
+
+// Stops del logo (ámbar → naranja → rojo → magenta → fucsia → violeta → índigo)
+// repartidos por oficio. Distintos en hover; misma familia que el wordmark.
+export const GPT_CRAFT_ACCENTS: Record<GptCraft, string> = {
+  video: "#FF1B8D",
+  photo: "#FF2D9A",
+  images: "#FF1A58",
+  characters: "#E000D8",
+  locations: "#5B3CFF",
+  scripts: "#FF9A1A",
+  marketing: "#FF6D1A",
+  design: "#C000FF",
+  sales: "#FF003C",
+  productivity: "#A91EFF",
+  education: "#4A44FE",
+};
+
+export function craftAccentHex(craft: GptCraft | null | undefined): string {
+  return craft ? GPT_CRAFT_ACCENTS[craft] : LOGO_REST_ACCENT;
+}
 
 const CATEGORY_CRAFT: Record<string, GptCraft> = {
   video: "video",
@@ -118,5 +142,6 @@ export function getGptVisual(
     label: def?.label ?? null,
     Icon: def?.Icon ?? DEFAULT_ICON,
     accentClasses: GPT_MARK_SURFACE,
+    accentHex: craftAccentHex(craft),
   };
 }

@@ -10,6 +10,15 @@
   --foreground: #EDEDEF;
   --accent: #FF003C;
   --accent-strong: #F80092;
+  /* Muestreado del JPG: la banda más ancha es magenta/rosa, no ámbar. */
+  --logo-magenta: #FF1B8D;
+  --logo-pink: #FF2D9A;
+  --logo-red: #FF1A58;
+  --logo-fuchsia: #E000D8;
+  --logo-violet: #C000FF;
+  --logo-indigo: #5B3CFF;
+  --logo-amber: #FF9A1A;
+  --page-accent: #FF1B8D;
   --cta-gradient: linear-gradient(135deg, #FF003C 0%, #F80092 100%);
   --brand-gradient: linear-gradient(
     135deg,
@@ -213,9 +222,9 @@ body {
     text-transform: uppercase;
   }
 
-  /* Item activo del sidebar: tinte suave rojo/rosa + barra izquierda de 2px. */
+  /* Item activo del sidebar: tinte del oficio (--craft) o rojo/rosa de marca. */
   .nav-active {
-    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    background: color-mix(in srgb, var(--craft, var(--accent)) 14%, transparent);
     position: relative;
   }
   .nav-active::before {
@@ -226,7 +235,7 @@ body {
     bottom: 22%;
     width: 2px;
     border-radius: 9999px;
-    background: linear-gradient(180deg, #FF003C, #F80092);
+    background: var(--craft, var(--accent));
   }
 }
 
@@ -236,27 +245,28 @@ body {
    ============================================================ */
 .orb-halo {
   position: absolute;
-  inset: -22%;
+  inset: -26%;
   border-radius: 9999px;
   background: radial-gradient(
     circle,
-    color-mix(in srgb, var(--accent) 22%, transparent) 0%,
-    color-mix(in srgb, var(--accent-strong) 10%, transparent) 40%,
-    transparent 72%
+    color-mix(in srgb, var(--logo-magenta) 58%, transparent) 0%,
+    color-mix(in srgb, var(--logo-red) 32%, transparent) 36%,
+    color-mix(in srgb, var(--logo-violet) 16%, transparent) 58%,
+    transparent 74%
   );
-  filter: blur(14px);
+  filter: blur(16px);
   pointer-events: none;
   z-index: 0;
 }
 
 .orb-xl .orb-halo {
-  inset: -30%;
-  opacity: 0.55;
-  filter: blur(22px);
+  inset: -48%;
+  opacity: 0.95;
+  filter: blur(32px);
 }
 
 .orb-xs .orb-halo {
-  inset: -28%;
+  inset: -30%;
   filter: blur(4px);
 }
 
@@ -267,21 +277,22 @@ body {
   border-radius: 9999px;
   overflow: hidden;
   isolation: isolate;
-  background: #141218;
+  background: #22101a;
   box-shadow:
-    0 10px 28px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(255, 255, 255, 0.08);
+    0 10px 28px rgba(0, 0, 0, 0.42),
+    0 0 0 1px rgba(255, 255, 255, 0.14),
+    0 0 44px color-mix(in srgb, var(--logo-magenta) 38%, transparent);
 }
 
 .orb-atmosphere {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 32% 26%, rgba(255, 109, 26, 0.26), transparent 34%),
-    radial-gradient(circle at 58% 46%, rgba(255, 0, 60, 0.34), transparent 40%),
-    radial-gradient(circle at 46% 72%, rgba(248, 0, 146, 0.22), transparent 44%),
-    radial-gradient(circle at 72% 78%, rgba(74, 68, 254, 0.1), transparent 38%),
-    #141218;
+    radial-gradient(circle at 30% 22%, rgba(255, 154, 26, 0.5), transparent 30%),
+    radial-gradient(circle at 56% 42%, rgba(255, 27, 141, 0.7), transparent 42%),
+    radial-gradient(circle at 48% 70%, rgba(255, 26, 88, 0.48), transparent 44%),
+    radial-gradient(circle at 74% 76%, rgba(91, 60, 255, 0.32), transparent 38%),
+    #22101a;
 }
 
 /* Caústico: una franja de vidrio, no el espectro completo de marca. */
@@ -290,11 +301,11 @@ body {
   inset: -30%;
   background: conic-gradient(
     from 200deg,
-    transparent 0 52%,
-    rgba(255, 255, 255, 0.16) 60%,
-    transparent 68%,
-    rgba(255, 0, 60, 0.08) 76%,
-    transparent 88%
+    transparent 0 46%,
+    rgba(255, 255, 255, 0.3) 56%,
+    transparent 64%,
+    rgba(255, 27, 141, 0.28) 72%,
+    transparent 84%
   );
   pointer-events: none;
 }
@@ -381,8 +392,37 @@ body {
 
 .orb-md .orb-shade {
   box-shadow:
-    inset -8px -12px 20px rgba(0, 0, 0, 0.48),
-    inset 4px 6px 10px rgba(255, 255, 255, 0.08);
+    inset -8px -12px 20px rgba(0, 0, 0, 0.4),
+    inset 4px 6px 10px rgba(255, 255, 255, 0.12);
+}
+
+/* Rim-light del espectro: anillo fino, no rueda cónica llena. */
+.orb-rim {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(
+    from 210deg,
+    var(--logo-amber),
+    var(--logo-red),
+    var(--logo-magenta),
+    var(--logo-violet),
+    var(--logo-indigo),
+    var(--logo-magenta),
+    var(--logo-amber)
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.62;
+  pointer-events: none;
+}
+
+.orb-xs .orb-rim {
+  padding: 1px;
+  opacity: 0.45;
 }
 
 /* Borde con degradado para tarjetas premium */
@@ -410,6 +450,125 @@ body {
 }
 .ring-gradient:hover::before {
   opacity: 1;
+}
+
+/* Columna del chat: negro + velo localizado del logo. No aurora a pantalla. */
+.chat-main {
+  --page-accent: var(--logo-magenta);
+  background-color: #08060a;
+}
+
+.chat-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      ellipse 80% 44% at 50% -8%,
+      color-mix(in srgb, var(--page-accent) 14%, transparent),
+      transparent 62%
+    ),
+    radial-gradient(
+      ellipse 38% 26% at 100% 100%,
+      color-mix(in srgb, var(--page-accent) 6%, transparent),
+      transparent 52%
+    );
+  transition: background 260ms ease, opacity 260ms ease;
+}
+
+.chat-main.is-accented .chat-veil {
+  background:
+    radial-gradient(
+      ellipse 70% 48% at 50% 10%,
+      color-mix(in srgb, var(--page-accent) 22%, transparent),
+      transparent 64%
+    ),
+    radial-gradient(
+      ellipse 32% 22% at 88% 82%,
+      color-mix(in srgb, var(--page-accent) 8%, transparent),
+      transparent 52%
+    );
+}
+
+/* Bloom contenido detrás del orb xl: enciende el hero, no el sidebar. */
+.hero-bloom {
+  position: absolute;
+  width: min(28rem, 86vw);
+  height: 17rem;
+  top: -1.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: radial-gradient(
+    ellipse at 50% 42%,
+    color-mix(in srgb, var(--page-accent) 34%, transparent) 0%,
+    color-mix(in srgb, var(--page-accent) 10%, transparent) 46%,
+    transparent 72%
+  );
+  filter: blur(30px);
+  pointer-events: none;
+  z-index: 0;
+  transition: background 260ms ease;
+}
+
+.gpt-empty {
+  --craft: var(--page-accent);
+}
+
+.gpt-empty-bloom {
+  position: absolute;
+  inset: -55%;
+  border-radius: 9999px;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--craft, var(--page-accent)) 30%, transparent),
+    transparent 70%
+  );
+  filter: blur(22px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Cards: uniformes en reposo; el oficio solo en hover/focus. */
+.gpt-card {
+  --craft: var(--page-accent);
+  transition:
+    transform 200ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 240ms ease,
+    box-shadow 240ms ease;
+}
+
+.gpt-card:hover,
+.gpt-card:focus-visible {
+  border-color: color-mix(in srgb, var(--craft) 46%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--craft) 20%, transparent),
+    0 14px 36px color-mix(in srgb, var(--craft) 16%, transparent);
+}
+
+.gpt-card:hover .gpt-glyph,
+.gpt-card:focus-visible .gpt-glyph,
+.gpt-nav:hover .gpt-glyph,
+.gpt-nav:focus-visible .gpt-glyph,
+.nav-active .gpt-glyph {
+  border-color: color-mix(in srgb, var(--craft, var(--accent)) 48%, transparent);
+  color: color-mix(in srgb, var(--craft, var(--accent)) 62%, #fff);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--craft, var(--accent)) 26%, transparent);
+}
+
+.gpt-card:hover .gpt-card-arrow,
+.gpt-card:focus-visible .gpt-card-arrow {
+  color: color-mix(in srgb, var(--craft) 72%, #fff);
+}
+
+.gpt-nav {
+  transition: background-color 240ms ease, color 240ms ease;
+}
+
+.gpt-nav:hover,
+.gpt-nav:focus-visible {
+  background: color-mix(in srgb, var(--craft, var(--accent)) 14%, transparent);
+  color: #ededef;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -462,22 +621,22 @@ body {
     0%,
     100% {
       transform: scale(1);
-      opacity: 0.4;
+      opacity: 0.62;
     }
     50% {
-      transform: scale(1.1);
-      opacity: 0.62;
+      transform: scale(1.18);
+      opacity: 1;
     }
   }
   @keyframes orb-shimmer {
     0%,
     100% {
-      opacity: 0.62;
+      opacity: 0.72;
       transform: translate(0, 0) scale(1);
     }
     50% {
-      opacity: 0.95;
-      transform: translate(8%, 4%) scale(1.06);
+      opacity: 1;
+      transform: translate(10%, 6%) scale(1.1);
     }
   }
   @keyframes msg-in {
@@ -488,13 +647,13 @@ body {
   }
 
   .orb-spin {
-    animation: orb-spin 28s linear infinite;
+    animation: orb-spin 22s linear infinite;
   }
   .orb-breathe {
-    animation: orb-breathe 6s ease-in-out infinite;
+    animation: orb-breathe 4.2s ease-in-out infinite;
   }
   .orb-shimmer {
-    animation: orb-shimmer 5.5s ease-in-out infinite;
+    animation: orb-shimmer 3.6s ease-in-out infinite;
   }
   .msg-in {
     animation: msg-in 0.35s cubic-bezier(0.16, 1, 0.3, 1);

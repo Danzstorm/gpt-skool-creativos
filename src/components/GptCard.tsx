@@ -2,31 +2,38 @@ import type { CSSProperties } from "react";
 import { ArrowUpRight } from "lucide-react";
 import type { Gpt } from "@/lib/types";
 import GptGlyph from "@/components/chat/GptGlyph";
+import { getGptVisual } from "@/lib/gpt-visual";
 
 interface Props {
   gpt: Gpt;
   onSelect: (id: string) => void;
+  onAccentHover: (hex: string | null) => void;
   /** Para escalonar la entrada (`animationDelay`) desde el grid. */
   style?: CSSProperties;
 }
 
 // Botón y no Link: un Link a /chat?gpt= remontaría UnifiedChat (y sus queries);
 // `onSelect` cambia el GPT activo en cliente sin recargar nada.
-export default function GptCard({ gpt, onSelect, style }: Props) {
+export default function GptCard({ gpt, onSelect, onAccentHover, style }: Props) {
   const author = gpt.author?.trim() || "";
   const description = gpt.description?.trim() || "";
+  const { accentHex } = getGptVisual(gpt.category, gpt.name, gpt.description);
 
   return (
     <button
       type="button"
       onClick={() => onSelect(gpt.id)}
-      style={style}
+      onPointerEnter={() => onAccentHover(accentHex)}
+      onPointerLeave={() => onAccentHover(null)}
+      onFocus={() => onAccentHover(accentHex)}
+      onBlur={() => onAccentHover(null)}
+      style={{ ...style, "--craft": accentHex } as CSSProperties}
       aria-label={`Abrir ${gpt.name}`}
-      className="frost group relative fade-up flex h-full min-h-[13.75rem] w-full cursor-pointer flex-col items-start rounded-3xl p-6 text-left motion-safe:transition-[transform,border-color] motion-safe:duration-200 motion-safe:hover:-translate-y-px motion-safe:hover:border-zinc-700 motion-safe:active:scale-[0.99]"
+      className="frost gpt-card group relative fade-up flex h-full min-h-[13.75rem] w-full cursor-pointer flex-col items-start rounded-3xl p-6 text-left motion-safe:transition-transform motion-safe:duration-200 motion-safe:hover:-translate-y-px motion-safe:active:scale-[0.99]"
     >
       <ArrowUpRight
         size={18}
-        className="absolute right-5 top-5 text-zinc-500 transition-colors group-hover:text-zinc-100"
+        className="gpt-card-arrow absolute right-5 top-5 text-zinc-500 transition-colors duration-200"
         aria-hidden
       />
 

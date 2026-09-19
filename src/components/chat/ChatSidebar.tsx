@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { memo, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -13,6 +13,7 @@ import {
 import type { Gpt, Project, ThreadSummary } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { groupThreadsByProject } from "@/lib/project-grouping";
+import { getGptVisual } from "@/lib/gpt-visual";
 import Orb from "@/components/ui/Orb";
 import GptGlyph from "./GptGlyph";
 import ThreadListItem, { THREAD_DND_TYPE } from "./ThreadListItem";
@@ -42,6 +43,7 @@ interface Props {
   chatSearch: string;
   onSearchChange: (value: string) => void;
   onSelectGpt: (gptId: string) => void;
+  onAccentHover: (hex: string | null) => void;
   onSelectThread: (thread: ThreadSummary) => void;
   onNewChat: () => void;
   onCloseSidebar: () => void;
@@ -82,6 +84,7 @@ function ChatSidebar({
   chatSearch,
   onSearchChange,
   onSelectGpt,
+  onAccentHover,
   onSelectThread,
   onNewChat,
   onCloseSidebar,
@@ -223,15 +226,24 @@ function ChatSidebar({
           <div className="flex-1 overflow-y-auto px-2 pb-3">
             <p className="eyebrow text-zinc-500 px-2.5 pt-1.5 pb-1">GPTs</p>
             <div className="space-y-0.5 mb-3">
-              {gpts.map((g) => (
-                <div key={g.id} className="group relative flex items-center">
+              {gpts.map((g) => {
+                const accentHex = getGptVisual(g.category, g.name, g.description).accentHex;
+                const isActive = activeGptId === g.id && !activeThreadId;
+                return (
+                <div
+                  key={g.id}
+                  className="group relative flex items-center"
+                  onPointerEnter={() => onAccentHover(accentHex)}
+                  onPointerLeave={() => onAccentHover(null)}
+                >
                   <button
                     onClick={() => onSelectGpt(g.id)}
+                    onFocus={() => onAccentHover(accentHex)}
+                    onBlur={() => onAccentHover(null)}
+                    style={{ "--craft": accentHex } as CSSProperties}
                     className={cn(
-                      "flex-1 min-w-0 flex items-center gap-2 rounded-lg pl-2.5 pr-7 py-1.5 text-[13px] transition text-left cursor-pointer active:scale-[0.99]",
-                      activeGptId === g.id && !activeThreadId
-                        ? "nav-active text-ink"
-                        : "text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200"
+                      "gpt-nav flex-1 min-w-0 flex items-center gap-2 rounded-lg pl-2.5 pr-7 py-1.5 text-[13px] transition-colors text-left cursor-pointer active:scale-[0.99]",
+                      isActive ? "nav-active text-ink" : "text-zinc-400"
                     )}
                   >
                     <GptGlyph gpt={g} size="xs" />
@@ -249,7 +261,8 @@ function ChatSidebar({
                     <Search size={12} />
                   </button>
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             {groups.length > 0 && (

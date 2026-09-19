@@ -9,6 +9,7 @@ import { Search, SearchX } from "lucide-react";
 interface Props {
   gpts: Gpt[];
   onSelect: (id: string) => void;
+  onAccentHover: (hex: string | null) => void;
 }
 
 const CHIP_BASE =
@@ -17,7 +18,7 @@ const CHIP_ACTIVE = "bg-zinc-100 text-zinc-950 border-transparent";
 const CHIP_IDLE =
   "bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 hover:border-zinc-700";
 
-export default function GptCatalog({ gpts, onSelect }: Props) {
+export default function GptCatalog({ gpts, onSelect, onAccentHover }: Props) {
   const [search, setSearch] = useState("");
   const [activeCraft, setActiveCraft] = useState<GptCraft | null>(null);
 
@@ -102,6 +103,7 @@ export default function GptCatalog({ gpts, onSelect }: Props) {
               key={gpt.id}
               gpt={gpt}
               onSelect={onSelect}
+              onAccentHover={onAccentHover}
               style={{ animationDelay: `${i * 45}ms` }}
             />
           ))}

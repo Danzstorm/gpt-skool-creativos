@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { getGptVisual, resolveGptCraft } from "./gpt-visual";
+import {
+  GPT_CRAFT_ACCENTS,
+  LOGO_REST_ACCENT,
+  getGptVisual,
+  resolveGptCraft,
+  type GptCraft,
+} from "./gpt-visual";
 
 const CATALOG = [
   ["Seedance Director", "Crea videos cinematográficos con Seedance", "video"],
@@ -42,8 +48,20 @@ describe("getGptVisual", () => {
     expect(known.accentClasses).toContain("text-zinc-100");
     expect(known.accentClasses).not.toMatch(/sky|emerald|rose|cyan/);
 
+    expect(known.accentHex).toBe(GPT_CRAFT_ACCENTS.scripts);
+
     const unknown = getGptVisual("General", "Oráculo");
     expect(unknown.craft).toBeNull();
     expect(unknown.Icon.displayName || unknown.Icon.name).toMatch(/Hexagon/i);
+    expect(unknown.accentHex).toBe(LOGO_REST_ACCENT);
+  });
+
+  it("reparte el espectro del logo entre oficios, sin reciclar un solo hex", () => {
+    const hexes = Object.values(GPT_CRAFT_ACCENTS);
+    for (const hex of hexes) {
+      expect(hex).toMatch(/^#[0-9A-Fa-f]{6}$/);
+    }
+    expect(new Set(hexes).size).toBe((Object.keys(GPT_CRAFT_ACCENTS) as GptCraft[]).length);
+    expect(LOGO_REST_ACCENT).toBe("#FF1B8D");
   });
 });

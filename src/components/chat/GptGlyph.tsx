@@ -36,7 +36,7 @@ export default function GptGlyph({ gpt, size = "sm", className, sizePx, textClas
   return (
     <span
       className={cn(
-        "relative flex items-center justify-center flex-shrink-0 bg-gradient-to-br border overflow-hidden",
+        "gpt-glyph relative flex items-center justify-center flex-shrink-0 bg-gradient-to-br border overflow-hidden",
         className || preset.box,
         accentClasses
       )}
