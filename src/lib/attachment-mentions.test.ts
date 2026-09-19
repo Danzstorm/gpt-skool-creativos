@@ -7,6 +7,11 @@ import {
   findCandidateByToken,
   insertMentionToken,
   listMentionCandidates,
+  MENTION_CHIP_STILL_PX,
+  MENTION_HOVER_PREVIEW_PX,
+  MENTION_STILL_MIN_PX,
+  mentionChipLabel,
+  mentionMenuColumns,
   parseMentionTokens,
   resolveMentionTokens,
   type MentionCandidate,
@@ -195,6 +200,28 @@ describe("resolveMentionTokens", () => {
 
   it("no toca texto sin menciones", () => {
     expect(resolveMentionTokens("hola imagen 2")).toBe("hola imagen 2");
+  });
+});
+
+describe("rótulos y layout del picker", () => {
+  it("el chip muestra Imagen N, no el @", () => {
+    expect(mentionChipLabel("@Imagen 1")).toBe("Imagen 1");
+    expect(mentionChipLabel("@Video 2")).toBe("Video 2");
+    expect(mentionChipLabel("Imagen 3")).toBe("Imagen 3");
+  });
+
+  it("una foto es columna ancha; varias van en 2 columnas", () => {
+    expect(mentionMenuColumns(0)).toBe(1);
+    expect(mentionMenuColumns(1)).toBe(1);
+    expect(mentionMenuColumns(2)).toBe(2);
+    expect(mentionMenuColumns(5)).toBe(2);
+  });
+
+  it("los stills del picker y el hover no pueden volver a 16px", () => {
+    expect(MENTION_STILL_MIN_PX).toBeGreaterThanOrEqual(120);
+    expect(MENTION_HOVER_PREVIEW_PX).toBeGreaterThanOrEqual(240);
+    expect(MENTION_HOVER_PREVIEW_PX).toBeLessThanOrEqual(320);
+    expect(MENTION_CHIP_STILL_PX).toBeGreaterThanOrEqual(20);
   });
 });
 

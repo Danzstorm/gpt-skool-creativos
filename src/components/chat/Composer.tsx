@@ -358,7 +358,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
         </div>
       )}
 
-      <div ref={mentionRef} className="frost relative mx-auto flex max-w-3xl items-end gap-2 rounded-3xl px-4 py-2.5 transition-colors focus-within:border-brand/40 focus-within:ring-2 focus-within:ring-brand/25">
+      <div ref={mentionRef} className="mention-composer relative mx-auto max-w-3xl">
         {mention && (
           <MentionMenu
             files={mentionOptions}
@@ -366,6 +366,10 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             query={mention.query}
             onPick={pickMention}
             onHover={setActiveIndex}
+            onPreview={(el, token) =>
+              setTokenPreview({ token, rect: el.getBoundingClientRect() })
+            }
+            onPreviewEnd={() => setTokenPreview(null)}
           />
         )}
         {tokenPreview && findCandidateByToken(mentions, tokenPreview.token) && (
@@ -374,6 +378,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             anchor={tokenPreview.rect}
           />
         )}
+      <div className="frost flex items-end gap-2 rounded-3xl px-4 py-2.5 transition-colors focus-within:border-brand/40 focus-within:ring-2 focus-within:ring-brand/25">
         <input
           ref={fileInputRef}
           type="file"
@@ -419,6 +424,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             <MentionField
               ref={mentionFieldRef}
               value={input}
+              mentions={mentions}
               disabled={composerFieldDisabled({ isLoading, isTranscribing })}
               placeholder={
                 isTranscribing
@@ -487,6 +493,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             <ArrowUp size={16} strokeWidth={2.5} />
           </button>
         )}
+      </div>
       </div>
       <p className="text-center text-[11px] text-zinc-600 mt-1.5">
         Los GPTs pueden cometer errores. Verifica información importante.

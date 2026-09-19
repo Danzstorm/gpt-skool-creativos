@@ -1056,7 +1056,10 @@ body {
   }
 }
 
-/* Menciones @ del composer: chip en el texto + preview tipo Higgsfield. */
+/* Menciones @ del composer: picker grande + chip con mini-still + preview hover. */
+.mention-composer {
+  overflow: visible;
+}
 .mention-field {
   min-height: 2.5rem;
 }
@@ -1067,40 +1070,176 @@ body {
   float: left;
   height: 0;
 }
-/* Token Higgsfield: misma caja tipográfica que el texto. No pastillón. */
-.mention-chip {
-  display: inline;
+
+/*
+  El picker NO puede colapsar a una pastilla: anchos/altos en px, no solo
+  utilidades Tailwind. Vive fuera de .frost para que backdrop-filter no lo recorte.
+*/
+.mention-menu {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 0;
+  z-index: 40;
+  width: min(22.5rem, calc(100vw - 2rem));
+  overflow: visible;
+  border-radius: 1.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #09090b;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5);
+}
+.mention-menu--single {
+  width: min(17.5rem, calc(100vw - 2rem));
+}
+.mention-menu-empty {
   margin: 0;
-  padding: 0 0.08em;
+  padding: 0.85rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: var(--color-zinc-500);
+}
+.mention-menu-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 8px;
+  margin: 0;
+  list-style: none;
+  max-height: 22rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.mention-menu-grid--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+.mention-menu-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 0.85rem;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.03);
+}
+.mention-menu-card:hover,
+.mention-menu-card--active {
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+.mention-menu-still {
+  display: block;
+  width: 100%;
+  height: 148px;
+  overflow: hidden;
+  background: #18181b;
+}
+.mention-menu-grid--single .mention-menu-still {
+  height: 200px;
+}
+.mention-menu-still > span,
+.mention-menu-still img,
+.mention-menu-still video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.mention-menu-meta {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  padding: 0.4rem 0.55rem 0.55rem;
+}
+.mention-menu-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #f4f4f5;
+}
+.mention-menu-extra {
+  margin-top: 0.15rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.7rem;
+  line-height: 1.2;
+  color: var(--color-zinc-500);
+}
+
+/* Token compacto con mini-still reconocible (22px, no 12px). */
+.mention-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  max-width: 100%;
+  margin: 0 0.05em;
+  padding: 0.12em 0.4em 0.12em 0.18em;
   border: 0;
-  border-radius: 0.2em;
-  background: none;
+  border-radius: 0.5em;
+  background: rgba(255, 255, 255, 0.07);
   color: inherit;
   font: inherit;
   font-weight: 500;
-  line-height: inherit;
+  line-height: 1.2;
   letter-spacing: inherit;
   white-space: nowrap;
-  vertical-align: baseline;
+  vertical-align: middle;
   cursor: default;
   user-select: none;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }
-.mention-chip--has-preview {
-  text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, var(--accent) 38%, transparent);
-  text-underline-offset: 0.16em;
-  text-decoration-thickness: 1px;
+.mention-chip-still {
+  display: block;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 5px;
+  object-fit: cover;
+  background: #27272a;
+}
+.mention-chip-still--empty {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+.mention-chip-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .mention-chip:hover,
 .mention-chip:focus {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
-  text-decoration-color: color-mix(in srgb, var(--accent) 70%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, rgba(255, 255, 255, 0.08));
 }
 .mention-chip:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--accent) 70%, transparent);
   outline-offset: 2px;
+}
+
+.mention-preview {
+  position: fixed;
+  z-index: 80;
+  width: 300px;
+  overflow: hidden;
+  border-radius: 1.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #09090b;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.55);
+}
+.mention-preview-still {
+  width: 300px;
+  height: 300px;
+  overflow: hidden;
+  background: #18181b;
+}
+.mention-preview-still > span,
+.mention-preview-still img,
+.mention-preview-still video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 @media (prefers-reduced-motion: no-preference) {

@@ -7,7 +7,12 @@ import {
   useLayoutEffect,
   useRef,
 } from "react";
-import { parseMentionTokens } from "@/lib/attachment-mentions";
+import {
+  findCandidateByToken,
+  mentionChipLabel,
+  parseMentionTokens,
+  type MentionCandidate,
+} from "@/lib/attachment-mentions";
 
 export interface MentionFieldHandle {
   focus: () => void;
@@ -27,6 +32,7 @@ interface Props {
   onPaste: (e: React.ClipboardEvent<HTMLDivElement>) => void;
   onTokenPreview: (el: HTMLElement, token: string) => void;
   onTokenPreviewEnd: () => void;
+  mentions: MentionCandidate[];
 }
 
 function serialize(root: HTMLElement): string {
@@ -130,15 +136,36 @@ function placeCaret(root: HTMLElement, offset: number) {
 
 function tokenSpan(
   token: string,
+  candidate: MentionCandidate | undefined,
   onPreview: (el: HTMLElement, token: string) => void,
   onPreviewEnd: () => void
 ): HTMLSpanElement {
   const span = document.createElement("span");
+  const still = candidate?.previewUrl ?? "";
   span.dataset.mention = token;
+  span.dataset.preview = still;
   span.contentEditable = "false";
   span.tabIndex = 0;
-  span.className = "mention-chip mention-chip--has-preview";
-  span.textContent = token;
+  span.className = still ? "mention-chip mention-chip--has-preview" : "mention-chip";
+
+  if (still) {
+    const img = document.createElement("img");
+    img.className = "mention-chip-still";
+    img.src = still;
+    img.alt = "";
+    img.draggable = false;
+    span.appendChild(img);
+  } else {
+    const empty = document.createElement("span");
+    empty.className = "mention-chip-still mention-chip-still--empty";
+    span.appendChild(empty);
+  }
+
+  const label = document.createElement("span");
+  label.className = "mention-chip-label";
+  label.textContent = mentionChipLabel(token);
+  span.appendChild(label);
+
   span.addEventListener("mouseenter", () => onPreview(span, token));
   span.addEventListener("focus", () => onPreview(span, token));
   span.addEventListener("mouseleave", onPreviewEnd);
@@ -146,8 +173,16 @@ function tokenSpan(
   return span;
 }
 
+function stillsMatch(root: HTMLElement, mentions: MentionCandidate[]): boolean {
+  return Array.from(root.querySelectorAll<HTMLElement>("[data-mention]")).every((el) => {
+    const candidate = findCandidateByToken(mentions, el.dataset.mention ?? "");
+    return (el.dataset.preview ?? "") === (candidate?.previewUrl ?? "");
+  });
+}
+
 function nodesFromText(
   text: string,
+  mentions: MentionCandidate[],
   onPreview: (el: HTMLElement, token: string) => void,
   onPreviewEnd: () => void
 ): Node[] {
@@ -162,7 +197,11 @@ function nodesFromText(
     });
   };
   for (const part of parts) {
-    if (part.type === "token") nodes.push(tokenSpan(part.value, onPreview, onPreviewEnd));
+    if (part.type === "token") {
+      nodes.push(
+        tokenSpan(part.value, findCandidateByToken(mentions, part.value), onPreview, onPreviewEnd)
+      );
+    }
     else pushText(part.value);
   }
   return nodes;
@@ -179,6 +218,7 @@ const MentionField = forwardRef<MentionFieldHandle, Props>(function MentionField
     onPaste,
     onTokenPreview,
     onTokenPreviewEnd,
+    mentions,
   },
   ref
 ) {
@@ -186,8 +226,10 @@ const MentionField = forwardRef<MentionFieldHandle, Props>(function MentionField
   const pendingCaret = useRef<number | null>(null);
   const previewRef = useRef(onTokenPreview);
   const previewEndRef = useRef(onTokenPreviewEnd);
+  const mentionsRef = useRef(mentions);
   previewRef.current = onTokenPreview;
   previewEndRef.current = onTokenPreviewEnd;
+  mentionsRef.current = mentions;
 
   const rebuild = useCallback((text: string) => {
     const root = rootRef.current;
@@ -195,6 +237,7 @@ const MentionField = forwardRef<MentionFieldHandle, Props>(function MentionField
     root.replaceChildren(
       ...nodesFromText(
         text,
+        mentionsRef.current,
         (el, token) => previewRef.current(el, token),
         () => previewEndRef.current()
       )
@@ -204,13 +247,13 @@ const MentionField = forwardRef<MentionFieldHandle, Props>(function MentionField
   useLayoutEffect(() => {
     const root = rootRef.current;
     if (!root) return;
-    if (serialize(root) === value) return;
+    if (serialize(root) === value && stillsMatch(root, mentions)) return;
     rebuild(value);
     if (pendingCaret.current !== null) {
       placeCaret(root, pendingCaret.current);
       pendingCaret.current = null;
     }
-  }, [value, rebuild]);
+  }, [value, mentions, rebuild]);
 
   useImperativeHandle(ref, () => ({
     focus() {

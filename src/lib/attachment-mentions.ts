@@ -43,6 +43,23 @@ export type MentionSourceFile = AttachmentLike & {
 /** Token completo ya insertado: `@Imagen 12`, `@Video 1`, `@Archivo 3`. */
 export const MENTION_TOKEN_RE = /@(?:Imagen|Video|Archivo)\s+\d+/g;
 
+/** Still del picker `@`. En CSS, no en utilidades que se pueden colapsar. */
+export const MENTION_STILL_MIN_PX = 148;
+/** Preview Higgsfield al hover/focus del chip o de una tarjeta. */
+export const MENTION_HOVER_PREVIEW_PX = 300;
+/** Mini-still del token inline: reconocible, no un blur de 12px. */
+export const MENTION_CHIP_STILL_PX = 22;
+
+/** Rótulo visible: `@Imagen 2` → `Imagen 2`. */
+export function mentionChipLabel(token: string): string {
+  return token.replace(/^@/, "");
+}
+
+/** Una sola foto: columna ancha. Varias: grilla 2 columnas. */
+export function mentionMenuColumns(count: number): 1 | 2 {
+  return count > 1 ? 2 : 1;
+}
+
 function fold(text: string): string {
   return text
     .normalize("NFD")
