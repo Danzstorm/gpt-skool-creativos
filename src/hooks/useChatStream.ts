@@ -26,6 +26,8 @@ export type UseChatStreamOptions = {
   bumpThreadAfterSend: (threadId: string, messageLabel: string) => void;
   applyThreadTitle: (threadId: string, title: string) => void;
   onUserMessageAppended?: () => void;
+  /** Espera a que Gemini llene la transcripción de los videos adjuntos. */
+  waitForVideoAnalysis?: () => Promise<boolean>;
 };
 
 export function useChatStream({
@@ -41,6 +43,7 @@ export function useChatStream({
   bumpThreadAfterSend,
   applyThreadTitle,
   onUserMessageAppended,
+  waitForVideoAnalysis,
 }: UseChatStreamOptions) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
@@ -50,6 +53,7 @@ export function useChatStream({
   const [isEditing, setIsEditing] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
+  const waitingVideoRef = useRef(false);
   const messagesRef = useRef<Message[]>(messages);
   useEffect(() => {
     messagesRef.current = messages;
@@ -165,9 +169,23 @@ export function useChatStream({
         (!text.trim() && attachedFiles.length === 0) ||
         isLoading ||
         pendingUploads > 0 ||
+        waitingVideoRef.current ||
         !activeGptId
       )
         return;
+
+      if (attachedFiles.some((file) => file.analyzing) && waitForVideoAnalysis) {
+        waitingVideoRef.current = true;
+        try {
+          const ready = await waitForVideoAnalysis();
+          if (!ready) {
+            composerRef.current?.setText(text);
+            return;
+          }
+        } finally {
+          waitingVideoRef.current = false;
+        }
+      }
 
       const messageText = text.trim();
       const messageLabel =
@@ -225,6 +243,8 @@ export function useChatStream({
       onUserMessageAppended,
       pendingUploads,
       runAssistant,
+      waitForVideoAnalysis,
+      composerRef,
     ]
   );
 

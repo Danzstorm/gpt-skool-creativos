@@ -155,6 +155,7 @@ export default function UnifiedChat({
     clearAttachments,
     restoreAttachments,
     uploadFiles,
+    waitForVideoAnalysis,
     removeAttached,
     onDragOver,
     onDragLeave,
@@ -176,6 +177,7 @@ export default function UnifiedChat({
     bumpThreadAfterSend,
     applyThreadTitle,
     onUserMessageAppended: () => setShowScrollBtn(false),
+    waitForVideoAnalysis,
   });
 
   const {

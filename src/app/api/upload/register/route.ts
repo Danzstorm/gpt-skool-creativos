@@ -4,7 +4,7 @@ import OpenAI from "openai";
 import { rejectReason } from "@/lib/upload-limits";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { detectSupportedImageMime, normalizeUploadFileName, openaiImageName } from "@/lib/upload-file";
-import { GEMINI_MODEL, describeVideo, estimateGeminiCost, uploadVideo, worstCaseVideoCost } from "@/lib/gemini-upload";
+// Gemini vive en /api/upload/analyze: register solo deja el video adjunto.
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -50,18 +50,22 @@ export async function POST(request: NextRequest) {
   // en lugar de crear copias y cobrar/procesar la misma imagen otra vez.
   const { data: existing } = await service
     .from("uploaded_files")
-    .select("openai_file_id, mime, name")
+    .select("openai_file_id, mime, name, video_description")
     .eq("user_id", user.id)
     .eq("storage_path", path)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
   if (existing) {
+    const analyzing = Boolean(
+      existing.mime?.startsWith("video/") && !existing.video_description?.trim()
+    );
     return NextResponse.json({
       file_id: existing.openai_file_id,
       name: existing.name,
       mime: existing.mime,
       kind: kindFromMime(existing.mime),
+      ...(analyzing ? { analyzing: true } : {}),
     });
   }
 
@@ -95,7 +99,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (finalMime.startsWith("video/")) {
-    return registerVideo({ service, userId: user.id, path, name, finalMime, blob });
+    return registerVideo({ service, userId: user.id, path, name, finalMime });
   }
 
   // Las imágenes van con nombre neutro para que el modelo no pueda citar el
@@ -152,14 +156,9 @@ export async function POST(request: NextRequest) {
 
 /**
  * Rama de video de /api/upload/register: nunca sube el video a OpenAI (la
- * Responses API no lo entiende, y sería carísimo/inútil). En su lugar lo sube
- * a la Files API de Gemini, pide una descripción y guarda ESA descripción
- * como el "contenido" del archivo (uploaded_files.video_description) — el
- * modelo la recibe como texto plano (ver src/lib/chat-content.ts).
- *
- * Mismo patrón RESERVAR-LUEGO-VERIFICAR que /api/transcribe para el gasto de
- * Whisper: se escribe el costo peor caso en `usage_events` ANTES de llamar a
- * Gemini, y se corrige (o se borra, si algo falla) después con el costo real.
+ * Responses API no lo entiende). Solo crea la fila; Gemini corre después en
+ * /api/upload/analyze para no bloquear el attach. El modelo recibe la
+ * descripción como texto plano (ver src/lib/chat-content.ts).
  */
 async function registerVideo({
   service,
@@ -167,124 +166,40 @@ async function registerVideo({
   path,
   name,
   finalMime,
-  blob,
 }: {
   service: ReturnType<typeof createServiceClient>;
   userId: string;
   path: string;
   name: string;
   finalMime: string;
-  blob: Blob;
 }) {
-  const { data: reservation, error: reservationError } = await service
-    .from("usage_events")
-    .insert({
-      user_id: userId,
-      gpt_id: null,
-      thread_id: null,
-      model: GEMINI_MODEL,
-      tokens_in: null,
-      tokens_out: null,
-      cost: worstCaseVideoCost(),
-    })
-    .select("id")
-    .single();
-  if (reservationError || !reservation) {
-    console.error("upload/register video reservation failed", {
-      code: reservationError?.code,
-      message: reservationError?.message,
-    });
-    return NextResponse.json(
-      { error: "No se pudo iniciar el análisis del video. Inténtalo de nuevo en un momento." },
-      { status: 503 }
-    );
-  }
-
-  const releaseReservation = async () => {
-    const { error } = await service.from("usage_events").delete().eq("id", reservation.id);
-    if (error) {
-      // Queda una reserva de más contra el gasto registrado. Lado seguro
-      // (sobreestima, no subestima) pero hay que poder verlo.
-      console.error("upload/register video reservation release failed", {
-        id: reservation.id,
-        code: error.code,
-        message: error.message,
-      });
-    }
-  };
-
-  const geminiKey = process.env.GEMINI_API_KEY;
-  if (!geminiKey) {
-    await releaseReservation();
+  if (!process.env.GEMINI_API_KEY) {
     return NextResponse.json(
       { error: "El análisis de video no está disponible todavía (falta configurar GEMINI_API_KEY)." },
       { status: 503 }
     );
   }
 
-  try {
-    const bytes = new Uint8Array(await blob.arrayBuffer());
-    const { fileUri, mimeType } = await uploadVideo(fetch, geminiKey, {
-      bytes,
-      mimeType: finalMime,
-      displayName: name,
-    });
-    const { text: description, tokensIn, tokensOut } = await describeVideo(fetch, geminiKey, { fileUri, mimeType });
-    if (!description.trim()) throw new Error("Gemini no devolvió una descripción del video");
-
-    // Se ajusta la reserva al costo real, casi siempre menor que el peor caso.
-    const { error: usageError } = await service
-      .from("usage_events")
-      .update({ tokens_in: tokensIn, tokens_out: tokensOut, cost: estimateGeminiCost(tokensIn, tokensOut) })
-      .eq("id", reservation.id);
-    if (usageError) {
-      console.error("upload/register video usage reconcile error", {
-        code: usageError.code,
-        message: usageError.message,
-      });
-    }
-
-    // ID sintético: este archivo NUNCA existió en OpenAI. Prefijo obvio para
-    // que nadie lo confunda con un file_id real al leer la tabla.
-    const openaiFileId = `video_${crypto.randomUUID()}`;
-    const { error: mapError } = await service.from("uploaded_files").insert({
-      openai_file_id: openaiFileId,
-      user_id: userId,
-      storage_path: path,
-      mime: finalMime,
-      name,
-      video_description: description.trim(),
-    });
-    if (mapError) {
-      // El costo real de Gemini ya se gastó y ya se corrigió arriba: no se
-      // borra esa fila de usage_events, sería esconder un gasto que sí
-      // ocurrió. El blob de Storage queda huérfano (mismo caso que cualquier
-      // otro archivo subido y nunca registrado — lo recoge la limpieza
-      // existente, ver scripts/lib/orphan-files.mjs).
-      console.error("upload/register video mapping error", { code: mapError.code, message: mapError.message });
-      return NextResponse.json({ error: "No se pudo registrar el video" }, { status: 500 });
-    }
-
-    return NextResponse.json({ file_id: openaiFileId, name, mime: finalMime, kind: "video" as const });
-  } catch (videoError) {
-    // Ningún paso de Gemini llegó a buen puerto: se suelta la reserva (no se
-    // gastó nada de verdad) y se propaga el motivo de Gemini tal cual — por
-    // ejemplo, un video que excede su límite de duración no se valida acá (no
-    // hay ffprobe en serverless, ver upload-limits.ts) y llega como este error.
-    await releaseReservation();
-    console.error("upload/register video processing error", {
-      path,
-      mime: finalMime,
-      error: videoError instanceof Error ? videoError.message : String(videoError),
-    });
-    return NextResponse.json(
-      {
-        error:
-          videoError instanceof Error
-            ? `No se pudo analizar el video: ${videoError.message}`
-            : "No se pudo analizar el video",
-      },
-      { status: 422 }
-    );
+  // ID sintético: este archivo NUNCA existió en OpenAI. Prefijo obvio para
+  // que nadie lo confunda con un file_id real al leer la tabla.
+  const openaiFileId = `video_${crypto.randomUUID()}`;
+  const { error: mapError } = await service.from("uploaded_files").insert({
+    openai_file_id: openaiFileId,
+    user_id: userId,
+    storage_path: path,
+    mime: finalMime,
+    name,
+  });
+  if (mapError) {
+    console.error("upload/register video mapping error", { code: mapError.code, message: mapError.message });
+    return NextResponse.json({ error: "No se pudo registrar el video" }, { status: 500 });
   }
+
+  return NextResponse.json({
+    file_id: openaiFileId,
+    name,
+    mime: finalMime,
+    kind: "video" as const,
+    analyzing: true,
+  });
 }

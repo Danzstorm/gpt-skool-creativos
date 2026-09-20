@@ -5,7 +5,7 @@
 //
 // Prompt, caps y las dos llamadas paralelas (transcripción + visual) deben
 // coincidir con scripts/lib/gemini-video.mjs. Este archivo es la ruta de
-// producción (usada por /api/upload/register).
+// producción (usada por /api/upload/analyze vía video-analyze).
 //
 // A propósito en su propio módulo y no en src/lib/pricing.ts: ese archivo es
 // precios de OpenAI (USD por 1M de tokens de los modelos de chat) y Gemini no

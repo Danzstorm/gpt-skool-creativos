@@ -9,7 +9,7 @@
 export const MAX_SIZE_MB = 25;
 export const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
 
-// Los videos nunca van a OpenAI (los describe Gemini, ver /api/upload/register
+// Los videos nunca van a OpenAI (los describe Gemini, ver /api/upload/analyze
 // y src/lib/gemini-upload.ts), así que su tope de tamaño es propio y más alto:
 // no comparten el límite pensado para no reventar la función que copia a
 // OpenAI. Debe coincidir con el file_size_limit del bucket chat-uploads

@@ -28,6 +28,7 @@ import {
   VISION_DISABLED_ERROR,
   threadAttachmentNumbers,
 } from "@/lib/chat-request";
+import { fillMissingVideoDescriptions } from "@/lib/video-analyze";
 import { releaseThreadLease, type ThreadLease } from "@/lib/thread-lease";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import OpenAI from "openai";
@@ -58,6 +59,18 @@ function attachmentLookupLog(cause: unknown): { code?: unknown; message: string 
       cause && typeof cause === "object" && "code" in cause ? cause.code : undefined,
     message: cause instanceof Error ? cause.message : String(cause),
   };
+}
+
+async function withVideoDescriptions(
+  serviceClient: SupabaseClient,
+  userId: string,
+  incoming: IncomingFile[]
+): Promise<{ ok: true; files: IncomingFile[] } | { ok: false; response: NextResponse }> {
+  const filled = await fillMissingVideoDescriptions(serviceClient, userId, incoming);
+  if (!filled.ok) {
+    return { ok: false, response: jsonError(filled.error, filled.status) };
+  }
+  return { ok: true, files: filled.files };
 }
 
 async function readJsonBody(request: NextRequest): Promise<
@@ -136,6 +149,9 @@ export async function executeChatTurn({
       return jsonError(availability.error, 400);
     }
     incoming = availability.files;
+    const described = await withVideoDescriptions(serviceClient, user.id, incoming);
+    if (!described.ok) return described.response;
+    incoming = described.files;
   }
 
   const leaseResult = await acquireRouteThreadLease(supabase, threadId, "chat");
@@ -426,6 +442,9 @@ export async function executeRegenerateTurn({
         );
         if (availability.ok) incoming = availability.files;
       }
+      const described = await withVideoDescriptions(serviceClient, user.id, incoming);
+      if (!described.ok) return described.response;
+      incoming = described.files;
     }
 
     const conversationId = await ensureThreadConversation({

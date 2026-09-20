@@ -57,6 +57,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   { isLoading, isUploading, isUploadingVideo, pendingCount, videoEnabled, isEditing, onCancelEdit, attachedFiles, mentions, onFilesSelected, onRemoveFile, onSend, onStop },
   ref
 ) {
+  const analyzingAttached = attachedFiles.some((file) => file.analyzing);
   const [input, setInput] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   // El stream vive en estado (y no en un ref) porque la onda necesita
@@ -269,7 +270,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             const visual = f.type === "image" || (f.type === "video" && f.previewUrl);
             return visual ? (
               <div key={i} className="relative group/thumb">
-                <span className="block h-16 w-16 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
+                <span className="relative block h-16 w-16 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
                   <AttachmentStill
                     file={{
                       kind: f.type,
@@ -279,6 +280,11 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
                     className="h-16 w-16 object-cover"
                     iconSize={16}
                   />
+                  {f.analyzing && (
+                    <span className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-xl bg-black/50">
+                      <span className="h-3 w-3 rounded-full border-2 border-zinc-500 border-t-zinc-200 animate-spin" />
+                    </span>
+                  )}
                 </span>
                 <button
                   onClick={() => onRemoveFile(i)}
@@ -298,6 +304,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
                   <Paperclip size={13} className="text-zinc-400 flex-shrink-0" />
                 )}
                 <span className="max-w-[120px] truncate">{f.name}</span>
+                {f.analyzing && <span className="text-zinc-500">analizando…</span>}
                 <button onClick={() => onRemoveFile(i)} className="text-zinc-500 hover:text-ink ml-1">
                   <X size={12} />
                 </button>
@@ -316,10 +323,10 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           {/* El progreso vive acá y no en el placeholder del textarea: ahí
               decía "Analizando video..." y hacía sentir que el campo estaba
               ocupado, cuando escribir siempre estuvo permitido. */}
-          {isUploading && (
+          {(isUploading || analyzingAttached) && (
             <div className="flex h-16 items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-400">
               <span className="w-3 h-3 rounded-full border-2 border-zinc-600 border-t-zinc-300 animate-spin" />
-              {isUploadingVideo ? (
+              {isUploadingVideo || analyzingAttached ? (
                 <span>
                   {VIDEO_ANALYZING_LABEL}
                   <span className="block text-zinc-500">{VIDEO_ANALYZING_HINT}</span>
@@ -487,7 +494,11 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-brand text-white transition hover:bg-[#E00032] active:scale-95 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500 disabled:hover:bg-zinc-800"
             // Enviar sigue esperando al adjunto: mandar antes dejaría el mensaje
             // sin el archivo que lo motivó. Escribir, en cambio, nunca se bloquea.
-            title={isUploading ? "Esperando a que termine el adjunto" : "Enviar"}
+            title={
+              isUploading || analyzingAttached
+                ? "Esperando a que termine el adjunto"
+                : "Enviar"
+            }
             aria-label="Enviar"
           >
             <ArrowUp size={16} strokeWidth={2.5} />

@@ -24,8 +24,8 @@ const supabase = createClient();
 export function useChatUploads(canAttach: boolean) {
   const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>([]);
   const [pendingUploads, setPendingUploads] = useState(0);
-  // Solo para el placeholder del composer ("Analizando video..."): el análisis
-  // con Gemini tarda bastante más que subir una imagen o un documento.
+  // Video en vuelo hacia Storage/register. El análisis Gemini va aparte
+  // (attachedFiles[].analyzing) para no bloquear el attach.
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -43,6 +43,55 @@ export function useChatUploads(canAttach: boolean) {
   const clearAttachments = useCallback(() => setAttachedFiles([]), []);
   const restoreAttachments = useCallback((files: UploadedFile[] | undefined) => {
     setAttachedFiles(files ? [...files] : []);
+  }, []);
+
+  const analyzeByIdRef = useRef(new Map<string, Promise<boolean>>());
+  const markVideoAnalyzing = useCallback((fileId: string, analyzing: boolean) => {
+    setAttachedFiles((prev) =>
+      prev.map((file) => (file.openai_file_id === fileId ? { ...file, analyzing } : file))
+    );
+  }, []);
+
+  const startVideoAnalyze = useCallback(
+    (fileId: string) => {
+      const existing = analyzeByIdRef.current.get(fileId);
+      if (existing) return existing;
+      const pending = (async () => {
+        try {
+          const res = await fetch("/api/upload/analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ file_id: fileId }),
+          });
+          if (!res.ok) {
+            const data = await res.json().catch(() => null);
+            setUploadError(
+              typeof data?.error === "string" ? data.error : "No se pudo analizar el video"
+            );
+            markVideoAnalyzing(fileId, false);
+            return false;
+          }
+          markVideoAnalyzing(fileId, false);
+          return true;
+        } catch {
+          setUploadError("No se pudo analizar el video");
+          markVideoAnalyzing(fileId, false);
+          return false;
+        } finally {
+          analyzeByIdRef.current.delete(fileId);
+        }
+      })();
+      analyzeByIdRef.current.set(fileId, pending);
+      return pending;
+    },
+    [markVideoAnalyzing]
+  );
+
+  const waitForVideoAnalysis = useCallback(async () => {
+    const pending = [...analyzeByIdRef.current.values()];
+    if (pending.length === 0) return true;
+    const results = await Promise.all(pending);
+    return results.every(Boolean);
   }, []);
 
   const uploadFiles = useCallback(async (files: File[]) => {
@@ -117,6 +166,10 @@ export function useChatUploads(canAttach: boolean) {
           const kind = data.kind as UploadedFile["type"];
           const uploadedAsImage = kind === "image";
           const previewBlob = attachmentPreviewBlob(file, kind, data.mime);
+          const analyzing = kind === "video" && data.analyzing === true;
+          if (analyzing && typeof data.file_id === "string") {
+            void startVideoAnalyze(data.file_id);
+          }
           return {
             file: {
               name: original.name,
@@ -124,6 +177,7 @@ export function useChatUploads(canAttach: boolean) {
               type: kind,
               previewUrl: uploadedAsImage ? URL.createObjectURL(previewBlob) : posterUrl,
               ...(durationSeconds != null ? { durationSeconds } : {}),
+              ...(analyzing ? { analyzing: true } : {}),
             },
           };
         } catch {
@@ -163,7 +217,7 @@ export function useChatUploads(canAttach: boolean) {
       ...results.flatMap((r) => ("error" in r && r.error ? [r.error] : [])),
     ]);
     if (error) setUploadError(error);
-  }, []);
+  }, [startVideoAnalyze]);
 
   /**
    * Adjunta un archivo que ya vive en la biblioteca del usuario.
@@ -226,6 +280,7 @@ export function useChatUploads(canAttach: boolean) {
     clearAttachments,
     restoreAttachments,
     uploadFiles,
+    waitForVideoAnalysis,
     attachFromLibrary,
     removeAttached,
     onDragOver,

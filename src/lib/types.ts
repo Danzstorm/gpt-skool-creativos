@@ -125,6 +125,11 @@ export interface UploadedFile {
   /** Duración del video en segundos, si el navegador pudo leerla al adjuntar. */
   durationSeconds?: number;
   /**
+   * El video ya está adjunto pero Gemini todavía no llenó la transcripción.
+   * El composer se puede usar; enviar espera a que baje.
+   */
+  analyzing?: boolean;
+  /**
    * Número con el que se rotuló este archivo para el modelo ("imagen 3"),
    * guardado al mandarlo. Tiene que viajar hasta el cliente: si la interfaz lo
    * recalcula por su cuenta, muestra un número distinto del que escuchó el
