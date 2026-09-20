@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, PointerEvent } from "react";
 import { ArrowUpRight } from "lucide-react";
 import type { Gpt } from "@/lib/types";
 import GptGlyph from "@/components/chat/GptGlyph";
@@ -19,6 +19,15 @@ export default function GptCard({ gpt, onSelect, onPreview, style }: Props) {
   const description = gpt.description?.trim() || "";
   const { accentHex } = getGptVisual(gpt.category, gpt.name, gpt.description);
 
+  // El halo de hover sigue al puntero (--mx/--my en % de la card) en vez de
+  // quedar centrado fijo — mismo espíritu que el rim reactivo del prototipo,
+  // sin sumar el SVG/rainbow flood que ya se descartó para este catálogo.
+  function trackPointer(e: PointerEvent<HTMLButtonElement>) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    e.currentTarget.style.setProperty("--mx", `${((e.clientX - rect.left) / rect.width) * 100}%`);
+    e.currentTarget.style.setProperty("--my", `${((e.clientY - rect.top) / rect.height) * 100}%`);
+  }
+
   return (
     <button
       type="button"
@@ -27,6 +36,7 @@ export default function GptCard({ gpt, onSelect, onPreview, style }: Props) {
       onMouseLeave={() => onPreview?.(null)}
       onFocus={() => onPreview?.(accentHex)}
       onBlur={() => onPreview?.(null)}
+      onPointerMove={trackPointer}
       style={{ ...style, "--craft": accentHex } as CSSProperties}
       aria-label={`Abrir ${gpt.name}`}
       className="gpt-card group relative fade-up flex h-full min-h-[13.75rem] w-full cursor-pointer flex-col items-start rounded-3xl border border-zinc-800 bg-zinc-900 p-6 text-left motion-safe:transition-[border-color,background-color,box-shadow] motion-safe:duration-200 motion-safe:hover:-translate-y-px motion-safe:active:scale-[0.99]"

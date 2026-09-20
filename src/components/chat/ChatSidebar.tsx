@@ -36,6 +36,8 @@ interface Props {
   sidebarOpen: boolean;
   collapsed: boolean;
   onToggleCollapse: () => void;
+  sidebarWidth: number;
+  onResizeWidth: (width: number) => void;
   profile: {
     fullName: string | null;
     email: string | null;
@@ -83,6 +85,8 @@ function ChatSidebar({
   sidebarOpen,
   collapsed,
   onToggleCollapse,
+  sidebarWidth,
+  onResizeWidth,
   profile,
   chatSearch,
   onSearchChange,
@@ -114,6 +118,8 @@ function ChatSidebar({
 }: Props) {
   const [dropProjectId, setDropProjectId] = useState<string | null>(null);
   const [dropLoose, setDropLoose] = useState(false);
+  const [resizing, setResizing] = useState(false);
+  const asideRef = useRef<HTMLElement>(null);
 
   const searchRef = useRef<HTMLInputElement>(null);
   // El user agent solo existe en el navegador; en el servidor se asume Ctrl.
@@ -136,6 +142,33 @@ function ChatSidebar({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [collapsed, onToggleCollapse]);
+
+  // Arrastre del borde derecho. `setPointerCapture` mantiene los eventos
+  // llegando aunque el puntero salga del handle de 4px durante el drag.
+  function startResize(e: React.PointerEvent<HTMLDivElement>) {
+    if (collapsed) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setResizing(true);
+    const left = asideRef.current?.getBoundingClientRect().left ?? 0;
+
+    function onMove(ev: PointerEvent) {
+      onResizeWidth(ev.clientX - left);
+    }
+    function onUp() {
+      setResizing(false);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    }
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }
+
+  function nudgeResize(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (e.key === "ArrowLeft") onResizeWidth(sidebarWidth - 10);
+    else if (e.key === "ArrowRight") onResizeWidth(sidebarWidth + 10);
+    else return;
+    e.preventDefault();
+  }
 
   const gptNameById = useMemo(() => new Map(gpts.map((g) => [g.id, g.name])), [gpts]);
 
@@ -177,15 +210,18 @@ function ChatSidebar({
       )}
 
       <aside
+        ref={asideRef}
+        style={{ "--sidebar-w": `${sidebarWidth}px` } as React.CSSProperties}
         className={cn(
-          "chat-sidebar flex-col border-r border-zinc-800 z-30 overflow-hidden",
-          "md:flex md:relative md:translate-x-0 transition-[width] duration-200 ease-out",
-          collapsed ? "md:w-0 md:border-r-0" : "md:w-64",
+          "chat-sidebar relative flex-col border-r border-zinc-800 z-30 overflow-hidden",
+          "md:flex md:relative md:translate-x-0 ease-out",
+          resizing ? "md:transition-none" : "md:transition-[width] md:duration-200",
+          collapsed ? "md:w-0 md:border-r-0" : "md:w-[var(--sidebar-w)]",
           "fixed top-0 bottom-0 left-0 flex w-64 transition-transform duration-200",
           sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         )}
       >
-        <div className="w-64 h-full flex flex-col flex-shrink-0">
+        <div className="h-full flex flex-col flex-shrink-0 w-64 md:w-[var(--sidebar-w)]">
           <div className="flex items-center justify-between gap-2 px-3 pt-3 pb-2">
             <div className="flex items-center gap-2 min-w-0">
               <Orb size="xs" />
@@ -452,6 +488,19 @@ function ChatSidebar({
             isAdmin={profile.isAdmin}
           />
         </div>
+
+        {!collapsed && (
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Redimensionar panel"
+            aria-valuenow={Math.round(sidebarWidth)}
+            tabIndex={0}
+            onPointerDown={startResize}
+            onKeyDown={nudgeResize}
+            className="hidden md:block absolute top-0 bottom-0 right-0 w-1 -mr-0.5 cursor-col-resize touch-none z-10 hover:bg-brand/40 focus-visible:bg-brand/50 focus-visible:outline-none"
+          />
+        )}
       </aside>
     </>
   );

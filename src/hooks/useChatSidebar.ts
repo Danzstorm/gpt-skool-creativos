@@ -2,9 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 import {
   OPEN_PROJECTS_KEY,
   SIDEBAR_COLLAPSED_KEY,
+  SIDEBAR_WIDTH_DEFAULT,
+  SIDEBAR_WIDTH_KEY,
+  clampSidebarWidth,
   ensureOpenProjectId,
   isSidebarCollapsedValue,
   parseOpenProjectIds,
+  parseSidebarWidth,
   sidebarCollapsedStorageValue,
   toggleOpenProjectId,
 } from "@/lib/sidebar-persistence";
@@ -21,6 +25,7 @@ import {
 export function useChatSidebar() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarWidth, setSidebarWidthState] = useState(SIDEBAR_WIDTH_DEFAULT);
   const [chatSearch, setChatSearch] = useState("");
   const [openProjectIds, setOpenProjectIds] = useState<string[]>([]);
 
@@ -32,6 +37,10 @@ export function useChatSidebar() {
       setSidebarCollapsed(true);
     }
     setOpenProjectIds(parseOpenProjectIds(localStorage.getItem(OPEN_PROJECTS_KEY)));
+    const savedWidth = parseSidebarWidth(localStorage.getItem(SIDEBAR_WIDTH_KEY));
+    if (savedWidth != null) {
+      setSidebarWidthState(clampSidebarWidth(savedWidth, window.innerWidth));
+    }
     /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
@@ -65,6 +74,15 @@ export function useChatSidebar() {
     [persistOpenProjects]
   );
 
+  const setSidebarWidth = useCallback((width: number) => {
+    setSidebarWidthState((prev) => {
+      const clamped = clampSidebarWidth(width, window.innerWidth);
+      if (clamped === prev) return prev;
+      localStorage.setItem(SIDEBAR_WIDTH_KEY, String(clamped));
+      return clamped;
+    });
+  }, []);
+
   const openSidebar = useCallback(() => setSidebarOpen(true), []);
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
   const clearSearch = useCallback(() => setChatSearch(""), []);
@@ -75,6 +93,8 @@ export function useChatSidebar() {
     closeSidebar,
     sidebarCollapsed,
     toggleSidebarCollapsed,
+    sidebarWidth,
+    setSidebarWidth,
     openProjectIds,
     toggleProject,
     openProject,

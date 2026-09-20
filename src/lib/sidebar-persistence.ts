@@ -5,6 +5,21 @@
 
 export const SIDEBAR_COLLAPSED_KEY = "chat_sidebar_collapsed";
 export const OPEN_PROJECTS_KEY = "chat_open_projects";
+export const SIDEBAR_WIDTH_KEY = "chat_sidebar_width";
+
+export const SIDEBAR_WIDTH_DEFAULT = 256;
+const SIDEBAR_WIDTH_MIN = 190;
+const SIDEBAR_WIDTH_MAX = 420;
+
+/** Ancho mínimo 190px, máximo min(420px, 45% del viewport) — igual que el prototipo. */
+export function clampSidebarWidth(width: number, viewportWidth: number): number {
+  return Math.max(SIDEBAR_WIDTH_MIN, Math.min(Math.min(SIDEBAR_WIDTH_MAX, viewportWidth * 0.45), width));
+}
+
+export function parseSidebarWidth(raw: string | null): number | null {
+  const value = raw == null ? NaN : Number(raw);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
 
 /** Solo `"1"` cuenta como colapsado. Cualquier otra cosa (incluido `"true"`) es expandido. */
 export function isSidebarCollapsedValue(raw: string | null): boolean {

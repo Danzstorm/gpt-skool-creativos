@@ -385,7 +385,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             anchor={tokenPreview.rect}
           />
         )}
-      <div className="frost flex items-end gap-2 rounded-3xl px-4 py-2.5 transition-colors focus-within:border-brand/40 focus-within:ring-2 focus-within:ring-brand/25">
+      <div className="composer-shell flex items-end gap-2 px-4 py-2.5">
         <input
           ref={fileInputRef}
           type="file"

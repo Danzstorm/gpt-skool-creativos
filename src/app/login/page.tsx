@@ -6,6 +6,7 @@ import { ArrowUpRight, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import Aurora from "@/components/ui/Aurora";
 import Orb from "@/components/ui/Orb";
+import EnergyCanvas from "@/components/ui/EnergyCanvas";
 
 // Google es la única forma de entrar. El magic link se retiró porque a mucha
 // gente no le llegaba o abría el enlace en otro navegador y no funcionaba.
@@ -126,7 +127,10 @@ export default function LoginPage({
       <Aurora />
       <div className="glass-strong relative z-10 w-full max-w-sm rounded-3xl p-8">
         <div className="mb-9 text-center">
-          <Orb size="md" className="mx-auto mb-6" />
+          <span className="energy-halo relative mx-auto mb-6 flex h-[104px] w-[104px] items-center justify-center rounded-full">
+            <EnergyCanvas size={104} speed={0.0025} />
+            <Orb size="md" className="relative" />
+          </span>
           <Link href="/" className="inline-flex items-baseline gap-2">
             <span className="font-display wordmark brand-text text-3xl font-extrabold uppercase italic tracking-tight">
               {communityName}

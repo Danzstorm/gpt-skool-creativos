@@ -1,8 +1,19 @@
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ShieldCheck, LogOut, ChevronsUpDown } from "lucide-react";
 import { useDismissable } from "@/hooks/useDismissable";
 import { humanDisplayName } from "@/lib/utils";
+import {
+  TEXT_SIZE_DEFAULT,
+  TEXT_SIZE_KEY,
+  TEXT_SIZE_MAX,
+  TEXT_SIZE_MIN,
+  TEXT_SIZE_STEP,
+  applyTextSize,
+  clampTextSize,
+  parseTextSize,
+} from "@/lib/text-size";
+import MusicMenu from "./MusicMenu";
 
 interface Props {
   fullName: string | null;
@@ -23,8 +34,28 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
   // Las URLs de foto de Google caducan y a veces devuelven 403/404. Si la
   // imagen no carga, volvemos a las iniciales en vez de dejar un hueco roto.
   const [avatarFailed, setAvatarFailed] = useState(false);
+  const [textSize, setTextSize] = useState(TEXT_SIZE_DEFAULT);
   const close = useCallback(() => setOpen(false), []);
   const rootRef = useDismissable<HTMLDivElement>(open, close);
+
+  // Se aplica al montar (una sola vez, el footer vive mientras hay sesión)
+  // en vez de en el render inicial: leer localStorage ahí desfasaría el HTML
+  // del servidor, igual que el resto de la persistencia del sidebar.
+  useEffect(() => {
+    const saved = parseTextSize(localStorage.getItem(TEXT_SIZE_KEY));
+    if (saved != null) {
+      /* eslint-disable-next-line react-hooks/set-state-in-effect -- persistencia post-hidratación */
+      setTextSize(saved);
+      applyTextSize(saved);
+    }
+  }, []);
+
+  function changeTextSize(value: number) {
+    const size = clampTextSize(value);
+    setTextSize(size);
+    applyTextSize(size);
+    localStorage.setItem(TEXT_SIZE_KEY, String(size));
+  }
 
   const personName = humanDisplayName(fullName);
   const displayName = personName || email || "Cuenta";
@@ -46,6 +77,33 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
               Admin
             </Link>
           )}
+
+          <MusicMenu />
+
+          <div className="px-3 py-2 border-t border-white/[0.06]">
+            <div className="flex items-center justify-between text-[11px] text-zinc-500">
+              <span>Tamaño de letra</span>
+              <span className="tabular-nums">{textSize}%</span>
+            </div>
+            <input
+              type="range"
+              min={TEXT_SIZE_MIN}
+              max={TEXT_SIZE_MAX}
+              step={TEXT_SIZE_STEP}
+              value={textSize}
+              onChange={(e) => changeTextSize(Number(e.target.value))}
+              className="mt-1.5 w-full accent-brand"
+              aria-label="Tamaño de letra"
+            />
+            <button
+              type="button"
+              onClick={() => changeTextSize(TEXT_SIZE_DEFAULT)}
+              className="mt-1 text-[11px] text-zinc-400 hover:text-ink transition"
+            >
+              Restablecer
+            </button>
+          </div>
+
           <form action="/api/auth/signout" method="POST">
             <button
               type="submit"

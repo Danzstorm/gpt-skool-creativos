@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { phraseFor, type Phase, type ThinkingAttachments } from "@/lib/thinking-phrases";
+import EnergyCanvas from "@/components/ui/EnergyCanvas";
 
 interface Props {
   /** Fase informada por el servidor. */
@@ -44,12 +45,12 @@ function ThinkingIndicator({ phase, attachments, startedAt }: Props) {
         Generando respuesta
       </span>
 
-      {/* motion-safe: con reduce-motion el punto se queda quieto pero sigue
-          ahí. La frase y el contador no dependen de él. */}
-      <span
-        aria-hidden="true"
-        className="inline-block h-1.5 w-1.5 rounded-full bg-cta motion-safe:animate-pulse"
-      />
+      {/* energy-halo recorta el canvas (2x el slot) de vuelta a 14px. Con
+          reduce-motion EnergyCanvas congela la fase — sigue habiendo un glow
+          fijo en vez de nada. */}
+      <span aria-hidden="true" className="energy-halo relative inline-block h-3.5 w-3.5 flex-shrink-0 rounded-full">
+        <EnergyCanvas size={14} speed={0.0021} />
+      </span>
 
       <span aria-hidden="true" className="thinking-shimmer font-medium">
         {phrase}

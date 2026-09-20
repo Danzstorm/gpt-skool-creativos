@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback, useMemo, type CSSProperties }
 import type { Gpt, Project, ThreadSummary } from "@/lib/types";
 import { Menu, ArrowDown, ChevronDown, Folder, PanelLeftOpen, SquarePen, X } from "lucide-react";
 import Orb from "@/components/ui/Orb";
+import EnergyCanvas from "@/components/ui/EnergyCanvas";
 import { firstNameOf } from "@/lib/utils";
 import { getGptVisual, LOGO_REST_ACCENT } from "@/lib/gpt-visual";
 import GptCatalog from "@/components/GptCatalog";
@@ -88,6 +89,8 @@ export default function UnifiedChat({
     closeSidebar,
     sidebarCollapsed,
     toggleSidebarCollapsed,
+    sidebarWidth,
+    setSidebarWidth,
     openProjectIds,
     toggleProject,
     openProject,
@@ -325,6 +328,8 @@ export default function UnifiedChat({
         sidebarOpen={sidebarOpen}
         collapsed={sidebarCollapsed}
         onToggleCollapse={toggleSidebarCollapsed}
+        sidebarWidth={sidebarWidth}
+        onResizeWidth={setSidebarWidth}
         profile={profile}
         chatSearch={chatSearch}
         onSearchChange={onSearchChange}
@@ -461,7 +466,10 @@ export default function UnifiedChat({
             <div className="flex w-full max-w-6xl mx-auto flex-col items-center py-10 md:py-14">
               <div className="relative mb-8 flex flex-col items-center text-center md:mb-10">
                 <div className="hero-bloom" aria-hidden />
-                <Orb size="xl" className="relative z-[1] mb-6" />
+                <span className="energy-halo relative z-[1] mb-6 flex h-[168px] w-[168px] items-center justify-center rounded-full">
+                  <EnergyCanvas size={168} speed={0.0009} />
+                  <Orb size="xl" className="relative" />
+                </span>
                 <p className="mb-3 text-sm leading-normal text-zinc-500">
                   {firstName ? `Bienvenido de nuevo, ${firstName}` : "Bienvenido de nuevo"}
                 </p>
