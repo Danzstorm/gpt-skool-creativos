@@ -491,28 +491,15 @@ body {
   opacity: 1;
 }
 
-/* Zoom del chrome (sidebar + hero + catálogo + composer).
-   1.15 se rechazó: recortaba. 1.04 se nota y cabe en 1366.
-   Va en un hijo, no en `.chat-shell`: si el mismo nodo tiene
-   `overflow: hidden` + `height: calc(100% / 1.04)`, el zoom pinta
-   más grande pero el clip se queda en la caja chica y deja una
-   franja muerta abajo (y a la derecha). El padre llena el viewport;
-   el hijo se encoge y el zoom recupera el 100% DENTRO del padre.
-   Móvil: sin zoom — el composer no puede perder aire. */
+/* Wrapper flex del chrome. No usar `zoom` aquí: en Chromium
+   `zoom` + tracking apretado colapsa el glifo de espacio
+   ("Nuevochat", "SeedanceDirector") y deja el encuadre corto. */
 .chat-zoom {
   display: flex;
   width: 100%;
   height: 100%;
   min-width: 0;
   min-height: 0;
-}
-
-@media (min-width: 768px) {
-  .chat-zoom {
-    zoom: 1.04;
-    width: calc(100% / 1.04);
-    height: calc(100% / 1.04);
-  }
 }
 
 /* Pie del chat: composer + disclaimer. Placa para que el producto
