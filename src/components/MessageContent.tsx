@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Check, Copy } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -8,11 +8,25 @@ import { cn } from "@/lib/utils";
 
 function CodeBlock({ children }: { children: string }) {
   const [copied, setCopied] = useState(false);
+  const [pressed, setPressed] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const labelTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const pressTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   function copy() {
+    // Reflow forzado: sin esto, clics repetidos mientras la animación sigue
+    // corriendo no la reinician (quitar y volver a poner la misma clase no
+    // reinicia un @keyframes que ya está en marcha).
+    clearTimeout(pressTimer.current);
+    setPressed(false);
+    void buttonRef.current?.offsetWidth;
+    setPressed(true);
+    pressTimer.current = setTimeout(() => setPressed(false), 1550);
+
     navigator.clipboard.writeText(children);
     setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    clearTimeout(labelTimer.current);
+    labelTimer.current = setTimeout(() => setCopied(false), 1300);
   }
 
   return (
@@ -20,12 +34,14 @@ function CodeBlock({ children }: { children: string }) {
       <div className="flex items-center justify-between bg-white/[0.04] border-b border-white/[0.08] px-2.5 py-0.5">
         <span className="text-[10px] uppercase tracking-wider text-zinc-500">Prompt</span>
         <button
+          ref={buttonRef}
           onClick={copy}
           className={cn(
             "flex items-center gap-1 text-[11px] rounded-md px-1.5 py-0.5 transition",
             copied
               ? "text-emerald-400 bg-emerald-500/10"
-              : "text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.06]"
+              : "text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.06]",
+            pressed && "copy-confirmed"
           )}
         >
           {copied ? <Check size={11} /> : <Copy size={11} />}

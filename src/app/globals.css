@@ -7,7 +7,7 @@
    acentos contenidos — no como muro arcoíris ni como esfera negra.
    ============================================================ */
 :root {
-  --background: #050506;
+  --background: #060606;
   --foreground: #EDEDEF;
   --accent: #FF003C;
   --accent-strong: #FF003C;
@@ -21,16 +21,30 @@
   --logo-amber: #FF9A1A;
   --page-accent: #FF003C;
   --cta-gradient: linear-gradient(135deg, #FF003C 0%, #E00032 100%);
+  /* Gradiente oficial del cliente: ámbar→naranja→rojo/rosa→magenta→violeta.
+     Ángulo y paradas exactas — no aproximar. */
   --brand-gradient: linear-gradient(
     135deg,
-    #FEC200 0%,
-    #FF6D1A 16%,
-    #FF003C 32%,
-    #F80092 50%,
-    #F400EB 64%,
-    #A91EFF 82%,
-    #4A44FE 100%
+    #ffbd16 0%,
+    #ff682f 22%,
+    #ff165e 46%,
+    #ee0de4 73%,
+    #7753ff 100%
   );
+
+  /* Superficies del shell de chat, valores exactos del cliente. */
+  --sidebar-bg: #111113;
+  --chat-selected-bg: #222225;
+  --composer-bg: #111113;
+  --composer-border: #ffffff16;
+
+  /* Paleta de la animación de energía (canvas). RGB para el degradado del
+     trazo y los blobs — ver EnergyCanvas.tsx. */
+  --energy-1: #ffb342;
+  --energy-2: #ff526b;
+  --energy-3: #ff2caf;
+  --energy-4: #cf41ef;
+  --energy-5: #7e67ff;
 }
 
 @theme inline {
@@ -464,6 +478,15 @@ body {
   opacity: 0.72;
 }
 
+/* Envoltorio de EnergyCanvas: el canvas mide el doble del slot y se recorta
+   de vuelta con una máscara radial suave (halo), no un borde duro. */
+.energy-halo {
+  position: relative;
+  overflow: hidden;
+  -webkit-mask-image: radial-gradient(closest-side, #000 68%, transparent 100%);
+  mask-image: radial-gradient(closest-side, #000 68%, transparent 100%);
+}
+
 /* Borde con degradado para tarjetas premium */
 .ring-gradient {
   position: relative;
@@ -528,7 +551,7 @@ body {
 /* Columna del chat: negro Creativos. Velo rojo contenido, no flood. */
 .chat-main {
   --page-accent: var(--accent);
-  background-color: #050506;
+  background-color: var(--background);
 }
 
 .chat-veil {
@@ -593,7 +616,9 @@ body {
   z-index: 0;
 }
 
-/* Sidebar: zinc + soplo de marca junto al lockup. */
+/* Sidebar: zinc + soplo de marca junto al lockup. Fondo exacto del cliente
+   (#111113), un escalón más claro que el shell (#060606) para separar panel
+   de contenido sin usar un borde duro. */
 .chat-sidebar {
   background:
     radial-gradient(
@@ -601,7 +626,29 @@ body {
       color-mix(in srgb, var(--accent) 11%, transparent),
       transparent 70%
     ),
-    var(--color-zinc-950);
+    var(--sidebar-bg);
+}
+
+/* Chat/hilo seleccionado: gris plano, sin borde ni sombra — a propósito
+   distinto del wash rojo de `.nav-active` que usan los GPTs del nav. */
+.chat-selected {
+  background: var(--chat-selected-bg);
+  border-color: transparent;
+  box-shadow: none;
+}
+
+/* Composer: shell exacto del cliente (radio 22px, borde #ffffff16, sombra
+   difusa hacia abajo). Reemplaza a `.frost` + `rounded-3xl` para no heredar
+   el blur/backdrop-filter de esa clase, que el prototipo no usa acá. */
+.composer-shell {
+  background: var(--composer-bg);
+  border: 1px solid var(--composer-border);
+  border-radius: 22px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+  transition: border-color 200ms ease;
+}
+.composer-shell:focus-within {
+  border-color: color-mix(in srgb, #fff 16%, var(--composer-border));
 }
 
 /* Empty-state del GPT: velo local del oficio, no flood de card. */
@@ -884,8 +931,13 @@ body {
 .gpt-card:focus-visible {
   background:
     radial-gradient(
+      180px circle at var(--mx, 18%) var(--my, 8%),
+      color-mix(in srgb, var(--craft, var(--accent)) 30%, transparent),
+      transparent 62%
+    ),
+    radial-gradient(
       ellipse 90% 68% at 18% 8%,
-      color-mix(in srgb, var(--craft, var(--accent)) 28%, transparent),
+      color-mix(in srgb, var(--craft, var(--accent)) 20%, transparent),
       transparent 62%
     ),
     color-mix(in srgb, var(--accent) 8%, var(--color-zinc-900));
@@ -898,6 +950,11 @@ body {
 .gpt-card:hover .gpt-card-arrow,
 .gpt-card:focus-visible .gpt-card-arrow {
   color: color-mix(in srgb, var(--accent) 70%, #fff);
+}
+
+.gpt-card:hover .gpt-card-icon,
+.gpt-card:focus-visible .gpt-card-icon {
+  color: var(--craft, var(--accent));
 }
 
 .gpt-glyph-symbol {
@@ -1191,6 +1248,67 @@ body {
   }
   .modal-panel {
     animation: modal-pop 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Botón "Copiar" del bloque de prompt: press suave + glow + flash de color.
+     Dos animaciones separadas (transform/shadow vs. fondo) porque corren en
+     curvas distintas — fusionarlas en una haría que el fondo se recortara
+     junto con el rebote. */
+  @keyframes copy-soft-press {
+    0% {
+      transform: translateY(0) scale(1);
+      box-shadow: 0 0 0 0 transparent;
+    }
+    16% {
+      transform: translateY(1px) scale(0.98);
+      box-shadow: 0 0 14px 2px #ff326526, 0 0 22px 4px #a43de51a;
+    }
+    40% {
+      transform: translateY(0) scale(1);
+      box-shadow: 0 0 14px 2px #ff326522, 0 0 22px 4px #a43de518;
+    }
+    100% {
+      transform: translateY(0) scale(1);
+      box-shadow: 0 0 0 0 transparent;
+    }
+  }
+  @keyframes copy-color {
+    0%,
+    100% {
+      opacity: 0;
+    }
+    22%,
+    40% {
+      opacity: 0.28;
+    }
+    65% {
+      opacity: 0.16;
+    }
+  }
+  .copy-confirmed {
+    position: relative;
+    isolation: isolate;
+    animation: copy-soft-press 1.5s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .copy-confirmed::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: linear-gradient(135deg, #ff3265, #a43de5);
+    animation: copy-color 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+  }
+}
+
+/* Ecualizador de 3 barras junto a "Música" cuando hay una pista sonando. */
+@keyframes music-eq {
+  from {
+    transform: scaleY(0.3);
+  }
+  to {
+    transform: scaleY(1);
   }
 }
 
