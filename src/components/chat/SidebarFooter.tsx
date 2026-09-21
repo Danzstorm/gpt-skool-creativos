@@ -1,8 +1,9 @@
 import { memo, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ShieldCheck, LogOut, ChevronsUpDown } from "lucide-react";
+import { ShieldCheck, LogOut, ChevronsUpDown, ChevronRight, SlidersHorizontal } from "lucide-react";
 import { useDismissable } from "@/hooks/useDismissable";
 import { humanDisplayName } from "@/lib/utils";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
   TEXT_SIZE_DEFAULT,
   TEXT_SIZE_KEY,
@@ -31,6 +32,7 @@ function initialsOf(name: string | null, email: string | null): string {
 
 function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
   const [open, setOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   // Las URLs de foto de Google caducan y a veces devuelven 403/404. Si la
   // imagen no carga, volvemos a las iniciales en vez de dejar un hueco roto.
   const [avatarFailed, setAvatarFailed] = useState(false);
@@ -80,31 +82,20 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
 
           <MusicMenu />
 
-          <div className="px-3 py-2 border-t border-white/[0.06]">
-            <div className="flex items-center justify-between text-[11px] text-zinc-500">
-              <span>Tamaño de letra</span>
-              <span className="tabular-nums">{textSize}%</span>
-            </div>
-            <input
-              type="range"
-              min={TEXT_SIZE_MIN}
-              max={TEXT_SIZE_MAX}
-              step={TEXT_SIZE_STEP}
-              value={textSize}
-              onChange={(e) => changeTextSize(Number(e.target.value))}
-              className="mt-1.5 w-full accent-brand"
-              aria-label="Tamaño de letra"
-            />
-            <button
-              type="button"
-              onClick={() => changeTextSize(TEXT_SIZE_DEFAULT)}
-              className="mt-1 text-[11px] text-zinc-400 hover:text-ink transition"
-            >
-              Restablecer
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              setSettingsOpen(true);
+            }}
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-zinc-300 hover:bg-white/[0.06] hover:text-ink transition"
+          >
+            <SlidersHorizontal size={15} />
+            <span className="flex-1 text-left">Configuración</span>
+            <ChevronRight size={13} />
+          </button>
 
-          <form action="/api/auth/signout" method="POST">
+          <form action="/api/auth/signout" method="POST" className="border-t border-white/[0.06]">
             <button
               type="submit"
               className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-zinc-300 hover:bg-white/[0.06] hover:text-ink transition text-left"
@@ -115,6 +106,39 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
           </form>
         </div>
       )}
+
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent className="max-w-sm p-6">
+          <DialogTitle className="text-base font-medium text-zinc-100">Configuración</DialogTitle>
+          <div className="mt-5">
+            <div className="flex items-center justify-between text-[13px] text-zinc-300">
+              <span>Tamaño de letra</span>
+              <span className="tabular-nums">{textSize}%</span>
+            </div>
+            <input
+              type="range"
+              min={TEXT_SIZE_MIN}
+              max={TEXT_SIZE_MAX}
+              step={TEXT_SIZE_STEP}
+              value={textSize}
+              onChange={(e) => changeTextSize(Number(e.target.value))}
+              className="mt-2 w-full accent-brand"
+              aria-label="Tamaño de letra"
+            />
+            <div className="mt-1 flex justify-between text-[11px] text-zinc-500">
+              <span>Más pequeña</span>
+              <span>Más grande</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => changeTextSize(TEXT_SIZE_DEFAULT)}
+              className="mt-4 w-full rounded-lg border border-white/[0.1] py-2 text-[13px] text-zinc-200 hover:bg-white/[0.06] transition"
+            >
+              Restablecer
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <button
         onClick={() => setOpen((v) => !v)}

@@ -2,6 +2,7 @@ import {
   Aperture,
   Camera,
   Clapperboard,
+  Gem,
   GraduationCap,
   Hexagon,
   ListTodo,
@@ -9,8 +10,11 @@ import {
   Megaphone,
   PenLine,
   PenTool,
+  Play,
   ScanFace,
+  Smartphone,
   Target,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 
@@ -126,6 +130,18 @@ const NAME_PATTERNS: { craft: GptCraft; re: RegExp }[] = [
   { craft: "productivity", re: /\b(productiv|organiz|workflow)/ },
 ];
 
+// El cliente asigna un ícono por GPT puntual, no por oficio: "Seedance
+// Director" y "Kling Director" son ambos oficio "video" pero llevan íconos
+// distintos. La regla por oficio de abajo no puede representar eso, así que
+// estos nombres conocidos ganan por sobre esa regla. El color de --craft
+// sigue viniendo del oficio inferido, esto solo cambia el glifo.
+const NAME_ICON_OVERRIDES: Record<string, LucideIcon> = {
+  "iphone look": Smartphone,
+  "kling director": Play,
+  "luxury prompt": Gem,
+  "ugc models": Users,
+};
+
 export function foldGptText(value: string): string {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }
@@ -154,10 +170,11 @@ export function getGptVisual(
 ) {
   const craft = resolveGptCraft(category, name, description);
   const def = craft ? GPT_CRAFTS[craft] : null;
+  const nameOverride = NAME_ICON_OVERRIDES[foldGptText(name ?? "")];
   return {
     craft,
     label: def?.label ?? null,
-    Icon: def?.Icon ?? DEFAULT_ICON,
+    Icon: nameOverride ?? def?.Icon ?? DEFAULT_ICON,
     accentClasses: GPT_MARK_SURFACE,
     accentHex: craftAccentHex(craft),
     markKind: def?.markKind ?? DEFAULT_MARK_KIND,
