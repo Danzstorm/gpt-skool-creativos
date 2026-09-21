@@ -1,7 +1,6 @@
 import type { CSSProperties, PointerEvent } from "react";
 import { ArrowUpRight } from "lucide-react";
 import type { Gpt } from "@/lib/types";
-import GptGlyph from "@/components/chat/GptGlyph";
 import { getGptVisual } from "@/lib/gpt-visual";
 
 interface Props {
@@ -17,7 +16,7 @@ interface Props {
 export default function GptCard({ gpt, onSelect, onPreview, style }: Props) {
   const author = gpt.author?.trim() || "";
   const description = gpt.description?.trim() || "";
-  const { accentHex } = getGptVisual(gpt.category, gpt.name, gpt.description);
+  const { accentHex, Icon } = getGptVisual(gpt.category, gpt.name, gpt.description);
 
   // El halo de hover sigue al puntero (--mx/--my en % de la card) en vez de
   // quedar centrado fijo — mismo espíritu que el rim reactivo del prototipo,
@@ -47,7 +46,9 @@ export default function GptCard({ gpt, onSelect, onPreview, style }: Props) {
         aria-hidden
       />
 
-      <GptGlyph gpt={gpt} size="xl" />
+      {/* Plano, no gema de vidrio: el mockup del cliente usa un ícono de
+          línea simple, gris en reposo, que pasa al color de oficio en hover. */}
+      <Icon size={26} strokeWidth={1.5} className="gpt-card-icon text-zinc-500 transition-colors duration-200" aria-hidden />
 
       <h3 className="mt-5 line-clamp-2 pr-8 text-base font-medium leading-snug tracking-tight text-zinc-100">
         {gpt.name}

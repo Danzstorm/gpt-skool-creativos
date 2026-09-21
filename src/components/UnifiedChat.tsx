@@ -466,9 +466,11 @@ export default function UnifiedChat({
             <div className="flex w-full max-w-6xl mx-auto flex-col items-center py-10 md:py-14">
               <div className="relative mb-8 flex flex-col items-center text-center md:mb-10">
                 <div className="hero-bloom" aria-hidden />
-                <span className="energy-halo relative z-[1] mb-6 flex h-[168px] w-[168px] items-center justify-center rounded-full">
-                  <EnergyCanvas size={168} speed={0.0009} />
-                  <Orb size="xl" className="relative" />
+                {/* Sin esfera de vidrio ni wordmark acá: el mockup del cliente
+                    muestra solo el blob de energía, chico, en la bienvenida —
+                    el Orb con "CREATIVOS" queda reservado para login. */}
+                <span className="energy-halo relative z-[1] mb-6 flex h-[72px] w-[72px] items-center justify-center rounded-full">
+                  <EnergyCanvas size={72} speed={0.0009} />
                 </span>
                 <p className="mb-3 text-sm leading-normal text-zinc-500">
                   {firstName ? `Bienvenido de nuevo, ${firstName}` : "Bienvenido de nuevo"}

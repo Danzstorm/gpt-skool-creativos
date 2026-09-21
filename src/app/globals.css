@@ -943,6 +943,11 @@ body {
   color: color-mix(in srgb, var(--accent) 70%, #fff);
 }
 
+.gpt-card:hover .gpt-card-icon,
+.gpt-card:focus-visible .gpt-card-icon {
+  color: var(--craft, var(--accent));
+}
+
 .gpt-glyph-symbol {
   color: var(--craft, var(--color-zinc-300));
 }
