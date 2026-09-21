@@ -10,7 +10,7 @@
 // cambio en uno los desincroniza y el usuario ve "imagen 2" mientras el modelo
 // habla de otra. Por eso la cuenta vive acá y la usan los dos.
 
-export type AttachmentLike = { type: "image" | "document" | "video" };
+export type AttachmentLike = { type: "image" | "document" | "video" | "audio" };
 
 /**
  * Un adjunto identificable: lo mínimo para poder numerarlo dentro del hilo.

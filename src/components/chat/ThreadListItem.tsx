@@ -1,8 +1,7 @@
-import { memo, useCallback, useState } from "react";
-import { FolderInput, FolderPlus, FolderMinus, Pencil, Trash2 } from "lucide-react";
+import { memo, useCallback, useRef, useState } from "react";
 import type { Project, ThreadSummary } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { useDismissable } from "@/hooks/useDismissable";
+import OverflowMenu from "./OverflowMenu";
 
 // Tipo propio en el dataTransfer: durante dragover el navegador solo deja leer
 // `types`, no el contenido, así que sin un tipo distinguible no se puede saber
@@ -26,6 +25,8 @@ interface Props {
   onMoveToProject?: (threadId: string, projectId: string | null) => void;
   onCreateProjectWith?: (threadIds: string[]) => void;
   onDropOnThread?: (draggedId: string, targetId: string) => void;
+  pinned?: boolean;
+  onTogglePin?: (id: string) => void;
 }
 
 function ThreadListItem({
@@ -43,14 +44,22 @@ function ThreadListItem({
   onMoveToProject,
   onCreateProjectWith,
   onDropOnThread,
+  pinned,
+  onTogglePin,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [dropTarget, setDropTarget] = useState(false);
+  const clickTimer = useRef<number>(0);
+  const moreRef = useRef<HTMLButtonElement>(null);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
-  const menuRef = useDismissable<HTMLDivElement>(menuOpen, closeMenu);
 
   const projectsEnabled = !!projects && !!onMoveToProject && !!onCreateProjectWith;
   const otherProjects = (projects ?? []).filter((p) => p.id !== thread.project_id);
+
+  function beginRename() {
+    closeMenu();
+    onStartRename(thread);
+  }
 
   return (
     <div
@@ -79,110 +88,170 @@ function ThreadListItem({
         if (draggedId && draggedId !== thread.id) onDropOnThread(draggedId, thread.id);
       }}
       className={cn(
-        "group relative flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 cursor-pointer text-[13px] transition",
-        isActive ? "nav-active text-ink" : "text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200",
-                        dropTarget && "ring-1 ring-brand/50 bg-brand/10"
+        "nav history-item group relative flex items-center gap-1.5",
+        isActive && "active selected chat-selected",
+        pinned && "chat-pinned",
+        dropTarget && "drop-target"
       )}
-      onClick={() => onSelect(thread)}
+      onClick={(e) => {
+        if (isRenaming || (e.target as HTMLElement).closest("input,.chat-more,.folder-options")) return;
+        if (e.detail >= 2) return;
+        window.clearTimeout(clickTimer.current);
+        clickTimer.current = window.setTimeout(() => onSelect(thread), 240);
+      }}
+      onDoubleClick={(e) => {
+        if ((e.target as HTMLElement).closest("input,.chat-more,.folder-options")) return;
+        e.preventDefault();
+        e.stopPropagation();
+        window.clearTimeout(clickTimer.current);
+        beginRename();
+      }}
     >
-      {isRenaming ? (
-        <input
-          autoFocus
-          value={renameValue}
-          onChange={(e) => onRenameValueChange(e.target.value)}
-          onClick={(e) => e.stopPropagation()}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") onSubmitRename(thread.id);
-            if (e.key === "Escape") onCancelRename();
-          }}
-          onBlur={() => onSubmitRename(thread.id)}
-          className="flex-1 bg-zinc-800 rounded-md px-1.5 py-0.5 text-ink text-[13px] focus:outline-none"
-        />
-      ) : (
-        <span className="flex-1 min-w-0 truncate">{thread.title}</span>
-      )}
+      <span className="chat-pin" aria-hidden>
+        <svg viewBox="0 0 24 24">
+          <path d="M8 3h8l-1 6 3 3v3H6v-3l3-3-1-6Zm4 12v6" />
+        </svg>
+      </span>
+      <span className="chat-name" title={isRenaming ? undefined : "Doble clic para cambiar el nombre"}>
+        {isRenaming ? (
+          <>
+            <span aria-hidden style={{ visibility: "hidden" }}>
+              {thread.title || "\u00a0"}
+            </span>
+            <input
+              autoFocus
+              value={renameValue}
+              onChange={(e) => onRenameValueChange(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => {
+                e.stopPropagation();
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  onSubmitRename(thread.id);
+                }
+                if (e.key === "Escape") onCancelRename();
+              }}
+              onBlur={() => onSubmitRename(thread.id)}
+              className="folder-rename"
+              aria-label="Nuevo nombre del chat"
+            />
+          </>
+        ) : (
+          thread.title
+        )}
+      </span>
 
       {!isRenaming && (
-        <div className="flex md:hidden md:group-hover:flex items-center gap-0.5 flex-shrink-0">
-          {projectsEnabled && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setMenuOpen((v) => !v);
-              }}
-              className="p-1 rounded-md text-zinc-500 hover:text-ink hover:bg-zinc-800"
-              title="Mover a proyecto"
-              aria-label="Mover a proyecto"
-            >
-              <FolderInput size={11} />
-            </button>
-          )}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onStartRename(thread);
-            }}
-            className="p-1 rounded-md text-zinc-500 hover:text-ink hover:bg-zinc-800"
-          >
-            <Pencil size={11} />
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(thread.id);
-            }}
-            className="p-1 rounded-md text-zinc-500 hover:text-red-400 hover:bg-zinc-800"
-          >
-            <Trash2 size={11} />
-          </button>
-        </div>
+        <button
+          ref={moreRef}
+          type="button"
+          className="chat-more"
+          aria-label={`Opciones de ${thread.title}`}
+          aria-expanded={menuOpen}
+          onClick={(e) => {
+            e.stopPropagation();
+            setMenuOpen((open) => !open);
+          }}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden>
+            <circle cx="5" cy="12" r="1" />
+            <circle cx="12" cy="12" r="1" />
+            <circle cx="19" cy="12" r="1" />
+          </svg>
+        </button>
       )}
 
-      {/* El menú es el único camino en móvil: el drag & drop de HTML5 no
-          existe en touch. */}
-      {menuOpen && projectsEnabled && (
-        <div
-          ref={menuRef}
-          onClick={(e) => e.stopPropagation()}
-          className="absolute right-1 top-full mt-1 z-40 w-52 max-h-64 overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-900 py-1 shadow-xl"
-        >
-          {otherProjects.map((p) => (
+      <OverflowMenu
+        open={menuOpen}
+        onClose={closeMenu}
+        triggerRef={moreRef}
+        className="folder-options chat-options"
+      >
+        {onTogglePin && (
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              onTogglePin(thread.id);
+              closeMenu();
+            }}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden>
+              <path d="m9 3 6 0-1 6 4 4v2H6v-2l4-4-1-6Zm3 12v6" />
+            </svg>
+            {pinned ? "Desfijar" : "Fijar"}
+          </button>
+        )}
+        <button type="button" role="menuitem" onClick={beginRename}>
+          <svg viewBox="0 0 24 24" aria-hidden>
+            <path d="m15 5 4 4M4 20l4-1L20 7a2.8 2.8 0 0 0-4-4L4 15Z" />
+          </svg>
+          Renombrar
+        </button>
+        {projectsEnabled &&
+          otherProjects.map((p) => (
             <button
               key={p.id}
+              type="button"
+              role="menuitem"
               onClick={() => {
                 onMoveToProject?.(thread.id, p.id);
                 closeMenu();
               }}
-              className="w-full flex items-center gap-2 px-2.5 py-1.5 text-left text-[13px] text-zinc-300 hover:bg-zinc-800"
             >
-              <FolderInput size={12} className="flex-shrink-0 text-zinc-500" />
-              <span className="truncate">{p.name}</span>
+              <svg viewBox="0 0 24 24" aria-hidden>
+                <path d="M4 7h16v12H4Z" />
+                <path d="M4 7 7 3h6l3 4" />
+              </svg>
+              {p.name}
             </button>
           ))}
+        {projectsEnabled && (
           <button
+            type="button"
+            role="menuitem"
             onClick={() => {
               onCreateProjectWith?.([thread.id]);
               closeMenu();
             }}
-            className="w-full flex items-center gap-2 px-2.5 py-1.5 text-left text-[13px] text-zinc-300 hover:bg-zinc-800"
           >
-            <FolderPlus size={12} className="flex-shrink-0 text-zinc-500" />
-            Nuevo proyecto...
+            <svg viewBox="0 0 24 24" aria-hidden>
+              <path d="M4 7h16v12H4Z" />
+              <path d="M4 7 7 3h6l3 4M12 11v6m-3-3h6" />
+            </svg>
+            Nuevo Proyecto
           </button>
-          {thread.project_id && (
-            <button
-              onClick={() => {
-                onMoveToProject?.(thread.id, null);
-                closeMenu();
-              }}
-              className="w-full flex items-center gap-2 px-2.5 py-1.5 text-left text-[13px] text-zinc-300 hover:bg-zinc-800 border-t border-zinc-800"
-            >
-              <FolderMinus size={12} className="flex-shrink-0 text-zinc-500" />
-              Sacar del proyecto
-            </button>
-          )}
-        </div>
-      )}
+        )}
+        {projectsEnabled && thread.project_id && (
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              onMoveToProject?.(thread.id, null);
+              closeMenu();
+            }}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden>
+              <path d="M4 7h16v12H4Z" />
+              <path d="M9 13h6" />
+            </svg>
+            Sacar del proyecto
+          </button>
+        )}
+        <button
+          type="button"
+          role="menuitem"
+          onClick={() => {
+            onDelete(thread.id);
+            closeMenu();
+          }}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden>
+            <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5m4-5v5" />
+          </svg>
+          Borrar
+        </button>
+      </OverflowMenu>
     </div>
   );
 }

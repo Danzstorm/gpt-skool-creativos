@@ -288,7 +288,7 @@ export default function AdminGptsPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-white">GPTs</h1>
+        <div />
         <button
           onClick={openCreate}
           className="flex items-center gap-2 bg-zinc-100 hover:bg-white text-zinc-900 font-semibold rounded-xl px-4 py-2.5 text-sm transition"

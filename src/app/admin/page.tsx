@@ -178,7 +178,7 @@ export default async function AdminDashboard({ searchParams }: Props) {
   return (
     <div>
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-        <h1 className="text-2xl font-bold text-white">Dashboard Admin</h1>
+        <div />
         <div className="flex items-center gap-1 bg-zinc-900 border border-zinc-800 rounded-xl p-1">
           {(Object.keys(RANGES) as RangeKey[]).map((key) => (
             <Link

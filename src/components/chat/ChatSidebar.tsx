@@ -1,21 +1,13 @@
-import { memo, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import {
-  ChevronDown,
-  ChevronRight,
-  FileText,
-  Folder,
-  LayoutGrid,
-  PanelLeftClose,
-  Pencil,
-  Search,
-  SquarePen,
-  Trash2,
-} from "lucide-react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { ChevronDown, ChevronRight, Folder } from "lucide-react";
 import type { Gpt, Project, ThreadSummary } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { groupThreadsByProject } from "@/lib/project-grouping";
-import Orb from "@/components/ui/Orb";
+import { sortPinnedFirst } from "@/lib/pinned-threads";
 import GptGlyph from "./GptGlyph";
+import HaloRim from "./HaloRim";
+import OverflowMenu from "./OverflowMenu";
+import ProtoIcon from "./ProtoIcon";
 import ThreadListItem, { THREAD_DND_TYPE } from "./ThreadListItem";
 import SidebarFooter from "./SidebarFooter";
 
@@ -23,10 +15,193 @@ import SidebarFooter from "./SidebarFooter";
 const APPLE_UA = /Mac|iPhone|iPad/;
 const noSubscribe = () => () => {};
 
+function ProjectHeading({
+  project,
+  threadCount,
+  isOpen,
+  dropActive,
+  isRenaming,
+  renameValue,
+  onToggle,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onRenameValueChange,
+  onStartRename,
+  onSubmitRename,
+  onCancelRename,
+  onNewChat,
+  onEditInstructions,
+  onDelete,
+}: {
+  project: Project;
+  threadCount: number;
+  isOpen: boolean;
+  dropActive: boolean;
+  isRenaming: boolean;
+  renameValue: string;
+  onToggle: () => void;
+  onDragOver: (e: React.DragEvent<HTMLDivElement>) => void;
+  onDragLeave: () => void;
+  onDrop: (e: React.DragEvent<HTMLDivElement>) => void;
+  onRenameValueChange: (value: string) => void;
+  onStartRename: () => void;
+  onSubmitRename: () => void;
+  onCancelRename: () => void;
+  onNewChat: () => void;
+  onEditInstructions: () => void;
+  onDelete: () => void;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const clickTimer = useRef(0);
+  const moreRef = useRef<HTMLButtonElement>(null);
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
+
+  return (
+    <div
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      className={cn("folder-heading group flex items-center gap-1.5", dropActive && "drop-target")}
+      onClick={(e) => {
+        if (isRenaming || (e.target as HTMLElement).closest("input,.folder-more,.folder-options")) return;
+        if (e.detail >= 2) return;
+        window.clearTimeout(clickTimer.current);
+        clickTimer.current = window.setTimeout(onToggle, 240);
+      }}
+      onDoubleClick={(e) => {
+        if ((e.target as HTMLElement).closest("input,.folder-more,.folder-options")) return;
+        e.preventDefault();
+        e.stopPropagation();
+        window.clearTimeout(clickTimer.current);
+        closeMenu();
+        onStartRename();
+      }}
+    >
+      {isOpen ? (
+        <ChevronDown size={12} className="flex-shrink-0 text-zinc-600" />
+      ) : (
+        <ChevronRight size={12} className="flex-shrink-0 text-zinc-600" />
+      )}
+      <Folder size={12} className="flex-shrink-0 text-zinc-500" />
+
+      <span className="folder-title" title={isRenaming ? undefined : "Doble clic para cambiar el nombre"}>
+        {isRenaming ? (
+          <>
+            <span aria-hidden style={{ visibility: "hidden" }}>
+              {project.name || "\u00a0"}
+            </span>
+            <input
+              autoFocus
+              value={renameValue}
+              onChange={(e) => onRenameValueChange(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => {
+                e.stopPropagation();
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  onSubmitRename();
+                }
+                if (e.key === "Escape") onCancelRename();
+              }}
+              onBlur={onSubmitRename}
+              className="folder-rename"
+              aria-label="Nombre de la carpeta"
+            />
+          </>
+        ) : (
+          project.name
+        )}
+      </span>
+      {!isRenaming && (
+        <span className="folder-count max-md:hidden">{threadCount || ""}</span>
+      )}
+
+      {!isRenaming && (
+        <span className="folder-actions">
+          <button
+            ref={moreRef}
+            type="button"
+            className="folder-more"
+            aria-label={`Opciones de ${project.name}`}
+            aria-expanded={menuOpen}
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuOpen((open) => !open);
+            }}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden>
+              <circle cx="5" cy="12" r="1" />
+              <circle cx="12" cy="12" r="1" />
+              <circle cx="19" cy="12" r="1" />
+            </svg>
+          </button>
+        </span>
+      )}
+
+      <OverflowMenu open={menuOpen} onClose={closeMenu} triggerRef={moreRef}>
+        <button
+          type="button"
+          role="menuitem"
+          onClick={() => {
+            onNewChat();
+            closeMenu();
+          }}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden>
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          Nuevo chat
+        </button>
+        <button
+          type="button"
+          role="menuitem"
+          onClick={() => {
+            onEditInstructions();
+            closeMenu();
+          }}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden>
+            <path d="M6 4h9l3 3v13H6Z" />
+            <path d="M15 4v4h4" />
+          </svg>
+          {project.instructions ? "Editar instrucciones" : "Agregar instrucciones"}
+        </button>
+        <button
+          type="button"
+          role="menuitem"
+          onClick={() => {
+            onStartRename();
+            closeMenu();
+          }}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden>
+            <path d="m15 5 4 4M4 20l4-1L20 7a2.8 2.8 0 0 0-4-4L4 15Z" />
+          </svg>
+          Cambiar nombre
+        </button>
+        <button
+          type="button"
+          role="menuitem"
+          onClick={() => {
+            onDelete();
+            closeMenu();
+          }}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden>
+            <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5m4-5v5" />
+          </svg>
+          Borrar carpeta
+        </button>
+      </OverflowMenu>
+    </div>
+  );
+}
+
 interface Props {
   communityName: string;
   gpts: Gpt[];
-  /** Hasta 6 recientes. El resto vive en el picker / hero. */
+  /** Recientes del nav. El catálogo completo vive en home. */
   recentGpts: Gpt[];
   threadList: ThreadSummary[];
   projects: Project[];
@@ -36,6 +211,10 @@ interface Props {
   sidebarOpen: boolean;
   collapsed: boolean;
   onToggleCollapse: () => void;
+  sidebarWidth: number;
+  onResizeWidth: (width: number) => void;
+  pinnedIds: string[];
+  onTogglePin: (id: string) => void;
   profile: {
     fullName: string | null;
     email: string | null;
@@ -49,7 +228,6 @@ interface Props {
   onSelectThread: (thread: ThreadSummary) => void;
   onNewChat: () => void;
   onCloseSidebar: () => void;
-  onOpenGptChats: (gptId: string) => void;
   renamingId: string | null;
   renameValue: string;
   onRenameValueChange: (value: string) => void;
@@ -83,6 +261,10 @@ function ChatSidebar({
   sidebarOpen,
   collapsed,
   onToggleCollapse,
+  sidebarWidth,
+  onResizeWidth,
+  pinnedIds,
+  onTogglePin,
   profile,
   chatSearch,
   onSearchChange,
@@ -91,7 +273,6 @@ function ChatSidebar({
   onSelectThread,
   onNewChat,
   onCloseSidebar,
-  onOpenGptChats,
   renamingId,
   renameValue,
   onRenameValueChange,
@@ -114,6 +295,8 @@ function ChatSidebar({
 }: Props) {
   const [dropProjectId, setDropProjectId] = useState<string | null>(null);
   const [dropLoose, setDropLoose] = useState(false);
+  const [resizing, setResizing] = useState(false);
+  const asideRef = useRef<HTMLElement>(null);
 
   const searchRef = useRef<HTMLInputElement>(null);
   // El user agent solo existe en el navegador; en el servidor se asume Ctrl.
@@ -137,12 +320,32 @@ function ChatSidebar({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [collapsed, onToggleCollapse]);
 
+  function startResize(e: React.PointerEvent<HTMLDivElement>) {
+    if (collapsed) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setResizing(true);
+    document.body.classList.add("resizing-sidebar");
+    const left = asideRef.current?.getBoundingClientRect().left ?? 0;
+    function onMove(ev: PointerEvent) {
+      onResizeWidth(ev.clientX - left);
+    }
+    function onUp() {
+      setResizing(false);
+      document.body.classList.remove("resizing-sidebar");
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    }
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }
+
   const gptNameById = useMemo(() => new Map(gpts.map((g) => [g.id, g.name])), [gpts]);
 
   const { groups, loose } = useMemo(
     () => groupThreadsByProject(threadList, projects, chatSearch, gptNameById),
     [threadList, projects, chatSearch, gptNameById]
   );
+  const looseSorted = useMemo(() => sortPinnedFirst(loose, pinnedIds), [loose, pinnedIds]);
 
   const renderThread = (t: ThreadSummary) => (
     <ThreadListItem
@@ -167,119 +370,108 @@ function ChatSidebar({
         if (target?.project_id) onMoveToProject(draggedId, target.project_id);
         else onCreateProjectWith([draggedId, targetId]);
       }}
+      pinned={pinnedIds.includes(t.id)}
+      onTogglePin={onTogglePin}
     />
   );
 
   return (
     <>
       {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/50 z-20 md:hidden" onClick={onCloseSidebar} />
+        <button type="button" className="menuveil" aria-label="Cerrar menú" onClick={onCloseSidebar} />
       )}
 
       <aside
+        ref={asideRef}
         className={cn(
-          "chat-sidebar flex-col border-r border-zinc-800 z-30 overflow-hidden",
-          "md:flex md:relative md:translate-x-0 transition-[width] duration-200 ease-out",
-          collapsed ? "md:w-0 md:border-r-0" : "md:w-64",
-          "fixed top-0 bottom-0 left-0 flex w-64 transition-transform duration-200",
+          "sidebar z-30",
+          "md:flex md:relative md:translate-x-0",
+          resizing ? "md:transition-none" : undefined,
+          "fixed top-0 bottom-0 left-0 flex",
           sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         )}
+        style={{ "--sidebar-user-width": `${sidebarWidth}px` } as React.CSSProperties}
       >
-        <div className="w-64 h-full flex flex-col flex-shrink-0">
-          <div className="flex items-center justify-between gap-2 px-3 pt-3 pb-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <Orb size="xs" />
-              <span className="font-display wordmark italic uppercase font-extrabold text-[15px] tracking-tight truncate text-zinc-100">
-                {communityName}
-              </span>
-            </div>
+        <div className="h-full flex flex-col flex-shrink-0">
+          <div className="brandrow">
+            <a className="brand" href="https://www.skool.com/creativos" aria-label={`${communityName} en Skool`}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.svg" width={94} height={25} alt={communityName} />
+            </a>
             <button
+              type="button"
+              className="collapse"
               onClick={onToggleCollapse}
-              className="hidden md:flex flex-shrink-0 items-center justify-center w-8 h-8 rounded-lg text-zinc-400 hover:text-ink hover:bg-white/[0.06] transition"
-              title="Contraer panel"
               aria-label="Contraer panel"
             >
-              <PanelLeftClose size={16} />
+              ‹
             </button>
           </div>
 
-          <div className="px-2 pb-2 space-y-2">
-            <button
-              onClick={onNewChat}
-              className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-zinc-100 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 transition"
-            >
-              <SquarePen size={16} />
-              Nuevo chat
-            </button>
-            <div className="relative">
-              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-600" />
-              <input
-                ref={searchRef}
-                value={chatSearch}
-                onChange={(e) => onSearchChange(e.target.value)}
-                placeholder="Buscar..."
-                className="w-full rounded-xl border border-zinc-800 bg-zinc-900 pl-7 pr-14 py-2.5 text-[13px] text-zinc-200 placeholder-zinc-600 transition focus:border-brand/40 focus:outline-none"
-              />
-              <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md border border-white/10 bg-white/[0.05] px-1.5 py-0.5 text-[10px] font-medium text-zinc-500">
-                {isMac ? "⌘K" : "Ctrl K"}
-              </kbd>
-            </div>
-          </div>
+          <button type="button" className="new tool" id="new" onClick={onNewChat}>
+            <HaloRim id="new-chat" />
+            ＋ <span>Nuevo chat</span>
+          </button>
+          <label className="side-search">
+            <ProtoIcon name="search" />
+            <input
+              ref={searchRef}
+              id="sideSearch"
+              value={chatSearch}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder="Buscar..."
+              aria-label="Buscar herramientas"
+            />
+            <kbd>{isMac ? "⌘K" : "Ctrl K"}</kbd>
+          </label>
 
-          <div className="flex-1 overflow-y-auto px-2 pb-3">
-            <p className="eyebrow text-zinc-500 px-2.5 pt-1.5 pb-1">GPTs</p>
-            <div className="space-y-0.5 mb-3">
+          <div className="label">GPTs</div>
+          <nav id="navigation">
               {recentGpts.map((g) => {
-                const isActive = activeGptId === g.id && !activeThreadId;
+                const isActive = activeGptId === g.id;
                 return (
-                <div
+                <button
                   key={g.id}
-                  className="group relative flex min-h-11 items-center"
+                  type="button"
+                  onClick={() => onSelectGpt(g.id)}
+                  className={cn("nav", isActive && "active")}
+                  aria-current={isActive ? "page" : undefined}
                 >
-                  <button
-                    onClick={() => onSelectGpt(g.id)}
-                    className={cn(
-                      "gpt-nav flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-lg py-1.5 pl-2.5 pr-11 text-left text-[13px] leading-normal transition-colors cursor-pointer active:scale-[0.99]",
-                      isActive ? "nav-active text-ink" : "text-zinc-400"
-                    )}
-                  >
-                    <GptGlyph gpt={g} size="xs" variant="nav" />
-                    <span className="truncate">{g.name}</span>
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onOpenGptChats(g.id);
-                    }}
-                    className="absolute right-0 hidden h-11 w-11 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-800 hover:text-ink group-hover:flex"
-                    title={`Ver conversaciones de ${g.name}`}
-                    aria-label={`Ver conversaciones de ${g.name}`}
-                  >
-                    <Search size={14} />
-                  </button>
-                </div>
+                  <GptGlyph gpt={g} size="xs" variant="nav" />
+                  {g.name}
+                </button>
                 );
               })}
               <button
                 type="button"
+                id="allNav"
                 onClick={onOpenAllGpts}
-                className="flex min-h-11 w-full items-center gap-2 rounded-lg px-2.5 text-[13px] text-zinc-400 transition hover:bg-white/[0.06] hover:text-zinc-200"
+                className={cn("nav", !activeGptId && "active")}
+                aria-current={!activeGptId ? "page" : undefined}
               >
-                <LayoutGrid size={14} aria-hidden />
+                <ProtoIcon name="grid" />
                 Todos los GPTs
               </button>
-            </div>
+          </nav>
 
+          <div className="flex-1 overflow-y-auto">
             {groups.length > 0 && (
               <>
-                <p className="eyebrow text-zinc-500 px-2.5 pt-2 pb-1">Proyectos</p>
+                <div className="label">Proyectos</div>
                 <div className="space-y-0.5 mb-3">
                   {groups.map(({ project, threads, forceOpen }) => {
                     const isOpen = forceOpen || openProjectIds.includes(project.id);
                     const isRenamingProject = renamingProjectId === project.id;
                     return (
                       <div key={project.id}>
-                        <div
+                        <ProjectHeading
+                          project={project}
+                          threadCount={threads.length}
+                          isOpen={isOpen}
+                          dropActive={dropProjectId === project.id}
+                          isRenaming={isRenamingProject}
+                          renameValue={projectRenameValue}
+                          onToggle={() => onToggleProject(project.id)}
                           onDragOver={(e) => {
                             if (!e.dataTransfer.types.includes(THREAD_DND_TYPE)) return;
                             e.preventDefault();
@@ -294,106 +486,14 @@ function ChatSidebar({
                             const threadId = e.dataTransfer.getData(THREAD_DND_TYPE);
                             if (threadId) onMoveToProject(threadId, project.id);
                           }}
-                          className={cn(
-                            "group flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 cursor-pointer text-[13px] transition text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200",
-                            dropProjectId === project.id && "ring-1 ring-brand/50 bg-brand/10"
-                          )}
-                          onClick={() => onToggleProject(project.id)}
-                        >
-                          {isOpen ? (
-                            <ChevronDown size={12} className="flex-shrink-0 text-zinc-600" />
-                          ) : (
-                            <ChevronRight size={12} className="flex-shrink-0 text-zinc-600" />
-                          )}
-                          <Folder size={12} className="flex-shrink-0 text-zinc-500" />
-
-                          {isRenamingProject ? (
-                            <input
-                              autoFocus
-                              value={projectRenameValue}
-                              onChange={(e) => onProjectRenameValueChange(e.target.value)}
-                              onClick={(e) => e.stopPropagation()}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") onSubmitProjectRename(project.id);
-                                if (e.key === "Escape") onCancelProjectRename();
-                              }}
-                              onBlur={() => onSubmitProjectRename(project.id)}
-                              className="flex-1 bg-zinc-800 rounded-md px-1.5 py-0.5 text-ink text-[13px] focus:outline-none"
-                            />
-                          ) : (
-                            <>
-                              <span className="flex-1 min-w-0 truncate">{project.name}</span>
-                              <span className="text-[11px] text-zinc-600 group-hover:hidden max-md:hidden">
-                                {threads.length || ""}
-                              </span>
-                            </>
-                          )}
-
-                          {!isRenamingProject && (
-                            // `max-md:flex` porque `group-hover` no existe en
-                            // touch: sin esto, en el celular no hay ninguna
-                            // forma de crear un chat dentro de la carpeta.
-                            <div className="hidden group-hover:flex max-md:flex items-center gap-0.5 flex-shrink-0">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onNewChatInProject(project.id);
-                                }}
-                                className="p-1 rounded-md text-zinc-500 hover:text-ink hover:bg-zinc-800"
-                                title="Nuevo chat en este proyecto"
-                                aria-label="Nuevo chat en este proyecto"
-                              >
-                                <SquarePen size={11} />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onEditProjectInstructions(project);
-                                }}
-                                className={cn(
-                                  "p-1 rounded-md hover:bg-zinc-800",
-                                  // Teñido cuando la carpeta ya tiene texto: es
-                                  // la única señal de que estos chats están
-                                  // respondiendo con un contexto extra que no se
-                                  // ve en la conversación.
-                                  project.instructions
-                                    ? "text-brand"
-                                    : "text-zinc-500 hover:text-ink"
-                                )}
-                                title={
-                                  project.instructions
-                                    ? "Editar las instrucciones del proyecto"
-                                    : "Agregar instrucciones al proyecto"
-                                }
-                                aria-label="Instrucciones del proyecto"
-                              >
-                                <FileText size={11} />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onStartProjectRename(project);
-                                }}
-                                className="p-1 rounded-md text-zinc-500 hover:text-ink hover:bg-zinc-800"
-                                title="Renombrar proyecto"
-                                aria-label="Renombrar proyecto"
-                              >
-                                <Pencil size={11} />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onDeleteProject(project.id);
-                                }}
-                                className="p-1 rounded-md text-zinc-500 hover:text-red-400 hover:bg-zinc-800"
-                                title="Borrar proyecto"
-                                aria-label="Borrar proyecto"
-                              >
-                                <Trash2 size={11} />
-                              </button>
-                            </div>
-                          )}
-                        </div>
+                          onRenameValueChange={onProjectRenameValueChange}
+                          onStartRename={() => onStartProjectRename(project)}
+                          onSubmitRename={() => onSubmitProjectRename(project.id)}
+                          onCancelRename={onCancelProjectRename}
+                          onNewChat={() => onNewChatInProject(project.id)}
+                          onEditInstructions={() => onEditProjectInstructions(project)}
+                          onDelete={() => onDeleteProject(project.id)}
+                        />
 
                         {isOpen && threads.length > 0 && (
                           <div className="space-y-0.5 pl-3 mt-0.5">{threads.map(renderThread)}</div>
@@ -411,8 +511,12 @@ function ChatSidebar({
                 su texto, además, es el lugar donde soltar para sacarlos. */}
             {(loose.length > 0 || groups.length > 0) && (
               <>
-                <p className="eyebrow text-zinc-500 px-2.5 pt-2 pb-1">Chats</p>
+                <div className="label">Chats</div>
                 <div
+                  className={cn(
+                    "history space-y-0.5 rounded-lg",
+                    dropLoose && "ring-1 ring-brand/50 bg-brand/10"
+                  )}
                   onDragOver={(e) => {
                     if (!e.dataTransfer.types.includes(THREAD_DND_TYPE)) return;
                     e.preventDefault();
@@ -429,12 +533,8 @@ function ChatSidebar({
                     // arrastrar hacia un proyecto, que ya existía sin vuelta.
                     if (threadId) onMoveToProject(threadId, null);
                   }}
-                  className={cn(
-                    "space-y-0.5 rounded-lg",
-                    dropLoose && "ring-1 ring-brand/50 bg-brand/10"
-                  )}
                 >
-                  {loose.map(renderThread)}
+                  {looseSorted.map(renderThread)}
                   {loose.length === 0 && (
                     <p className="px-2.5 py-2 text-[12px] text-zinc-600">
                       Arrastra un chat aquí para sacarlo de su proyecto.
@@ -452,6 +552,14 @@ function ChatSidebar({
             isAdmin={profile.isAdmin}
           />
         </div>
+        <div
+          className="sidebar-resizer"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Ancho del panel"
+          tabIndex={0}
+          onPointerDown={startResize}
+        />
       </aside>
     </>
   );

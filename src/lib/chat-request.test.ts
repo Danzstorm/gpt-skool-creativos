@@ -16,11 +16,7 @@ import type { IncomingFile } from "./chat-content";
 
 vi.mock("./conversation-sync", () => ({
   keepAvailableFiles: vi.fn(
-    async (
-      _openai: OpenAI,
-      files: Array<{ openai_file_id: string }>,
-      _options?: { trustIds?: ReadonlySet<string> }
-    ) => files.slice(0, 1)
+    async (_openai: OpenAI, files: Array<{ openai_file_id: string }>) => files.slice(0, 1)
   ),
 }));
 
@@ -136,6 +132,13 @@ describe("applyOpenAiAttachmentPolicy", () => {
   it("deja pasar videos sin consultar OpenAI", async () => {
     const result = await applyOpenAiAttachmentPolicy(openai, [vid], "strict");
     expect(result).toEqual({ ok: true, files: [vid] });
+    expect(keepAvailableFiles).not.toHaveBeenCalled();
+  });
+
+  it("deja pasar audio sintético sin consultar OpenAI", async () => {
+    const clip: IncomingFile = { openai_file_id: "audio_local", type: "document", name: "voz.mp3" };
+    const result = await applyOpenAiAttachmentPolicy(openai, [clip], "strict");
+    expect(result).toEqual({ ok: true, files: [clip] });
     expect(keepAvailableFiles).not.toHaveBeenCalled();
   });
 

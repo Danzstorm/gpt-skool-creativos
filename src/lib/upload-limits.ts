@@ -53,6 +53,10 @@ export function rejectReason(type: string, size: number, videoEnabled: boolean):
     if (size > MAX_VIDEO_SIZE_BYTES) return `supera el límite de ${MAX_VIDEO_SIZE_MB}MB para video`;
     return null;
   }
+  if (type.startsWith("audio/")) {
+    if (size > MAX_SIZE_BYTES) return `supera el límite de ${MAX_SIZE_MB}MB`;
+    return null;
+  }
   if (size > MAX_SIZE_BYTES) return `supera el límite de ${MAX_SIZE_MB}MB`;
   // Sin `type` el navegador no reconoció el formato; lo dejamos pasar y que
   // OpenAI decida, como hacía la ruta original.

@@ -1,8 +1,19 @@
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ShieldCheck, LogOut, ChevronsUpDown } from "lucide-react";
 import { useDismissable } from "@/hooks/useDismissable";
 import { humanDisplayName } from "@/lib/utils";
+import {
+  TEXT_SIZE_DEFAULT,
+  TEXT_SIZE_KEY,
+  TEXT_SIZE_MAX,
+  TEXT_SIZE_MIN,
+  TEXT_SIZE_STEP,
+  applyTextSize,
+  clampTextSize,
+  parseTextSize,
+} from "@/lib/text-size";
+import { stopAmbientMusic } from "@/lib/ambient-music";
+import MusicMenu from "./MusicMenu";
 
 interface Props {
   fullName: string | null;
@@ -20,71 +31,129 @@ function initialsOf(name: string | null, email: string | null): string {
 
 function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
   const [open, setOpen] = useState(false);
-  // Las URLs de foto de Google caducan y a veces devuelven 403/404. Si la
-  // imagen no carga, volvemos a las iniciales en vez de dejar un hueco roto.
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [avatarFailed, setAvatarFailed] = useState(false);
+  const [textSize, setTextSize] = useState(TEXT_SIZE_DEFAULT);
   const close = useCallback(() => setOpen(false), []);
   const rootRef = useDismissable<HTMLDivElement>(open, close);
+  const settingsRef = useDismissable<HTMLDialogElement>(settingsOpen, () => setSettingsOpen(false));
+
+  useEffect(() => {
+    const saved = parseTextSize(localStorage.getItem(TEXT_SIZE_KEY));
+    if (saved != null) {
+      /* eslint-disable-next-line react-hooks/set-state-in-effect -- persistencia post-hidratación */
+      setTextSize(saved);
+      applyTextSize(saved);
+    }
+  }, []);
+
+  useEffect(() => {
+    const dialog = settingsRef.current;
+    if (!dialog) return;
+    if (settingsOpen && !dialog.open) dialog.showModal();
+    if (!settingsOpen && dialog.open) dialog.close();
+  }, [settingsOpen, settingsRef]);
+
+  function changeTextSize(value: number) {
+    const size = clampTextSize(value);
+    setTextSize(size);
+    applyTextSize(size);
+    localStorage.setItem(TEXT_SIZE_KEY, String(size));
+  }
 
   const personName = humanDisplayName(fullName);
   const displayName = personName || email || "Cuenta";
-  // Sin nombre, el email ya ocupa la primera línea: no repetirlo debajo.
-  const subline = personName ? email : null;
+  const subline = personName ? email : "Espacio creativo";
   const showAvatar = !!avatarUrl && !avatarFailed;
 
   return (
-    <div ref={rootRef} className="relative border-t border-white/[0.06] p-2">
+    <div ref={rootRef} style={{ marginTop: "auto", position: "relative" }}>
       {open && (
-        <div className="absolute bottom-full left-2 right-2 mb-1.5 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 py-1">
+        <div className="account-menu account-open" style={{ position: "absolute", bottom: "100%", left: 0, right: 0, marginBottom: 8 }}>
           {isAdmin && (
-            <Link
-              href="/admin"
-              className="flex items-center gap-2.5 px-3 py-2 text-sm text-zinc-300 hover:bg-white/[0.06] hover:text-ink transition"
-              onClick={() => setOpen(false)}
-            >
-              <ShieldCheck size={15} />
+            <Link href="/admin" onClick={() => setOpen(false)}>
+              <svg viewBox="0 0 24 24" aria-hidden>
+                <path d="M12 3 4.5 6.5v4.2c0 5 3.2 8.8 7.5 10.3 4.3-1.5 7.5-5.3 7.5-10.3V6.5Z" />
+              </svg>
               Admin
             </Link>
           )}
-          <form action="/api/auth/signout" method="POST">
-            <button
-              type="submit"
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-zinc-300 hover:bg-white/[0.06] hover:text-ink transition text-left"
-            >
-              <LogOut size={15} />
+          <MusicMenu />
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              setSettingsOpen(true);
+            }}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden>
+              <circle cx="12" cy="12" r="3" />
+              <path d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.4-6.4-1.4 1.4M8 16.9 6.6 18.3m10.8 0L16 16.9M8 7.1 6.6 5.7" />
+            </svg>
+            Configuración
+          </button>
+          <form action="/api/auth/signout" method="POST" onSubmit={() => stopAmbientMusic()}>
+            <button type="submit">
+              <svg viewBox="0 0 24 24" aria-hidden>
+                <path d="M10 6H6.5A1.5 1.5 0 0 0 5 7.5v9A1.5 1.5 0 0 0 6.5 18H10M15 8l4 4-4 4M10 12h9" />
+              </svg>
               Salir
             </button>
           </form>
         </div>
       )}
 
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-left border border-white/[0.06] bg-white/[0.03] hover:bg-white/[0.06] transition"
+      <dialog
+        ref={settingsRef}
+        className="settings-dialog"
+        onClose={() => setSettingsOpen(false)}
       >
-        <span className="flex-shrink-0 w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 overflow-hidden flex items-center justify-center text-[11px] font-medium text-zinc-200">
+        <h2>Configuración</h2>
+        <div className="type-settings">
+          <label>
+            <span>Tamaño de letra</span>
+            <output id="textSizeValue">{textSize}%</output>
+          </label>
+          <input
+            id="textSize"
+            type="range"
+            min={TEXT_SIZE_MIN}
+            max={TEXT_SIZE_MAX}
+            step={TEXT_SIZE_STEP}
+            value={textSize}
+            onChange={(e) => changeTextSize(Number(e.target.value))}
+            aria-label="Tamaño de letra"
+          />
+          <div className="type-range-labels">
+            <span>Más pequeña</span>
+            <span>Más grande</span>
+          </div>
+          <button id="resetTextSize" type="button" onClick={() => changeTextSize(TEXT_SIZE_DEFAULT)}>
+            Restablecer
+          </button>
+        </div>
+      </dialog>
+
+      <button type="button" onClick={() => setOpen((v) => !v)} className="profile" style={{ width: "100%", border: 0, background: "none", padding: 0, display: "flex", alignItems: "center", gap: 11 }}>
+        <span className="avatar">
           {showAvatar ? (
-            // <img> plano, no next/image: evita sumar el host de Google a
-            // `remotePatterns` y optimizar una miniatura de 32px no aporta nada.
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={avatarUrl!}
               alt=""
-              width={32}
-              height={32}
+              width={30}
+              height={30}
               referrerPolicy="no-referrer"
               onError={() => setAvatarFailed(true)}
-              className="w-full h-full object-cover"
             />
           ) : (
             initialsOf(fullName, email)
           )}
         </span>
-        <span className="flex-1 min-w-0">
-          <span className="block text-sm font-medium text-zinc-100 truncate">{displayName}</span>
-          {subline && <span className="block text-[11px] text-zinc-500 truncate">{subline}</span>}
-        </span>
-        <ChevronsUpDown size={14} className="text-zinc-500 flex-shrink-0" />
+        <div>
+          <strong>{displayName}</strong>
+          <span>{subline}</span>
+        </div>
       </button>
     </div>
   );

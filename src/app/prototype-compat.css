@@ -1,0 +1,246 @@
+/* Compatibilidad entre prototype.css (sin capa) y el producto.
+
+   1. next/font registra Inter / Plus Jakarta Sans / Inconsolata en 'self'.
+   2. El reset `svg{width:19px}` del prototipo no debe aplastar Lucide ni next/image.
+   3. El chat usa clases del prototipo (`.app .sidebar .nav`). Admin/login
+      también, así que no se aísla el archivo entero. */
+
+:root {
+  --font-sans: var(--font-inter), Inter, Arial, Helvetica, sans-serif;
+  --font-display: var(--font-jakarta), "Plus Jakarta Sans", sans-serif;
+  --font-prompt: var(--font-inconsolata), Inconsolata, ui-monospace, monospace;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+.intro h1,
+.gpt-title-row h1,
+.access-main h1,
+.ax-header h1,
+.ax-gate-copy h1,
+.ax-brand {
+  font-family: var(--font-display);
+}
+
+#composer textarea,
+.composer-row textarea,
+.mention-field,
+.prompt-body {
+  font-family: var(--font-prompt);
+}
+
+/* El prototipo fuerza 19px a todo svg. Lucide y los tamaños explícitos
+   recuperan auto; `.nav svg` / `.tool .symbol svg` siguen ganando. */
+.app svg.lucide,
+.ax-shell svg.lucide,
+.ax-gate svg.lucide,
+.access-home svg.lucide {
+  width: 1em;
+  height: 1em;
+}
+
+/* El chat ocupa el viewport: el prototipo usa min-height 100vh y sticky.
+   Acá el shell es fixed inset-0. */
+.app {
+  min-height: 100%;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* El prototipo dibuja un orbe CSS en `.intro:before`; acá va EnergyCanvas. */
+.intro:before {
+  content: none;
+  display: none;
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.chat {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat .messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.app .sidebar {
+  position: relative;
+  height: 100%;
+}
+
+/* Scrollbar oculto, desplazamiento vivo (CHECKLIST). */
+.app .sidebar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+/* Islas Tailwind dentro de admin: el reset `button{background:none}` del
+   prototipo es unlayered y ganaría a `bg-*`. Estas reglas unlayered con
+   la misma especificidad + clase útil restauran el look de las páginas. */
+.ax-tw button[class*="bg-"],
+.ax-tw a[class*="bg-"] {
+  border-style: solid;
+}
+
+.undo-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  z-index: 90;
+  translate: -50% 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #111113;
+  border: 1px solid #ffffff18;
+  box-shadow: 0 12px 40px #0006;
+  color: #eeeef2;
+  font-size: 13px;
+}
+
+.undo-toast button {
+  color: #f49bb7;
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+
+.undo-toast button:hover {
+  background: #ffffff0c;
+}
+
+@keyframes attach-hide {
+  0%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+.attach-energy {
+  position: absolute;
+  inset: -30%;
+  pointer-events: none;
+  filter: blur(13px);
+  background: linear-gradient(125deg, #38241b, #442035 48%, #29213e);
+  animation: attach-pulse 1.4s ease-in-out infinite, attach-hide 2.2s forwards;
+}
+
+@keyframes attach-pulse {
+  0%,
+  100% {
+    opacity: 0.2;
+    filter: blur(13px) brightness(0.3);
+  }
+  50% {
+    opacity: 1;
+    filter: blur(13px) brightness(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .attach-energy {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
+.attach-tile {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  min-width: 64px;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.attach-tile img,
+.attach-tile video {
+  display: block;
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+}
+
+/* Overlay de rename: el ghost conserva el alto; el input no empuja la fila. */
+.folder-title,
+.chat-name {
+  position: relative;
+}
+.folder-title > .folder-rename,
+.chat-name > .folder-rename {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 20px;
+}
+
+.audio-preview audio {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+.audio-preview.is-playing {
+  color: #eeeef2;
+}
+
+.history-item.selected,
+.nav.history-item.active {
+  background: #222225;
+  border-color: transparent;
+  box-shadow: none;
+  color: #eeeef2;
+}
+
+.account-menu>a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px;
+  min-height: 44px;
+  border-radius: 8px;
+  text-align: left;
+  color: #c4c4cc;
+  font-size: 13px;
+  text-decoration: none;
+}
+.account-menu>a:hover {
+  background: #ffffff08;
+  color: #fff;
+}
+.ax-shell {
+  min-height: 100%;
+  height: 100%;
+}
+.ax-main {
+  overflow-y: auto;
+}
+.sidebar-resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 4;
+}

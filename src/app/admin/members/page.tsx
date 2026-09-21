@@ -261,7 +261,6 @@ export default function AdminMembersPage() {
     <div>
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">Miembros</h1>
           <p className="text-zinc-400 text-sm mt-0.5">
             {activeCount} activos de {members.length} total
           </p>

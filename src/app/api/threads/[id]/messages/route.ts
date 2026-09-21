@@ -33,7 +33,7 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
     const service = createServiceClient();
     const { data: rows } = await service
       .from("uploaded_files")
-      .select("openai_file_id, storage_path, name")
+      .select("openai_file_id, storage_path, name, mime")
       .eq("user_id", user.id)
       .in("openai_file_id", fileIds);
     const map = new Map((rows ?? []).map((r) => [r.openai_file_id, r]));
@@ -46,13 +46,19 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
         const { data: signed } = await service.storage
           .from("chat-uploads")
           .createSignedUrl(row.storage_path, 3600);
-        if (signed?.signedUrl) f.previewUrl = signed.signedUrl;
+        if (signed?.signedUrl) {
+          f.previewUrl = signed.signedUrl;
+          if (row.mime?.startsWith("audio/") || f.type === "audio") {
+            f.type = "audio";
+            f.mediaUrl = signed.signedUrl;
+          }
+        }
         // Documentos y videos recuperan su nombre real. Para las imágenes esto
         // devolvía el nombre del archivo del dispositivo, que es justamente el
         // que no queremos ver: al recargar la conversación reaparecía algo como
         // "mt.data.image23490.png" debajo de la miniatura. Su etiqueta se
         // deriva de la posición, igual que en el composer.
-        if (row.name && (f.type === "document" || f.type === "video")) f.name = row.name;
+        if (row.name && (f.type === "document" || f.type === "video" || f.type === "audio")) f.name = row.name;
       })
     );
   }

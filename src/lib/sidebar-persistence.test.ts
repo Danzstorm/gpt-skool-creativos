@@ -3,6 +3,9 @@ import {
   ensureOpenProjectId,
   isSidebarCollapsedValue,
   parseOpenProjectIds,
+  parseSidebarWidth,
+  clampSidebarWidth,
+  SIDEBAR_WIDTH_DEFAULT,
   sidebarCollapsedStorageValue,
   toggleOpenProjectId,
 } from "./sidebar-persistence";
@@ -53,5 +56,27 @@ describe("ensureOpenProjectId", () => {
     const open = ["p1", "p2"];
     expect(ensureOpenProjectId(open, "p2")).toBe(open);
     expect(ensureOpenProjectId(open, "p3")).toEqual(["p1", "p2", "p3"]);
+  });
+});
+
+describe("clampSidebarWidth", () => {
+  it("respeta 190–min(420, 45vw) como el prototipo", () => {
+    expect(clampSidebarWidth(100, 1400)).toBe(190);
+    expect(clampSidebarWidth(500, 1400)).toBe(420);
+    expect(clampSidebarWidth(300, 600)).toBe(270);
+  });
+});
+
+describe("parseSidebarWidth", () => {
+  it("lee un número positivo o descarta", () => {
+    expect(parseSidebarWidth("230")).toBe(230);
+    expect(parseSidebarWidth("0")).toBeNull();
+    expect(parseSidebarWidth(null)).toBeNull();
+  });
+});
+
+describe("SIDEBAR_WIDTH_DEFAULT", () => {
+  it("arranca en 230px como el prototipo", () => {
+    expect(SIDEBAR_WIDTH_DEFAULT).toBe(230);
   });
 });

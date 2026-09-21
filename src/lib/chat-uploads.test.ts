@@ -3,6 +3,7 @@ import type { UploadedFile } from "./types";
 import { MAX_FILES_PER_MESSAGE } from "./upload-file";
 import { MAX_SIZE_BYTES, MAX_SIZE_MB, MAX_VIDEO_SIZE_BYTES, MAX_VIDEO_SIZE_MB } from "./upload-limits";
 import {
+  applyUploadToTray,
   attachmentPreviewBlob,
   commitUploadResults,
   composeUploadError,
@@ -12,6 +13,7 @@ import {
   namedUploadError,
   planUploadBatch,
   skippedFilesMessage,
+  toChatRequestFile,
 } from "./chat-uploads";
 
 const img = { type: "image/png", size: 10, name: "a.png" };
@@ -255,6 +257,56 @@ describe("commitUploadResults — arbitraje al cerrar una subida", () => {
     expect(commit.next.map((f) => f.openai_file_id)).toEqual(["file-1", "file-2", "file-3"]);
     expect(commit.duplicates).toEqual([incoming[0]]);
     expect(commit.overflow).toEqual([]);
+  });
+
+  it("fusiona el upload en el tile sin cambiar clientId ni el blob local", () => {
+    const current: UploadedFile[] = [
+      {
+        clientId: "tile-1",
+        name: "a.png",
+        openai_file_id: "pending_tile-1",
+        type: "image",
+        previewUrl: "blob:keep",
+        pending: true,
+      },
+    ];
+    const next = applyUploadToTray(current, "tile-1", {
+      name: "a.png",
+      openai_file_id: "file-1",
+      type: "image",
+      previewUrl: "blob:new",
+    });
+    expect(next[0]).toMatchObject({
+      clientId: "tile-1",
+      openai_file_id: "file-1",
+      previewUrl: "blob:keep",
+      pending: false,
+    });
+  });
+
+  it("no manda audio sintético ni tiles pendientes al chat", () => {
+    expect(
+      toChatRequestFile({
+        name: "voz.mp3",
+        openai_file_id: "audio_1",
+        type: "audio",
+      })
+    ).toBeNull();
+    expect(
+      toChatRequestFile({
+        name: "foto.png",
+        openai_file_id: "pending_x",
+        type: "image",
+        pending: true,
+      })
+    ).toBeNull();
+    expect(
+      toChatRequestFile({
+        name: "voz.mp3",
+        openai_file_id: "file-abc",
+        type: "audio",
+      })
+    ).toEqual({ openai_file_id: "file-abc", type: "document" });
   });
 
   it("deja pasar el lote entero cuando hay cupo", () => {

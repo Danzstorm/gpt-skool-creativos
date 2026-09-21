@@ -4,6 +4,7 @@ import type { UploadedFile } from "@/lib/types";
 import { downscaleImage } from "@/lib/image-resize";
 import { createClient } from "@/lib/supabase/client";
 import {
+  applyUploadToTray,
   attachmentPreviewBlob,
   commitUploadResults,
   composeUploadError,
@@ -106,18 +107,43 @@ export function useChatUploads(canAttach: boolean) {
       return;
     }
 
+    const staged = plan.batch.map((original) => {
+      const clientId = crypto.randomUUID();
+      const isImage = original.type.startsWith("image/");
+      const isAudio = original.type.startsWith("audio/");
+      const previewUrl = isImage || isAudio ? URL.createObjectURL(original) : undefined;
+      return { original, clientId, isImage, isAudio, previewUrl };
+    });
+
+    const placeholders: UploadedFile[] = staged
+      .filter((item) => item.isImage || item.isAudio)
+      .map((item) => ({
+        clientId: item.clientId,
+        name: item.original.name,
+        openai_file_id: `pending_${item.clientId}`,
+        type: item.isImage ? "image" : "audio",
+        previewUrl: item.isImage ? item.previewUrl : undefined,
+        mediaUrl: item.isAudio ? item.previewUrl : undefined,
+        pending: true,
+      }));
+    if (placeholders.length > 0) {
+      attachedCountRef.current += placeholders.length;
+      setAttachedFiles((prev) => [...prev, ...placeholders]);
+    }
+
+    const reserved = staged.length - placeholders.length;
     const videoCount = plan.batch.filter((file) => file.type.startsWith("video/")).length;
-    pendingRef.current += plan.batch.length;
+    pendingRef.current += reserved;
     videoPendingRef.current += videoCount;
     setPendingUploads(pendingRef.current);
     setUploadingVideo(videoPendingRef.current > 0);
 
     // En paralelo dentro del lote; otra tanda puede sumarse sin esperar.
     const results = await Promise.all(
-      plan.batch.map(async (original) => {
+      staged.map(async ({ original, clientId, isImage, isAudio, previewUrl }) => {
         const fail = (msg: string, posterUrl?: string) => {
-          if (posterUrl) URL.revokeObjectURL(posterUrl);
-          return { error: namedUploadError(original.name, msg) };
+          if (posterUrl && posterUrl !== previewUrl) URL.revokeObjectURL(posterUrl);
+          return { error: namedUploadError(original.name, msg), clientId, isAudio, isImage, previewUrl };
         };
         let posterUrl: string | undefined;
         let durationSeconds: number | undefined;
@@ -163,8 +189,8 @@ export function useChatUploads(canAttach: boolean) {
           }
 
           const data = await regRes.json();
-          const kind = data.kind as UploadedFile["type"];
-          const uploadedAsImage = kind === "image";
+          const kind = (isAudio ? "audio" : data.kind) as UploadedFile["type"];
+          const uploadedAsImage = kind === "image" && !previewUrl;
           const previewBlob = attachmentPreviewBlob(file, kind, data.mime);
           const analyzing = kind === "video" && data.analyzing === true;
           if (analyzing && typeof data.file_id === "string") {
@@ -172,10 +198,17 @@ export function useChatUploads(canAttach: boolean) {
           }
           return {
             file: {
+              clientId,
               name: original.name,
               openai_file_id: data.file_id,
               type: kind,
-              previewUrl: uploadedAsImage ? URL.createObjectURL(previewBlob) : posterUrl,
+              previewUrl: isImage
+                ? previewUrl
+                : uploadedAsImage
+                  ? URL.createObjectURL(previewBlob)
+                  : posterUrl,
+              ...(kind === "video" ? { mediaUrl: URL.createObjectURL(file) } : {}),
+              ...(isAudio ? { mediaUrl: previewUrl } : {}),
               ...(durationSeconds != null ? { durationSeconds } : {}),
               ...(analyzing ? { analyzing: true } : {}),
             },
@@ -186,25 +219,52 @@ export function useChatUploads(canAttach: boolean) {
       })
     );
 
-    pendingRef.current = Math.max(0, pendingRef.current - plan.batch.length);
+    pendingRef.current = Math.max(0, pendingRef.current - reserved);
     videoPendingRef.current = Math.max(0, videoPendingRef.current - videoCount);
     setPendingUploads(pendingRef.current);
     setUploadingVideo(videoPendingRef.current > 0);
 
     const ok = results.flatMap((r) => ("file" in r && r.file ? [r.file] : []));
+    const failed = results.flatMap((r) => ("error" in r && r.error ? [r] : []));
     // El cupo se decide contra `prev`, no contra el conteo de cuando arrancó
     // el lote: attachFromLibrary puede haber llenado huecos durante el await.
     let overflowCount = 0;
-    if (ok.length > 0) {
+    if (ok.length > 0 || failed.length > 0) {
       let released: UploadedFile[] = [];
       setAttachedFiles((prev) => {
-        const commit = commitUploadResults(prev, ok);
-        overflowCount = commit.overflow.length;
-        released = [...commit.overflow, ...commit.duplicates];
-        return commit.next;
+        let next = prev;
+        for (const result of failed) {
+          if (!("clientId" in result) || !result.clientId) continue;
+          if (result.isAudio) {
+            next = next.map((file) =>
+              file.clientId === result.clientId
+                ? { ...file, openai_file_id: `local_${result.clientId}`, pending: false }
+                : file
+            );
+            continue;
+          }
+          if (result.isImage) {
+            const victim = next.find((file) => file.clientId === result.clientId);
+            if (victim) released.push(victim);
+            next = next.filter((file) => file.clientId !== result.clientId);
+          }
+        }
+        const stagedOk = ok.filter((file) => file.clientId && next.some((row) => row.clientId === file.clientId));
+        const freshOk = ok.filter((file) => !stagedOk.includes(file));
+        for (const file of stagedOk) {
+          if (file.clientId) next = applyUploadToTray(next, file.clientId, file);
+        }
+        if (freshOk.length > 0) {
+          const commit = commitUploadResults(next, freshOk);
+          overflowCount = commit.overflow.length;
+          released = [...released, ...commit.overflow, ...commit.duplicates];
+          return commit.next;
+        }
+        return next;
       });
       for (const file of released) {
         if (file.previewUrl) URL.revokeObjectURL(file.previewUrl);
+        if (file.mediaUrl) URL.revokeObjectURL(file.mediaUrl);
       }
     }
 
@@ -239,6 +299,7 @@ export function useChatUploads(canAttach: boolean) {
     setAttachedFiles((prev) => {
       const f = prev[index];
       if (f?.previewUrl) URL.revokeObjectURL(f.previewUrl);
+      if (f?.mediaUrl) URL.revokeObjectURL(f.mediaUrl);
       return prev.filter((_, idx) => idx !== index);
     });
   }, []);

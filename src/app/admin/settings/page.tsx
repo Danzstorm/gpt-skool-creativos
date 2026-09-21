@@ -217,7 +217,6 @@ export default function AdminSettingsPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Ajustes</h1>
         <p className="text-zinc-400 text-sm mt-0.5">
           Marca y configuración general de la plataforma — para replicar esto con otro cliente,
           esto es lo único que cambia.

@@ -168,3 +168,39 @@ export function commitUploadResults(
     duplicates,
   };
 }
+
+/** Sustituye el placeholder del tile sin cambiar `clientId` ni el blob local. */
+export function applyUploadToTray(
+  current: UploadedFile[],
+  clientId: string,
+  uploaded: UploadedFile
+): UploadedFile[] {
+  return current.map((file) =>
+    file.clientId === clientId
+      ? {
+          ...uploaded,
+          clientId,
+          previewUrl: file.previewUrl ?? uploaded.previewUrl,
+          mediaUrl: file.mediaUrl ?? uploaded.mediaUrl,
+          pending: false,
+        }
+      : file
+  );
+}
+
+export function isLocalOnlyUpload(file: UploadedFile): boolean {
+  const id = file.openai_file_id;
+  return file.pending === true || !id || id.startsWith("pending_") || id.startsWith("local_");
+}
+
+/** Lo que viaja a /api/chat. El audio sintético se queda en la UI. */
+export function toChatRequestFile(
+  file: UploadedFile
+): { openai_file_id: string; type: "image" | "document" | "video" } | null {
+  if (isLocalOnlyUpload(file)) return null;
+  if (file.type === "audio") {
+    if (file.openai_file_id.startsWith("audio_")) return null;
+    return { openai_file_id: file.openai_file_id, type: "document" };
+  }
+  return { openai_file_id: file.openai_file_id, type: file.type };
+}

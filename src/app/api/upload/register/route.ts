@@ -9,9 +9,10 @@ import { detectSupportedImageMime, normalizeUploadFileName, openaiImageName } fr
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 /** Deriva el `kind` que ve el cliente a partir del MIME real registrado. */
-function kindFromMime(mime: string | null | undefined): "image" | "document" | "video" {
+function kindFromMime(mime: string | null | undefined): "image" | "document" | "video" | "audio" {
   if (mime?.startsWith("image/")) return "image";
   if (mime?.startsWith("video/")) return "video";
+  if (mime?.startsWith("audio/")) return "audio";
   return "document";
 }
 
@@ -100,6 +101,10 @@ export async function POST(request: NextRequest) {
 
   if (finalMime.startsWith("video/")) {
     return registerVideo({ service, userId: user.id, path, name, finalMime });
+  }
+
+  if (finalMime.startsWith("audio/")) {
+    return registerAudio({ service, userId: user.id, path, name, finalMime, blob, openaiName: normalizeUploadFileName(name, finalMime) });
   }
 
   // Las imágenes van con nombre neutro para que el modelo no pueda citar el
@@ -201,5 +206,66 @@ async function registerVideo({
     mime: finalMime,
     kind: "video" as const,
     analyzing: true,
+  });
+}
+
+/**
+ * Audio: se intenta copiar a OpenAI (user_data). Si OpenAI lo rechaza, queda
+ * en Storage con id sintético para poder reproducirlo en la UI. El modelo
+ * solo recibe el archivo cuando el id es real (`file-…`).
+ */
+async function registerAudio({
+  service,
+  userId,
+  path,
+  name,
+  finalMime,
+  blob,
+  openaiName,
+}: {
+  service: ReturnType<typeof createServiceClient>;
+  userId: string;
+  path: string;
+  name: string;
+  finalMime: string;
+  blob: Blob;
+  openaiName: string;
+}) {
+  let fileId = `audio_${crypto.randomUUID()}`;
+  try {
+    const uploaded = await openai.files.create({
+      file: new File([blob], openaiName, { type: finalMime }),
+      purpose: "user_data",
+    });
+    fileId = uploaded.id;
+  } catch (uploadError) {
+    console.error("upload/register audio OpenAI omitido", {
+      path,
+      mime: finalMime,
+      error: uploadError instanceof Error ? uploadError.message : String(uploadError),
+    });
+  }
+
+  const { error: mapError } = await service.from("uploaded_files").insert({
+    openai_file_id: fileId,
+    user_id: userId,
+    storage_path: path,
+    mime: finalMime,
+    name,
+  });
+  if (mapError) {
+    await Promise.allSettled([
+      fileId.startsWith("file-") ? openai.files.delete(fileId) : Promise.resolve(),
+      service.storage.from("chat-uploads").remove([path]),
+    ]);
+    console.error("upload/register audio mapping error", { code: mapError.code, message: mapError.message });
+    return NextResponse.json({ error: "No se pudo registrar el audio" }, { status: 500 });
+  }
+
+  return NextResponse.json({
+    file_id: fileId,
+    name,
+    mime: finalMime,
+    kind: "audio" as const,
   });
 }

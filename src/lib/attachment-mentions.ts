@@ -17,7 +17,7 @@ import {
   type ThreadNumbers,
 } from "./attachment-labels";
 
-export type MentionKind = AttachmentLike["type"];
+export type MentionKind = "image" | "document" | "video";
 
 export interface MentionCandidate {
   id: string;

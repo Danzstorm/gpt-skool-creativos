@@ -120,8 +120,14 @@ export interface ThreadSummary {
 export interface UploadedFile {
   name: string;
   openai_file_id: string;
-  type: "image" | "document" | "video";
+  type: "image" | "document" | "video" | "audio";
+  /** Identidad estable del tile: la segunda foto no remonta la primera. */
+  clientId?: string;
+  /** Todavía viajando a Storage; el composer ya muestra preview. */
+  pending?: boolean;
   previewUrl?: string; // Miniatura: object URL de imagen/poster, o URL firmada del archivo
+  /** Object URL del video/audio original para el preview 64px. */
+  mediaUrl?: string;
   /** Duración del video en segundos, si el navegador pudo leerla al adjuntar. */
   durationSeconds?: number;
   /**

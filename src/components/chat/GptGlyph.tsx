@@ -1,61 +1,45 @@
 import Image from "next/image";
-import type { CSSProperties } from "react";
 import type { Gpt } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { getGptVisual } from "@/lib/gpt-visual";
-import GptMark from "./GptMark";
+import ProtoIcon, { protoIconForCraft } from "./ProtoIcon";
 
-const SIZES = {
-  xs: "xs",
-  sm: "sm",
-  lg: "lg",
-  xl: "xl",
-  hero: "hero",
-} as const;
+type GlyphSize = "xs" | "sm" | "lg" | "xl" | "hero";
 
 interface Props {
   gpt?: Pick<Gpt, "name" | "icon_url" | "category"> & { description?: string | null };
-  size?: keyof typeof SIZES;
+  size?: GlyphSize;
   className?: string;
   sizePx?: string;
   textClassName?: string;
-  /** Solo sidebar: icono plano tipo lista, rojo Creativos. */
+  /** `nav` = lockup de lista; el resto es el símbolo de tarjeta/hero. */
   variant?: "mark" | "nav";
 }
 
-const NAV_ICON = { xs: 14, sm: 15, lg: 16, xl: 20, hero: 22 } as const;
-
-// Marca canónica: disco de gema. `nav` es el lockup de la barra (sin 3D).
 export default function GptGlyph({ gpt, size = "sm", className, sizePx, variant = "mark" }: Props) {
-  const { markKind, accentHex, Icon } = getGptVisual(gpt?.category, gpt?.name, gpt?.description);
-  const letter = gpt?.name?.trim()?.charAt(0)?.toUpperCase() || "G";
+  const { craft } = getGptVisual(gpt?.category, gpt?.name, gpt?.description);
+  const iconName = protoIconForCraft(craft);
   const imageSizes = sizePx || { xs: "20px", sm: "24px", lg: "32px", xl: "48px", hero: "132px" }[size];
 
-  if (variant === "nav") {
+  if (gpt?.icon_url) {
     return (
       <span
-        className={cn("gpt-nav-mark", `gpt-nav-mark-${size}`, className)}
-        aria-hidden
-      >
-        {gpt?.icon_url ? (
-          <Image src={gpt.icon_url} alt="" fill sizes={imageSizes} className="object-cover" />
-        ) : (
-          <Icon size={NAV_ICON[size]} strokeWidth={1.75} />
+        className={cn(
+          variant === "nav" ? "gpt-nav-mark" : "symbol",
+          variant === "nav" && `gpt-nav-mark-${size}`,
+          className
         )}
+        aria-hidden
+        style={{ position: "relative", display: "inline-flex", width: imageSizes, height: imageSizes }}
+      >
+        <Image src={gpt.icon_url} alt="" fill sizes={imageSizes} className="object-cover rounded-[6px]" />
       </span>
     );
   }
 
   return (
-    <span
-      className={cn("gpt-glyph inline-flex flex-shrink-0", className)}
-      style={{ "--craft": accentHex } as CSSProperties}
-    >
-      <GptMark kind={markKind} letter={letter} size={size}>
-        {gpt?.icon_url ? (
-          <Image src={gpt.icon_url} alt="" fill sizes={imageSizes} className="object-cover" />
-        ) : undefined}
-      </GptMark>
+    <span className={cn(variant === "nav" ? undefined : "symbol", className)} aria-hidden>
+      <ProtoIcon name={iconName} />
     </span>
   );
 }

@@ -1,7 +1,8 @@
-import type { CSSProperties, ReactNode } from "react";
+"use client";
+
+import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import type { Gpt } from "@/lib/types";
-import { conversationStartersOf, getGptVisual } from "@/lib/gpt-visual";
-import GptGlyph from "./GptGlyph";
+import EnergyCanvas from "@/components/ui/EnergyCanvas";
 
 interface Props {
   gpt: Gpt;
@@ -9,39 +10,87 @@ interface Props {
   children?: ReactNode;
 }
 
-// Empty-state del GPT activo: esfera de vidrio del oficio, mismo fluir que Creativos.
+function prefersReducedMotion(): boolean {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
 export default function GptHero({ gpt, onStarter, children }: Props) {
-  const { label, accentHex } = getGptVisual(gpt.category, gpt.name, gpt.description);
-  const starters = conversationStartersOf(gpt.conversation_starters);
-  const description = gpt.description?.trim() || "";
-  const author = gpt.author?.trim() || "";
+  const introRef = useRef<HTMLDivElement>(null);
+  const switchVersion = useRef(0);
+  const firstPaint = useRef(true);
+  const latestGpt = useRef(gpt);
+  const [displayed, setDisplayed] = useState(gpt);
+
+  useEffect(() => {
+    latestGpt.current = gpt;
+  });
+
+  useEffect(() => {
+    const next = latestGpt.current;
+    if (firstPaint.current) {
+      firstPaint.current = false;
+      setDisplayed(next);
+      return;
+    }
+
+    const el = introRef.current;
+    const version = ++switchVersion.current;
+    if (!el || prefersReducedMotion()) {
+      setDisplayed(next);
+      return;
+    }
+
+    const from = Number(getComputedStyle(el).opacity) || 1;
+    el.getAnimations().forEach((animation) => animation.cancel());
+    const out = el.animate([{ opacity: from }, { opacity: 0 }], {
+      duration: 190,
+      easing: "ease-in-out",
+      fill: "forwards",
+    });
+
+    void out.finished
+      .then(() => {
+        if (version !== switchVersion.current) return;
+        setDisplayed(latestGpt.current);
+        out.cancel();
+        el.animate([{ opacity: 0 }, { opacity: 1 }], {
+          duration: 260,
+          easing: "ease-in-out",
+        });
+      })
+      .catch(() => {
+        if (version !== switchVersion.current) return;
+        setDisplayed(latestGpt.current);
+      });
+  }, [gpt.id]);
+
+  const description = displayed.description?.trim() || "";
+  const starters = Array.isArray(displayed.conversation_starters)
+    ? displayed.conversation_starters.filter((s): s is string => typeof s === "string" && s.trim().length > 0)
+    : [];
+
+  function trackTitle(e: PointerEvent<HTMLDivElement>) {
+    const title = e.currentTarget.querySelector("h1");
+    if (!title) return;
+    const rect = title.getBoundingClientRect();
+    e.currentTarget.style.setProperty("--title-x", `${e.clientX - rect.left}px`);
+    e.currentTarget.style.setProperty("--title-y", `${e.clientY - rect.top}px`);
+  }
 
   return (
-    <div
-      className="gpt-hero relative flex min-h-full w-full max-w-2xl mx-auto flex-col items-center justify-center px-1 py-10 text-center"
-      style={{ "--craft": accentHex } as CSSProperties}
-    >
-      <GptGlyph gpt={gpt} size="hero" className="mb-8" />
-
-      {label && <p className="mb-3 text-[13px] tracking-wide text-zinc-400">{label}</p>}
-      <h3 className="font-display italic text-2xl font-semibold tracking-tight text-zinc-100 md:text-3xl">
-        {gpt.name}
-      </h3>
-      {description && (
-        <p className="mt-3 max-w-md text-base leading-normal text-zinc-300">{description}</p>
-      )}
-      {author && <p className="mt-2 text-sm leading-normal text-zinc-500">By {author}</p>}
+    <div className="chat-intro" id="chatIntro" ref={introRef}>
+      <div className="gpt-title-row" onPointerMove={trackTitle}>
+        <div className="brand-energy" aria-hidden>
+          <EnergyCanvas size={82} speed={0.0025} />
+        </div>
+        <h1 data-title={displayed.name}>{displayed.name}</h1>
+      </div>
+      {description && <p>{description}</p>}
       {children}
-
       {starters.length > 0 && (
-        <div className="mt-10 grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="examples">
           {starters.slice(0, 4).map((starter) => (
-            <button
-              key={starter}
-              type="button"
-              onClick={() => onStarter(starter)}
-              className="gpt-starter frost cursor-pointer rounded-2xl px-5 py-3.5 text-left text-sm leading-snug text-zinc-200"
-            >
+            <button key={starter} type="button" onClick={() => onStarter(starter)}>
               {starter}
             </button>
           ))}

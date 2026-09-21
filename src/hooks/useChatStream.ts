@@ -9,6 +9,7 @@ import {
 } from "@/lib/stream-errors";
 import type { Phase } from "@/lib/thinking-phrases";
 import type { ComposerHandle } from "@/components/chat/Composer";
+import { toChatRequestFile } from "@/lib/chat-uploads";
 
 export type EnsureThread = (gptId: string) => Promise<string | null>;
 
@@ -169,6 +170,7 @@ export function useChatStream({
         (!text.trim() && attachedFiles.length === 0) ||
         isLoading ||
         pendingUploads > 0 ||
+        attachedFiles.some((file) => file.pending) ||
         waitingVideoRef.current ||
         !activeGptId
       )
@@ -223,11 +225,10 @@ export function useChatStream({
         gptId: activeGptId,
         threadId,
         message: messageText,
-        files:
-          userMessage.files?.map((f) => ({
-            openai_file_id: f.openai_file_id,
-            type: f.type,
-          })) ?? [],
+        files: userMessage.files?.flatMap((f) => {
+          const mapped = toChatRequestFile(f);
+          return mapped ? [mapped] : [];
+        }) ?? [],
         replaceLast,
       });
     },

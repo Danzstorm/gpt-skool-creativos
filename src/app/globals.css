@@ -36,8 +36,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-display: var(--font-archivo);
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-jakarta);
 }
 
 /* Registra ink/cta/cta-active/cta-fg como colores reales de Tailwind — solo
@@ -80,7 +80,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), Inter, Arial, Helvetica, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -489,6 +489,15 @@ body {
 }
 .ring-gradient:hover::before {
   opacity: 1;
+}
+
+/* Envoltorio de EnergyCanvas: el canvas mide el doble del slot y se recorta
+   de vuelta con una máscara radial suave (halo), no un borde duro. */
+.energy-halo {
+  position: relative;
+  overflow: hidden;
+  -webkit-mask-image: radial-gradient(closest-side, #000 68%, transparent 100%);
+  mask-image: radial-gradient(closest-side, #000 68%, transparent 100%);
 }
 
 /* Wrapper flex del chrome. No usar `zoom` aquí: en Chromium

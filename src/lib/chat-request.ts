@@ -132,7 +132,9 @@ export async function applyOpenAiAttachmentPolicy(
   policy: OpenAiAttachmentPolicy,
   options?: { skipOpenAiVerifyIds?: ReadonlySet<string> }
 ): Promise<{ ok: true; files: IncomingFile[] } | { ok: false; error: string }> {
-  const openaiBacked = incoming.filter((file) => file.type !== "video");
+  const openaiBacked = incoming.filter(
+    (file) => file.type !== "video" && !file.openai_file_id.startsWith("audio_")
+  );
   if (openaiBacked.length === 0) return { ok: true, files: incoming };
 
   const availableIds = new Set(
@@ -148,13 +150,18 @@ export async function applyOpenAiAttachmentPolicy(
 
   return {
     ok: true,
-    files: incoming.filter((file) => file.type === "video" || availableIds.has(file.openai_file_id)),
+    files: incoming.filter(
+      (file) =>
+        file.type === "video" ||
+        file.openai_file_id.startsWith("audio_") ||
+        availableIds.has(file.openai_file_id)
+    ),
   };
 }
 
 export function buildCodeInterpreterTools(incoming: IncomingFile[]): Tool[] {
   const docFileIds = incoming
-    .filter((file) => file.type === "document")
+    .filter((file) => file.type === "document" && !file.openai_file_id.startsWith("audio_"))
     .map((file) => file.openai_file_id);
   return [
     {

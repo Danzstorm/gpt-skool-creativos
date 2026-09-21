@@ -1,5 +1,5 @@
 import { forwardRef, memo, useCallback, useImperativeHandle, useMemo, useRef, useState } from "react";
-import { ArrowUp, Plus, Paperclip, Mic, X, Check, Square, Video } from "lucide-react";
+import { Plus, X, Check, Square } from "lucide-react";
 import type { UploadedFile } from "@/lib/types";
 import { useDismissable } from "@/hooks/useDismissable";
 import RecordingWave from "./RecordingWave";
@@ -13,6 +13,7 @@ import { composerFieldDisabled } from "@/lib/composer-input";
 import { mentionAt, moveIndex, type MentionQuery } from "@/lib/file-search";
 import { VIDEO_ANALYZING_HINT, VIDEO_ANALYZING_LABEL, VIDEO_ATTACH_TITLE } from "@/lib/video-copy";
 import AttachmentStill from "./AttachmentStill";
+import AudioPreview from "./AudioPreview";
 import MentionField, { type MentionFieldHandle } from "./MentionField";
 import MentionMenu from "./MentionMenu";
 import MentionPreview from "./MentionPreview";
@@ -20,7 +21,7 @@ import MentionPreview from "./MentionPreview";
 // Tipos que acepta el <input type="file">. El video va aparte porque depende
 // de que Gemini esté configurado (ver `videoEnabled`).
 const FILE_ACCEPT =
-  "image/jpeg,image/png,image/webp,image/gif,application/pdf,.txt,.md,.py,.js,.ts,.csv,.xlsx,.docx";
+  "image/jpeg,image/png,image/webp,image/gif,audio/*,application/pdf,.txt,.md,.py,.js,.ts,.csv,.xlsx,.docx";
 const VIDEO_ACCEPT = "video/mp4,video/quicktime,video/webm";
 
 export interface ComposerHandle {
@@ -263,49 +264,47 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   }
 
   return (
-    <div className="bg-transparent">
+    <form className="composer" id="composer" onSubmit={(e) => { e.preventDefault(); submit(); }}>
+      <div className="composer-shell">
       {(attachedFiles.length > 0 || isUploading) && (
-        <div className="flex flex-wrap gap-2 mb-3 max-w-3xl mx-auto">
+        <div className="attachments" id="attachments">
           {attachedFiles.map((f, i) => {
-            const visual = f.type === "image" || (f.type === "video" && f.previewUrl);
-            return visual ? (
-              <div key={i} className="relative group/thumb">
-                <span className="relative block h-16 w-16 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
-                  <AttachmentStill
-                    file={{
-                      kind: f.type,
-                      previewUrl: f.previewUrl,
-                      durationSeconds: f.durationSeconds,
-                    }}
-                    className="h-16 w-16 object-cover"
-                    iconSize={16}
-                  />
-                  {f.analyzing && (
-                    <span className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-xl bg-black/50">
-                      <span className="h-3 w-3 rounded-full border-2 border-zinc-500 border-t-zinc-200 animate-spin" />
-                    </span>
-                  )}
-                </span>
-                <button
-                  onClick={() => onRemoveFile(i)}
-                  className="absolute -top-1.5 -right-1.5 bg-zinc-800 border border-zinc-600 rounded-full p-0.5 text-zinc-300 hover:text-ink opacity-0 group-hover/thumb:opacity-100 transition"
-                >
-                  <X size={12} />
+            const tileKey = f.clientId ?? f.openai_file_id ?? String(i);
+            const visual = f.type === "image" || f.type === "video";
+            return f.type === "audio" ? (
+              <div key={tileKey} className="attachment attach-tile">
+                <AudioPreview src={f.mediaUrl || f.previewUrl} name={f.name} />
+                <button type="button" onClick={() => onRemoveFile(i)} aria-label="Quitar adjunto">
+                  ×
+                </button>
+              </div>
+            ) : visual ? (
+              <div key={tileKey} className="attachment attach-tile">
+                <AttachmentStill
+                  file={{
+                    kind: f.type,
+                    previewUrl: f.previewUrl,
+                    mediaUrl: f.mediaUrl,
+                    durationSeconds: f.durationSeconds,
+                  }}
+                  loop={f.type === "video"}
+                  energy={f.type === "image"}
+                  className="h-16 w-16 object-cover"
+                  iconSize={16}
+                />
+                {f.analyzing && (
+                  <span className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-xl bg-black/50">
+                    <span className="h-3 w-3 rounded-full border-2 border-zinc-500 border-t-zinc-200 animate-spin" />
+                  </span>
+                )}
+                <button type="button" onClick={() => onRemoveFile(i)} aria-label="Quitar adjunto">
+                  ×
                 </button>
               </div>
             ) : (
-              <div
-                key={i}
-                className="flex h-16 items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-300"
-              >
-                {f.type === "video" ? (
-                  <Video size={13} className="text-zinc-400 flex-shrink-0" />
-                ) : (
-                  <Paperclip size={13} className="text-zinc-400 flex-shrink-0" />
-                )}
+              <div key={tileKey} className="flex h-16 items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs">
                 <span className="max-w-[120px] truncate">{f.name}</span>
-                {f.analyzing && <span className="text-zinc-500">analizando…</span>}
-                <button onClick={() => onRemoveFile(i)} className="text-zinc-500 hover:text-ink ml-1">
+                <button type="button" onClick={() => onRemoveFile(i)} className="text-zinc-500 hover:text-ink ml-1">
                   <X size={12} />
                 </button>
               </div>
@@ -314,17 +313,14 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           <button
             type="button"
             onClick={openFilePicker}
-            className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-xl border border-dashed border-zinc-700 text-zinc-500 transition hover:border-zinc-500 hover:text-zinc-300"
+            className="attachment-add attach-tile"
             title="Adjuntar más archivos"
             aria-label="Adjuntar más archivos"
           >
             <Plus size={18} />
           </button>
-          {/* El progreso vive acá y no en el placeholder del textarea: ahí
-              decía "Analizando video..." y hacía sentir que el campo estaba
-              ocupado, cuando escribir siempre estuvo permitido. */}
           {(isUploading || analyzingAttached) && (
-            <div className="flex h-16 items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-400">
+            <div className="flex h-16 items-center gap-2 px-3 py-1.5 text-xs text-zinc-400">
               <span className="w-3 h-3 rounded-full border-2 border-zinc-600 border-t-zinc-300 animate-spin" />
               {isUploadingVideo || analyzingAttached ? (
                 <span>
@@ -347,6 +343,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
         <div className="mx-auto mb-2 flex max-w-3xl items-center justify-between rounded-xl border border-brand/30 bg-brand/10 px-3 py-1.5 text-xs text-zinc-200">
           <span>Editando mensaje — al enviar se reemplaza la respuesta anterior.</span>
           <button
+            type="button"
             onClick={() => {
               onCancelEdit();
               setInput("");
@@ -365,7 +362,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
         </div>
       )}
 
-      <div ref={mentionRef} className="mention-composer relative mx-auto max-w-3xl">
+      <div ref={mentionRef} className="mention-composer relative">
         {mention && (
           <MentionMenu
             files={mentionOptions}
@@ -385,7 +382,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             anchor={tokenPreview.rect}
           />
         )}
-      <div className="frost flex items-end gap-2 rounded-3xl px-4 py-2.5 transition-colors focus-within:border-brand/40 focus-within:ring-2 focus-within:ring-brand/25">
+      <div className="composer-row">
         <input
           ref={fileInputRef}
           type="file"
@@ -398,24 +395,24 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           }}
         />
 
-        <button
-          onClick={openFilePicker}
-          className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full border border-zinc-800 bg-zinc-950 text-zinc-400 transition hover:bg-zinc-800 hover:text-zinc-100"
-          // Arrastrar archivos acá no existe (el único drag&drop es mover chats
-          // a una carpeta en el sidebar) y `handlePaste` solo acepta image/*,
-          // así que el globo nombra pegar únicamente para imágenes.
-          title={
-            videoEnabled
-              ? VIDEO_ATTACH_TITLE
-              : "Adjuntar varias imágenes o archivos (las imágenes también se pegan con Ctrl+V)"
-          }
-          aria-label="Adjuntar"
-        >
-          <Plus size={17} />
-        </button>
+        {attachedFiles.length === 0 && (
+          <button
+            type="button"
+            onClick={openFilePicker}
+            className="attach-button"
+            title={
+              videoEnabled
+                ? VIDEO_ATTACH_TITLE
+                : "Adjuntar varias imágenes o archivos (las imágenes también se pegan con Ctrl+V)"
+            }
+            aria-label="Agregar archivos"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden>
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </button>
+        )}
 
-        {/* Grabando: la onda ocupa el centro (donde va el texto) y el micrófono
-            desaparece, porque detener pasa a ser el botón de la derecha. */}
         {isRecording && recordingStream ? (
           <>
             <RecordingWave stream={recordingStream} />
@@ -425,9 +422,6 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           </>
         ) : (
           <>
-            {/* Micrófono y controles de grabación usan la misma caja de 36px que
-                el botón de enviar: con items-end, dos alturas distintas dejan los
-                centros ópticos desalineados. */}
             <MentionField
               ref={mentionFieldRef}
               value={input}
@@ -436,7 +430,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
               placeholder={
                 isTranscribing
                   ? "Transcribiendo audio..."
-                  : "Escribe un mensaje... (Enter para enviar)"
+                  : "Escribe tu idea…"
               }
               onChange={setInput}
               onCaret={syncMention}
@@ -449,67 +443,53 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             />
 
             <button
+              type="button"
               onClick={startRecording}
               disabled={isLoading || isTranscribing || isUploading}
-              className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full border border-zinc-800 bg-zinc-950 text-zinc-400 transition hover:bg-zinc-800 hover:text-zinc-100"
+              className="mic-button"
               title="Toca para grabar"
               aria-label="Grabar audio"
+              aria-pressed={isRecording}
             >
-              <Mic size={18} />
+              <svg viewBox="0 0 24 24" aria-hidden>
+                <rect x="9" y="3" width="6" height="12" rx="3" />
+                <path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3m-4 0h8" />
+              </svg>
             </button>
           </>
         )}
 
         {isRecording ? (
           <>
-            <button
-              onClick={() => stopRecording(true)}
-              className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full border border-zinc-800 bg-zinc-950 text-zinc-400 transition hover:bg-zinc-800 hover:text-zinc-100"
-              title="Descartar grabación"
-              aria-label="Descartar grabación"
-            >
+            <button type="button" onClick={() => stopRecording(true)} aria-label="Descartar grabación">
               <X size={18} />
             </button>
-            <button
-              onClick={() => stopRecording(false)}
-              className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full border border-brand/40 bg-brand/10 text-zinc-100 transition hover:bg-brand/20 active:scale-95"
-              title="Listo, transcribir"
-              aria-label="Terminar grabación y transcribir"
-            >
+            <button type="button" className="send" onClick={() => stopRecording(false)} aria-label="Terminar grabación y transcribir">
               <Check size={19} />
             </button>
           </>
         ) : isLoading ? (
-          <button
-            onClick={onStop}
-            className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full border border-zinc-700 bg-zinc-800 text-zinc-100 transition hover:bg-zinc-700"
-            title="Detener respuesta"
-          >
+          <button type="button" className="send" onClick={onStop} title="Detener respuesta" aria-label="Detener">
             <Square size={14} className="fill-current" />
           </button>
         ) : (
           <button
-            onClick={submit}
+            type="submit"
+            className="send"
             disabled={isUploading || (!input.trim() && attachedFiles.length === 0)}
-            className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-brand text-white transition hover:bg-[#E00032] active:scale-95 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500 disabled:hover:bg-zinc-800"
-            // Enviar sigue esperando al adjunto: mandar antes dejaría el mensaje
-            // sin el archivo que lo motivó. Escribir, en cambio, nunca se bloquea.
-            title={
-              isUploading || analyzingAttached
-                ? "Esperando a que termine el adjunto"
-                : "Enviar"
-            }
-            aria-label="Enviar"
+            title={isUploading || analyzingAttached ? "Esperando a que termine el adjunto" : "Enviar mensaje"}
+            aria-label="Enviar mensaje"
           >
-            <ArrowUp size={16} strokeWidth={2.5} />
+            <svg viewBox="0 0 24 24" aria-hidden>
+              <path d="M12 19V5m-6 6 6-6 6 6" />
+            </svg>
           </button>
         )}
       </div>
       </div>
-      <p className="mt-1 text-center text-[11px] leading-4 text-zinc-600">
-        Los GPTs pueden cometer errores. Verifica información importante.
-      </p>
-    </div>
+      </div>
+      <p className="note">Los GPTs pueden cometer errores. Verifica información importante.</p>
+    </form>
   );
 });
 

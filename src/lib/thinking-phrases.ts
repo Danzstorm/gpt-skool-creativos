@@ -32,7 +32,7 @@ export const EMPTY_ATTACHMENTS: ThinkingAttachments = { images: 0, documents: 0 
  * objetos literales.
  */
 export function countAttachments(
-  message?: { files?: { type: "image" | "document" | "video" }[] } | null
+  message?: { files?: { type: "image" | "document" | "video" | "audio" }[] } | null
 ): ThinkingAttachments {
   const files = message?.files;
   if (!files || files.length === 0) return EMPTY_ATTACHMENTS;

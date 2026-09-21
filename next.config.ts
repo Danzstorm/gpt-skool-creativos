@@ -7,7 +7,7 @@ const supabaseHost = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseOrigin = supabaseHost ? `https://${supabaseHost}` : "";
 
 // La app no carga NI un solo script, hoja de estilos o fuente de un tercero:
-// next/font auto-hospeda Geist y Archivo en el build, y el único enlace externo
+// next/font auto-hospeda Inter, Plus Jakarta Sans e Inconsolata en el build, y el único enlace externo
 // (skool.com) es navegación, no una subcarga. Por eso la política puede ser
 // estricta sin listas de permitidos que mantener.
 //
@@ -35,7 +35,8 @@ const csp = [
   // Report-Only a modo bloqueo.
   `img-src 'self' data: blob: https://lh3.googleusercontent.com ${supabaseOrigin}`.trim(),
   // blob: es la reproducción del audio grabado antes de transcribirlo.
-  "media-src 'self' blob:",
+  // El bucket público `music` de Supabase alimenta el menú de ambiente.
+  `media-src 'self' blob: ${supabaseOrigin}`.trim(),
   // Supabase (REST, Auth, Storage y Realtime por WebSocket) y el streaming SSE
   // propio, que es mismo origen.
   `connect-src 'self' ${supabaseOrigin} ${supabaseOrigin.replace("https://", "wss://")}`.trim(),

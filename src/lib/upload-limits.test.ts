@@ -23,4 +23,9 @@ describe("rejectReason", () => {
     expect(rejectReason("image/png", MAX_SIZE_BYTES + 1, true)).toMatch(/límite/);
     expect(rejectReason("application/zip", 10, true)).toMatch(/no permitido/);
   });
+
+  it("acepta audio dentro del tope general", () => {
+    expect(rejectReason("audio/mpeg", MAX_SIZE_BYTES, false)).toBeNull();
+    expect(rejectReason("audio/webm", MAX_SIZE_BYTES + 1, true)).toMatch(/límite/);
+  });
 });

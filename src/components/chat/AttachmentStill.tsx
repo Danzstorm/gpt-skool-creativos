@@ -1,49 +1,111 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import { Paperclip, Video } from "lucide-react";
-import { formatVideoBadge } from "@/lib/video-copy";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import EnergyCanvas from "@/components/ui/EnergyCanvas";
+import { imageRevealWaitMs } from "@/lib/image-loading";
+import { cn } from "@/lib/utils";
 
 export type StillSource = {
   kind: "image" | "video" | "document";
   previewUrl?: string;
+  mediaUrl?: string;
   durationSeconds?: number;
 };
 
-function isRemoteUrl(url: string) {
-  return /^https?:/i.test(url);
+function isPlayableVideo(url: string) {
+  return /^https?:/i.test(url) || /^blob:/i.test(url);
 }
 
-/**
- * Still identificable: foto, poster del video, o primer cuadro vía <video>
- * cuando la URL es el archivo firmado del hilo (no un JPEG local).
- */
+function ImageLoadingFrame({
+  src,
+  className,
+  energy,
+}: {
+  src: string;
+  className?: string;
+  energy: boolean;
+}) {
+  const startedRef = useRef(0);
+  const settledRef = useRef(!energy);
+  const [ready, setReady] = useState(!energy);
+
+  useEffect(() => {
+    startedRef.current = performance.now();
+  }, []);
+
+  const finish = useCallback(async (img: HTMLImageElement) => {
+    if (settledRef.current) return;
+    try {
+      if (img.decode) await img.decode();
+    } catch {
+      /* decode opcional: si falla igual revelamos tras el mínimo */
+    }
+    const wait = imageRevealWaitMs(startedRef.current);
+    if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+    if (settledRef.current) return;
+    settledRef.current = true;
+    setReady(true);
+  }, []);
+
+  if (!energy) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={src} alt="" className={className} />
+    );
+  }
+
+  return (
+    <span className={cn("image-loading-frame", ready && "is-ready")} aria-busy={!ready}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt=""
+        className={className}
+        onLoad={(e) => {
+          void finish(e.currentTarget);
+        }}
+        ref={(el) => {
+          if (el?.complete) void finish(el);
+        }}
+      />
+      <span className="image-loading-indicator" role="status" aria-label="Cargando imagen">
+        <ImageEnergyOverlay active={!ready} />
+      </span>
+    </span>
+  );
+}
+
 export default function AttachmentStill({
   file,
   className,
   iconSize = 22,
-  showDuration = true,
+  showDuration = false,
+  loop = false,
+  energy = false,
 }: {
   file: StillSource;
   className?: string;
   iconSize?: number;
   showDuration?: boolean;
+  loop?: boolean;
+  /** Secuencia de energía del prototipo: mínimo 2s + decode, revelado 280ms. */
+  energy?: boolean;
 }) {
   const [duration, setDuration] = useState(file.durationSeconds);
   const mediaClass = className ?? "h-full w-full object-cover";
+  const videoSrc = file.kind === "video" ? file.mediaUrl || (file.previewUrl && isPlayableVideo(file.previewUrl) ? file.previewUrl : undefined) : undefined;
 
   let media: ReactNode;
   if (file.kind === "image" && file.previewUrl) {
+    media = <ImageLoadingFrame src={file.previewUrl} className={mediaClass} energy={energy} />;
+  } else if (videoSrc && (loop || /^https?:/i.test(videoSrc))) {
     media = (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img src={file.previewUrl} alt="" className={mediaClass} />
-    );
-  } else if (file.kind === "video" && file.previewUrl) {
-    media = isRemoteUrl(file.previewUrl) ? (
       <video
-        src={file.previewUrl}
+        src={videoSrc}
         muted
         playsInline
+        autoPlay={loop}
+        loop={loop}
         preload="metadata"
         className={mediaClass}
         onLoadedMetadata={(e) => {
@@ -51,18 +113,18 @@ export default function AttachmentStill({
           if (Number.isFinite(next)) setDuration(next);
         }}
       />
-    ) : (
+    );
+  } else if (file.kind === "video" && file.previewUrl) {
+    media = (
       // eslint-disable-next-line @next/next/no-img-element
       <img src={file.previewUrl} alt="" className={mediaClass} />
     );
   } else {
     media = (
       <span className={`flex items-center justify-center bg-zinc-900 ${mediaClass}`}>
-        {file.kind === "video" ? (
-          <Video size={iconSize} className="text-zinc-500" />
-        ) : (
-          <Paperclip size={iconSize} className="text-zinc-500" />
-        )}
+        <svg viewBox="0 0 24 24" aria-hidden width={iconSize} height={iconSize}>
+          <path d="M14 3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21h11A1.5 1.5 0 0 0 19 19.5V8Z" />
+        </svg>
       </span>
     );
   }
@@ -75,9 +137,18 @@ export default function AttachmentStill({
       {media}
       {badge ? (
         <span className="absolute bottom-1 right-1 rounded-md bg-black/75 px-1 py-px text-[10px] font-medium leading-none text-white tabular-nums">
-          {formatVideoBadge(duration!)}
+          {Math.floor(duration! / 60)}:{String(Math.floor(duration! % 60)).padStart(2, "0")}
         </span>
       ) : null}
+    </span>
+  );
+}
+
+export function ImageEnergyOverlay({ active }: { active: boolean }) {
+  if (!active) return null;
+  return (
+    <span className="image-loading-energy" aria-hidden>
+      <EnergyCanvas size={64} speed={0.0045} />
     </span>
   );
 }

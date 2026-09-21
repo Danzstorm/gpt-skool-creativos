@@ -1,20 +1,26 @@
 import type { Metadata } from "next";
-import { Geist, Archivo } from "next/font/google";
+import { Inter, Plus_Jakarta_Sans, Inconsolata } from "next/font/google";
 import { getAppSettings } from "@/lib/app-settings";
+import TextSizeBoot from "@/components/TextSizeBoot";
 import "./globals.css";
+import "./prototype.css";
+import "./prototype-compat.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
+  display: "swap",
 });
 
-// Display condensada para titulares y wordmark (eco de la tipografía del logo).
-// Variable: peso + eje de ancho (wdth), normal e itálica. Cuerpo/UI siguen en Geist.
-const archivo = Archivo({
-  variable: "--font-archivo",
+const jakarta = Plus_Jakarta_Sans({
+  variable: "--font-jakarta",
   subsets: ["latin"],
-  axes: ["wdth"],
-  style: ["normal", "italic"],
+  display: "swap",
+});
+
+const inconsolata = Inconsolata({
+  variable: "--font-inconsolata",
+  subsets: ["latin"],
   display: "swap",
 });
 
@@ -28,6 +34,11 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(siteUrl),
     title: `GPT ${settings.community_name}`,
     description: `Plataforma de GPTs para la comunidad de ${settings.community_name}`,
+    icons: {
+      icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+      shortcut: "/favicon.svg",
+      apple: "/favicon.svg",
+    },
   };
 }
 
@@ -37,8 +48,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`${geistSans.variable} ${archivo.variable} h-full`}>
-      <body className="min-h-full antialiased">
+    <html
+      lang="es"
+      className={`${inter.variable} ${jakarta.variable} ${inconsolata.variable} h-full`}
+    >
+      <body className="h-full min-h-full antialiased">
+        <TextSizeBoot />
         {children}
       </body>
     </html>

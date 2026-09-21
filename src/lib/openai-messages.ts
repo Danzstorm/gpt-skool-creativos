@@ -21,7 +21,7 @@ export async function getThreadMessages(
     const rawFiles =
       (m.files as Array<{
         openai_file_id: string;
-        type: "image" | "document" | "video";
+        type: "image" | "document" | "video" | "audio";
         name?: string;
         n?: number;
       }> | null) ?? [];
@@ -33,7 +33,7 @@ export async function getThreadMessages(
           ? rawFiles.map((f) => ({
               openai_file_id: f.openai_file_id,
               type: f.type,
-              name: f.name || (f.type === "image" ? "imagen" : f.type === "video" ? "video" : "archivo"),
+              name: f.name || (f.type === "image" ? "imagen" : f.type === "video" ? "video" : f.type === "audio" ? "audio" : "archivo"),
               // El número viaja al cliente a propósito: es el rótulo que ya
               // escuchó el modelo. Sin él la interfaz vuelve a contar sola y
               // muestra "imagen 1" donde el modelo entiende "imagen 3".

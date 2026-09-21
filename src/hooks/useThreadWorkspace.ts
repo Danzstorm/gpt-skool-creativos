@@ -99,7 +99,8 @@ export function useThreadWorkspace({
 
   const startRename = useCallback((t: ThreadSummary) => {
     setRenamingId(t.id);
-    setRenameValue(t.title);
+    // Vacío como el prototipo: submit vacío / Escape conserva el título.
+    setRenameValue("");
   }, []);
   const cancelRename = useCallback(() => setRenamingId(null), []);
 
@@ -124,8 +125,10 @@ export function useThreadWorkspace({
   );
 
   const deleteThread = useCallback(
-    async (id: string): Promise<boolean> => {
-      if (!confirm("¿Borrar esta conversación? Esta acción no se puede deshacer.")) return false;
+    async (id: string, opts?: { confirm?: boolean }): Promise<boolean> => {
+      if (opts?.confirm !== false) {
+        if (!confirm("¿Borrar esta conversación? Esta acción no se puede deshacer.")) return false;
+      }
       await fetch(`/api/threads/${id}`, { method: "DELETE" });
       setThreadList((prev) => removeThread(prev, id));
       if (id === activeThreadId) {
@@ -161,7 +164,7 @@ export function useThreadWorkspace({
       const res = await fetch("/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: "Nuevo proyecto", threadIds }),
+        body: JSON.stringify({ name: "Nuevo Proyecto", threadIds }),
       });
       if (!res.ok) return;
       const created: Project & { moved_thread_ids: string[] } = await res.json();
@@ -173,14 +176,14 @@ export function useThreadWorkspace({
       openProject(created.id);
       clearSearch();
       setRenamingProjectId(created.id);
-      setProjectRenameValue(created.name);
+      setProjectRenameValue("");
     },
     [clearSearch, openProject]
   );
 
   const startProjectRename = useCallback((project: Project) => {
     setRenamingProjectId(project.id);
-    setProjectRenameValue(project.name);
+    setProjectRenameValue("");
   }, []);
   const cancelProjectRename = useCallback(() => setRenamingProjectId(null), []);
 
@@ -215,13 +218,15 @@ export function useThreadWorkspace({
     setProjects((prev) => prev.map((p) => (p.id === id ? updated : p)));
   }, []);
 
-  const deleteProject = useCallback(async (id: string) => {
-    if (
-      !confirm(
-        "¿Borrar este proyecto? Las conversaciones de adentro no se borran: vuelven a la lista de chats."
-      )
-    ) {
-      return;
+  const deleteProject = useCallback(async (id: string, opts?: { confirm?: boolean }) => {
+    if (opts?.confirm !== false) {
+      if (
+        !confirm(
+          "¿Borrar este proyecto? Las conversaciones de adentro no se borran: vuelven a la lista de chats."
+        )
+      ) {
+        return;
+      }
     }
     const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
     if (!res.ok) return;

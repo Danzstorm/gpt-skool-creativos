@@ -2,22 +2,25 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo, type CSSProperties } from "react";
 import type { Gpt, Project, ThreadSummary } from "@/lib/types";
-import { Menu, ArrowDown, ChevronDown, Folder, PanelLeftOpen, SquarePen, X } from "lucide-react";
-import Orb from "@/components/ui/Orb";
+import { ArrowDown, Folder, X } from "lucide-react";
+import EnergyCanvas from "@/components/ui/EnergyCanvas";
 import { firstNameOf } from "@/lib/utils";
 import { getGptVisual, LOGO_REST_ACCENT } from "@/lib/gpt-visual";
+import ProtoIcon from "./chat/ProtoIcon";
 import GptCatalog from "@/components/GptCatalog";
-import GptGlyph from "./chat/GptGlyph";
 import GptHero from "./chat/GptHero";
-import GptPicker from "./chat/GptPicker";
 import ChatSidebar from "./chat/ChatSidebar";
 import MessageBubble from "./chat/MessageBubble";
 import Composer, { type ComposerHandle } from "./chat/Composer";
-import GptChatsModal from "./chat/GptChatsModal";
 import ProjectInstructionsModal from "./chat/ProjectInstructionsModal";
 import { assignThreadNumbers } from "@/lib/attachment-labels";
 import { listMentionCandidates } from "@/lib/attachment-mentions";
 import ThinkingIndicator from "./chat/ThinkingIndicator";
+import {
+  PINNED_THREADS_KEY,
+  parsePinnedThreadIds,
+  togglePinnedThreadId,
+} from "@/lib/pinned-threads";
 import {
   countAttachments,
   EMPTY_ATTACHMENTS,
@@ -74,13 +77,38 @@ export default function UnifiedChat({
   // Solo valor inicial: al elegir un GPT el `?notice=` desaparece de la URL
   // (replaceState) y el banner se cierra a mano, no se re-sincroniza.
   const [notice, setNotice] = useState<string | null>(initialNotice ?? null);
-  const [gptChatsModalId, setGptChatsModalId] = useState<string | null>(null);
-  const [gptPickerOpen, setGptPickerOpen] = useState(false);
-  const [heroCatalogExpanded, setHeroCatalogExpanded] = useState(false);
   const [previewAccent, setPreviewAccent] = useState<string | null>(null);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [instructionsProjectId, setInstructionsProjectId] = useState<string | null>(null);
+  const [pinnedIds, setPinnedIds] = useState<string[]>([]);
+  const [hiddenThreadIds, setHiddenThreadIds] = useState<string[]>([]);
+  const [hiddenProjectIds, setHiddenProjectIds] = useState<string[]>([]);
+  const [undo, setUndo] = useState<{
+    label: string;
+    restore: () => void;
+    commit: () => void;
+  } | null>(null);
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const undoRef = useRef(undo);
+
+  useEffect(() => {
+    undoRef.current = undo;
+  }, [undo]);
+
+  useEffect(() => {
+    /* eslint-disable-next-line react-hooks/set-state-in-effect */
+    setPinnedIds(parsePinnedThreadIds(localStorage.getItem(PINNED_THREADS_KEY)));
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (undoTimer.current) {
+        clearTimeout(undoTimer.current);
+        undoRef.current?.commit();
+      }
+    };
+  }, []);
 
   const {
     sidebarOpen,
@@ -88,6 +116,8 @@ export default function UnifiedChat({
     closeSidebar,
     sidebarCollapsed,
     toggleSidebarCollapsed,
+    sidebarWidth,
+    setSidebarWidth,
     openProjectIds,
     toggleProject,
     openProject,
@@ -231,7 +261,6 @@ export default function UnifiedChat({
       touchRecent(gptId);
       selectGptWorkspace(gptId);
       clearMessages();
-      setGptPickerOpen(false);
     },
     [selectGptWorkspace, clearMessages, touchRecent]
   );
@@ -245,20 +274,10 @@ export default function UnifiedChat({
     [selectThreadWorkspace, isLoadingHistory, loadHistory, touchRecent]
   );
 
-  const openGptPicker = useCallback(() => setGptPickerOpen(true), []);
-  const closeGptPicker = useCallback(() => setGptPickerOpen(false), []);
-  const expandHeroCatalog = useCallback(() => setHeroCatalogExpanded(true), []);
   const openAllGpts = useCallback(() => {
-    if (activeGptId) {
-      setGptPickerOpen(true);
-      return;
-    }
-    if (!heroCatalogExpanded) {
-      setHeroCatalogExpanded(true);
-      return;
-    }
-    setGptPickerOpen(true);
-  }, [activeGptId, heroCatalogExpanded]);
+    newChatWorkspace();
+    clearMessages();
+  }, [newChatWorkspace, clearMessages]);
 
   const newChat = useCallback(() => {
     newChatWorkspace();
@@ -273,21 +292,85 @@ export default function UnifiedChat({
     [newChatInProjectWorkspace, clearMessages]
   );
 
-  const deleteThread = useCallback(
-    async (id: string) => {
-      const clearedActive = await deleteThreadWorkspace(id);
-      if (clearedActive) clearMessages();
+  const armUndo = useCallback(
+    (next: { label: string; restore: () => void; commit: () => void }) => {
+      if (undoTimer.current) {
+        clearTimeout(undoTimer.current);
+        undoRef.current?.commit();
+      }
+      setUndo(next);
+      undoTimer.current = setTimeout(() => {
+        next.commit();
+        setUndo(null);
+        undoTimer.current = null;
+      }, 5000);
     },
-    [deleteThreadWorkspace, clearMessages]
+    []
   );
 
-  const openGptChats = useCallback((gptId: string) => setGptChatsModalId(gptId), []);
-  const closeGptChats = useCallback(() => setGptChatsModalId(null), []);
+  const togglePin = useCallback(
+    (id: string) => {
+      const previous = pinnedIds;
+      const next = togglePinnedThreadId(previous, id);
+      setPinnedIds(next);
+      localStorage.setItem(PINNED_THREADS_KEY, JSON.stringify(next));
+      armUndo({
+        label: next.includes(id) ? "Chat fijado" : "Chat desfijado",
+        restore: () => {
+          setPinnedIds(previous);
+          localStorage.setItem(PINNED_THREADS_KEY, JSON.stringify(previous));
+        },
+        commit: () => {},
+      });
+    },
+    [armUndo, pinnedIds]
+  );
+
+  const deleteThread = useCallback(
+    (id: string) => {
+      setHiddenThreadIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+      if (id === activeThreadId) {
+        newChatWorkspace();
+        clearMessages();
+      }
+      armUndo({
+        label: "Chat borrado",
+        restore: () => setHiddenThreadIds((prev) => prev.filter((hiddenId) => hiddenId !== id)),
+        commit: () => {
+          void deleteThreadWorkspace(id, { confirm: false });
+        },
+      });
+    },
+    [activeThreadId, armUndo, clearMessages, deleteThreadWorkspace, newChatWorkspace]
+  );
+
+  const requestDeleteProject = useCallback(
+    (id: string) => {
+      setHiddenProjectIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+      armUndo({
+        label: "Proyecto borrado",
+        restore: () => setHiddenProjectIds((prev) => prev.filter((hiddenId) => hiddenId !== id)),
+        commit: () => {
+          void deleteProject(id, { confirm: false });
+        },
+      });
+    },
+    [armUndo, deleteProject]
+  );
+
+  const cancelUndo = useCallback(() => {
+    if (undoTimer.current) {
+      clearTimeout(undoTimer.current);
+      undoTimer.current = null;
+    }
+    undoRef.current?.restore();
+    setUndo(null);
+  }, []);
 
   const copyMessage = useCallback((index: number, content: string) => {
-    navigator.clipboard.writeText(content);
+    void navigator.clipboard.writeText(content);
     setCopiedIndex(index);
-    setTimeout(() => setCopiedIndex((c) => (c === index ? null : c)), 1500);
+    setTimeout(() => setCopiedIndex((c) => (c === index ? null : c)), 1300);
   }, []);
 
   const lastUserIndex = messages.map((m) => m.role).lastIndexOf("user");
@@ -296,35 +379,47 @@ export default function UnifiedChat({
     ? getGptVisual(activeGpt.category, activeGpt.name, activeGpt.description).accentHex
     : null;
   const pageAccent = previewAccent ?? selectedAccent ?? LOGO_REST_ACCENT;
-  const showCraftWash = Boolean(
-    previewAccent || (activeGpt && messages.length === 0 && !isLoadingHistory)
-  );
   const firstName = firstNameOf(profile.fullName);
-  const gptChatsModalGpt = gptChatsModalId ? gpts.find((g) => g.id === gptChatsModalId) : null;
-  const gptChatsModalThreads = useMemo(
-    () => (gptChatsModalId ? threadList.filter((t) => t.gpt_id === gptChatsModalId) : []),
-    [threadList, gptChatsModalId]
+  const visibleProjects = useMemo(
+    () => projects.filter((project) => !hiddenProjectIds.includes(project.id)),
+    [projects, hiddenProjectIds]
+  );
+  const visibleThreads = useMemo(
+    () =>
+      threadList
+        .filter((thread) => !hiddenThreadIds.includes(thread.id))
+        .map((thread) =>
+          thread.project_id && hiddenProjectIds.includes(thread.project_id)
+            ? { ...thread, project_id: null }
+            : thread
+        ),
+    [threadList, hiddenThreadIds, hiddenProjectIds]
   );
   const recentGpts = useMemo(
-    () => pickRecentGpts(gpts, recentIds, threadList, activeGptId),
-    [gpts, recentIds, threadList, activeGptId]
+    () => pickRecentGpts(gpts, recentIds, visibleThreads, activeGptId),
+    [gpts, recentIds, visibleThreads, activeGptId]
   );
 
   return (
-    <div className="chat-shell fixed inset-0 overflow-hidden bg-zinc-950 text-zinc-100">
-      <div className="chat-zoom">
+    <div
+      className={`app${sidebarCollapsed ? " collapsed" : ""}${sidebarOpen ? " mobile-open" : ""}`}
+    >
       <ChatSidebar
         communityName={communityName}
         gpts={gpts}
         recentGpts={recentGpts}
-        threadList={threadList}
-        projects={projects}
+        threadList={visibleThreads}
+        projects={visibleProjects}
         openProjectIds={openProjectIds}
         activeGptId={activeGptId}
         activeThreadId={activeThreadId}
         sidebarOpen={sidebarOpen}
         collapsed={sidebarCollapsed}
         onToggleCollapse={toggleSidebarCollapsed}
+        sidebarWidth={sidebarWidth}
+        onResizeWidth={setSidebarWidth}
+        pinnedIds={pinnedIds}
+        onTogglePin={togglePin}
         profile={profile}
         chatSearch={chatSearch}
         onSearchChange={onSearchChange}
@@ -333,7 +428,6 @@ export default function UnifiedChat({
         onSelectThread={selectThread}
         onNewChat={newChat}
         onCloseSidebar={closeSidebar}
-        onOpenGptChats={openGptChats}
         renamingId={renamingId}
         renameValue={renameValue}
         onRenameValueChange={setRenameValue}
@@ -344,7 +438,7 @@ export default function UnifiedChat({
         onToggleProject={toggleProject}
         onNewChatInProject={newChatInProject}
         onEditProjectInstructions={(project) => setInstructionsProjectId(project.id)}
-        onDeleteProject={deleteProject}
+        onDeleteProject={requestDeleteProject}
         onMoveToProject={moveToProject}
         onCreateProjectWith={createProjectWith}
         renamingProjectId={renamingProjectId}
@@ -356,75 +450,31 @@ export default function UnifiedChat({
       />
 
       <div
-        className={`chat-main flex flex-col flex-1 min-w-0 relative${showCraftWash ? " is-accented" : ""}${
-          activeGpt && messages.length === 0 && !isLoadingHistory ? " is-gpt-empty" : ""
-        }`}
+        className="main"
         style={{ "--page-accent": pageAccent } as CSSProperties}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
       >
-        <div className="chat-veil" aria-hidden />
+        <div className="topbar">
+          <button
+            type="button"
+            className="mobile-menu"
+            onClick={() => {
+              if (sidebarCollapsed) toggleSidebarCollapsed();
+              else openSidebar();
+            }}
+            aria-label={sidebarCollapsed ? "Expandir panel" : "Abrir panel"}
+          >
+            <ProtoIcon name="menu" />
+          </button>
+        </div>
+
         {isDragging && showComposer && (
-          <div className="absolute inset-0 z-10 m-2 flex items-center justify-center rounded-2xl border-2 border-dashed border-brand/40 bg-brand/10 pointer-events-none">
-            <p className="text-sm font-medium text-zinc-100">Suelta imágenes o archivos aquí</p>
+          <div className="absolute inset-0 z-10 m-2 flex items-center justify-center rounded-2xl border-2 border-dashed pointer-events-none" style={{ borderColor: "#ba9cff66", background: "#ba9cff14" }}>
+            <p className="text-sm font-medium">Suelta imágenes o archivos aquí</p>
           </div>
         )}
-        <div className="relative z-[1] flex items-center gap-3 border-b border-zinc-800 bg-zinc-950 px-4 py-2">
-          <button
-            onClick={openSidebar}
-            className="flex h-11 w-11 items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-900 hover:text-ink md:hidden"
-            aria-label="Abrir panel"
-          >
-            <Menu size={20} />
-          </button>
-          {sidebarCollapsed && (
-            <div className="hidden md:flex items-center gap-1 -ml-1">
-              <Orb size="xs" className="mr-1" />
-              <button
-                onClick={toggleSidebarCollapsed}
-                className="flex h-11 w-11 items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-900 hover:text-ink"
-                title="Expandir panel"
-                aria-label="Expandir panel"
-              >
-                <PanelLeftOpen size={18} />
-              </button>
-              <button
-                onClick={newChat}
-                className="flex h-11 w-11 items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-900 hover:text-ink"
-                title="Nuevo chat"
-                aria-label="Nuevo chat"
-              >
-                <SquarePen size={18} />
-              </button>
-            </div>
-          )}
-          {activeGpt ? (
-            <button
-              type="button"
-              onClick={openGptPicker}
-              className="flex min-h-11 min-w-0 items-center gap-2 rounded-lg px-2 py-1 -ml-2 transition hover:bg-zinc-900"
-              title="Cambiar de GPT"
-              aria-haspopup="dialog"
-              aria-expanded={gptPickerOpen}
-            >
-              <GptGlyph gpt={activeGpt} size="sm" />
-              <h2 className="text-zinc-100 font-medium text-sm truncate">{activeGpt.name}</h2>
-              <ChevronDown size={14} className="text-zinc-600 flex-shrink-0" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={openGptPicker}
-              className="flex min-h-11 min-w-0 items-center gap-2 rounded-lg px-2 py-1 -ml-2 text-zinc-400 transition hover:bg-zinc-900 hover:text-zinc-200"
-              aria-haspopup="dialog"
-              aria-expanded={gptPickerOpen}
-            >
-              <h2 className="text-sm font-medium">Elige un GPT</h2>
-              <ChevronDown size={14} className="text-zinc-600 flex-shrink-0" />
-            </button>
-          )}
-        </div>
 
         {notice && (
           <div className="mx-4 mt-3 flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
@@ -440,172 +490,154 @@ export default function UnifiedChat({
           </div>
         )}
 
-        <div
-          ref={scrollRef}
-          onScroll={handleScroll}
-          className="relative z-[1] min-h-0 flex-1 overflow-y-auto px-4"
-        >
-          {isLoadingHistory && (
-            <div className="mx-auto w-full max-w-2xl animate-pulse space-y-4 py-4">
-              <div className="flex justify-end">
-                <div className="h-10 w-2/5 bg-white/[0.06] rounded-2xl rounded-br-sm" />
-              </div>
-              <div className="flex justify-start gap-2">
-                <div className="w-7 h-7 bg-white/[0.06] rounded-lg flex-shrink-0" />
-                <div className="h-20 w-3/5 bg-white/[0.06] rounded-2xl rounded-bl-sm" />
-              </div>
-            </div>
-          )}
-
-          {!activeGpt && !isLoadingHistory && (
-            <div className="flex w-full max-w-6xl mx-auto flex-col items-center py-10 md:py-14">
-              <div className="relative mb-8 flex flex-col items-center text-center md:mb-10">
-                <div className="hero-bloom" aria-hidden />
-                <Orb size="xl" className="relative z-[1] mb-6" />
-                <p className="mb-3 text-sm leading-normal text-zinc-500">
-                  {firstName ? `Bienvenido de nuevo, ${firstName}` : "Bienvenido de nuevo"}
-                </p>
-                <h1 className="font-display italic text-center text-[1.75rem] font-semibold tracking-tight text-zinc-100 md:text-4xl">
-                  ¿Qué vas a crear hoy?
-                </h1>
-                {pendingProject && <ProjectDestination name={pendingProject.name} />}
-              </div>
-              <div className="relative z-[1] w-full">
-                <GptCatalog
-                  gpts={gpts}
-                  onSelect={selectGpt}
-                  onPreview={setPreviewAccent}
-                  expanded={heroCatalogExpanded}
-                  onExpand={expandHeroCatalog}
-                />
-              </div>
-            </div>
-          )}
-
-          {activeGpt && messages.length === 0 && !isLoadingHistory && (
-            <GptHero gpt={activeGpt} onStarter={sendMessage}>
-              {/* Sigue visible después de elegir el GPT: el destino recién se
-                  aplica al enviar el primer mensaje, y hasta entonces es la
-                  única señal de que este chat va a nacer dentro de la carpeta. */}
-              {pendingProject && <ProjectDestination name={pendingProject.name} />}
-            </GptHero>
-          )}
-
-          {messages.length > 0 && (
-            <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col justify-end">
-            <div className="w-full space-y-5 py-4">
-              {messages.map((msg, i) => {
-                const isLast = i === messages.length - 1;
-                const streaming = isLoading && isLast && msg.role === "assistant";
-                const attachments: ThinkingAttachments =
-                  streaming && !msg.content ? countAttachments(messages[i - 1]) : EMPTY_ATTACHMENTS;
-                return (
-                  <MessageBubble
-                    key={i}
-                    index={i}
-                    message={msg}
-                    numbers={attachmentNumbers}
-                    mentions={mentionables}
-                    activeGpt={activeGpt}
-                    isLast={isLast}
-                    streaming={streaming}
-                    thinkingSlot={
-                      streaming && !msg.content ? (
-                        <ThinkingIndicator
-                          phase={phase}
-                          attachments={attachments}
-                          startedAt={thinkingStartedAt}
-                        />
-                      ) : undefined
-                    }
-                    canRegenerate={isLast && !isLoading}
-                    canEdit={i === lastUserIndex && !isLoading}
-                    isCopied={copiedIndex === i}
-                    onCopy={copyMessage}
-                    onRegenerate={regenerate}
-                    onEdit={startEdit}
-                  />
-                );
-              })}
-            </div>
-            </div>
-          )}
-          <div ref={bottomRef} />
-        </div>
-
-        {showScrollBtn && messages.length > 0 && (
-          <button
-            onClick={scrollToBottom}
-            className="absolute bottom-28 left-1/2 z-10 flex h-11 w-11 -translate-x-1/2 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900 text-zinc-300 transition hover:border-zinc-700 hover:text-zinc-100"
-            aria-label="Bajar al final"
-          >
-            <ArrowDown size={16} />
-          </button>
-        )}
-
-        {showComposer && (
-          <div className="chat-dock relative z-[1]">
-            {uploadError && (
-              <div className="mx-auto mb-2 w-full max-w-3xl">
-                <div className="flex items-start gap-3 rounded-xl border border-red-800/50 bg-red-950/40 px-4 py-2.5 text-sm text-red-300">
-                  <span className="flex-1">{uploadError}</span>
-                  <button
-                    type="button"
-                    onClick={dismissUploadError}
-                    className="shrink-0 text-red-400/70 transition hover:text-red-300"
-                    aria-label="Cerrar aviso"
-                  >
-                    <X size={14} />
-                  </button>
+        {!activeGpt && (
+          <div id="homeView" className="workspace">
+            {isLoadingHistory ? (
+              <div className="mx-auto w-full max-w-2xl animate-pulse space-y-4 py-4">
+                <div className="flex justify-end">
+                  <div className="h-10 w-2/5 bg-white/[0.06] rounded-2xl rounded-br-sm" />
+                </div>
+                <div className="flex justify-start gap-2">
+                  <div className="w-7 h-7 bg-white/[0.06] rounded-lg flex-shrink-0" />
+                  <div className="h-20 w-3/5 bg-white/[0.06] rounded-2xl rounded-bl-sm" />
                 </div>
               </div>
+            ) : (
+              <>
+                <div className="intro">
+                  <div className="brand-energy gpt-home-energy" aria-hidden>
+                    <EnergyCanvas size={82} speed={0.0009} />
+                  </div>
+                  <p className="eyebrow">
+                    {firstName ? `Bienvenido de nuevo, ${firstName}` : "Bienvenido de nuevo"}
+                  </p>
+                  <h1>¿Qué vas a crear hoy?</h1>
+                  {pendingProject && <ProjectDestination name={pendingProject.name} />}
+                </div>
+                <GptCatalog gpts={gpts} onSelect={selectGpt} onPreview={setPreviewAccent} />
+              </>
             )}
-          <Composer
-            ref={composerRef}
-            isLoading={isLoading}
-            videoEnabled={videoEnabled}
-            mentions={mentionables}
-            isUploading={pendingUploads > 0}
-            isUploadingVideo={uploadingVideo}
-            pendingCount={pendingUploads}
-            isEditing={isEditing}
-            onCancelEdit={cancelEdit}
-            attachedFiles={attachedFiles}
-            onFilesSelected={uploadFiles}
-            onRemoveFile={removeAttached}
-            onSend={sendMessage}
-            onStop={stopStreaming}
-          />
+          </div>
+        )}
+
+        {activeGpt && (
+          <div id="chatView" className="chat">
+            <div
+              ref={scrollRef}
+              onScroll={handleScroll}
+              className="messages"
+            >
+              {isLoadingHistory && (
+                <div className="mx-auto w-full max-w-2xl animate-pulse space-y-4 py-4">
+                  <div className="flex justify-end">
+                    <div className="h-10 w-2/5 bg-white/[0.06] rounded-2xl rounded-br-sm" />
+                  </div>
+                  <div className="flex justify-start gap-2">
+                    <div className="w-7 h-7 bg-white/[0.06] rounded-lg flex-shrink-0" />
+                    <div className="h-20 w-3/5 bg-white/[0.06] rounded-2xl rounded-bl-sm" />
+                  </div>
+                </div>
+              )}
+
+              {messages.length === 0 && !isLoadingHistory && (
+                <GptHero gpt={activeGpt} onStarter={sendMessage}>
+                  {pendingProject && <ProjectDestination name={pendingProject.name} />}
+                </GptHero>
+              )}
+
+              {messages.length > 0 &&
+                messages.map((msg, i) => {
+                  const isLast = i === messages.length - 1;
+                  const streaming = isLoading && isLast && msg.role === "assistant";
+                  const attachments: ThinkingAttachments =
+                    streaming && !msg.content ? countAttachments(messages[i - 1]) : EMPTY_ATTACHMENTS;
+                  return (
+                    <MessageBubble
+                      key={i}
+                      index={i}
+                      message={msg}
+                      numbers={attachmentNumbers}
+                      mentions={mentionables}
+                      activeGpt={activeGpt}
+                      isLast={isLast}
+                      streaming={streaming}
+                      thinkingSlot={
+                        streaming && !msg.content ? (
+                          <ThinkingIndicator
+                            phase={phase}
+                            attachments={attachments}
+                            startedAt={thinkingStartedAt}
+                          />
+                        ) : undefined
+                      }
+                      canRegenerate={isLast && !isLoading}
+                      canEdit={i === lastUserIndex && !isLoading}
+                      isCopied={copiedIndex === i}
+                      onCopy={copyMessage}
+                      onRegenerate={regenerate}
+                      onEdit={startEdit}
+                    />
+                  );
+                })}
+              <div ref={bottomRef} />
+            </div>
+
+            {showScrollBtn && messages.length > 0 && (
+              <button
+                onClick={scrollToBottom}
+                className="absolute bottom-28 left-1/2 z-10 flex h-11 w-11 -translate-x-1/2 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900 text-zinc-300 transition hover:border-zinc-700 hover:text-zinc-100"
+                aria-label="Bajar al final"
+              >
+                <ArrowDown size={16} />
+              </button>
+            )}
+
+            {showComposer && (
+              <div className="chat-dock relative z-[1]">
+                {uploadError && (
+                  <div className="mx-auto mb-2 w-full max-w-3xl">
+                    <div className="flex items-start gap-3 rounded-xl border border-red-800/50 bg-red-950/40 px-4 py-2.5 text-sm text-red-300">
+                      <span className="flex-1">{uploadError}</span>
+                      <button
+                        type="button"
+                        onClick={dismissUploadError}
+                        className="shrink-0 text-red-400/70 transition hover:text-red-300"
+                        aria-label="Cerrar aviso"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+                <Composer
+                  ref={composerRef}
+                  isLoading={isLoading}
+                  videoEnabled={videoEnabled}
+                  mentions={mentionables}
+                  isUploading={pendingUploads > 0 || attachedFiles.some((file) => file.pending)}
+                  isUploadingVideo={uploadingVideo}
+                  pendingCount={pendingUploads}
+                  isEditing={isEditing}
+                  onCancelEdit={cancelEdit}
+                  attachedFiles={attachedFiles}
+                  onFilesSelected={uploadFiles}
+                  onRemoveFile={removeAttached}
+                  onSend={sendMessage}
+                  onStop={stopStreaming}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>
-      </div>
 
-      {gptPickerOpen && (
-        <GptPicker
-          gpts={gpts}
-          activeGptId={activeGptId}
-          onClose={closeGptPicker}
-          onSelect={selectGpt}
-        />
-      )}
-
-      {gptChatsModalGpt && (
-        <GptChatsModal
-          gpt={gptChatsModalGpt}
-          threads={gptChatsModalThreads}
-          activeThreadId={activeThreadId}
-          onClose={closeGptChats}
-          onSelectThread={selectThread}
-          onNewChat={() => selectGpt(gptChatsModalGpt.id)}
-          renamingId={renamingId}
-          renameValue={renameValue}
-          onRenameValueChange={setRenameValue}
-          onStartRename={startRename}
-          onSubmitRename={renameThread}
-          onCancelRename={cancelRename}
-          onDeleteThread={deleteThread}
-        />
+      {undo && (
+        <div className="undo-toast" role="status">
+          <span>{undo.label}</span>
+          <button type="button" onClick={cancelUndo}>
+            Deshacer
+          </button>
+        </div>
       )}
 
       {instructionsProject && (

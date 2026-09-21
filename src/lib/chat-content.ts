@@ -65,6 +65,7 @@ export function buildUserInput(
       }
       contentParts.push({ type: "input_image", file_id: f.openai_file_id, detail: "auto" });
     } else if (f.type === "document") {
+      if (f.openai_file_id.startsWith("audio_")) return;
       contentParts.push({
         type: "input_file",
         file_id: f.openai_file_id,
