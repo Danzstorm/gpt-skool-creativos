@@ -122,6 +122,7 @@ export default function EnergyCanvas({
       for (const [stop, color] of STROKE_STOPS) gradient.addColorStop(stop, color);
 
       function loop(i: number) {
+        if (!ctx) return;
         ctx.beginPath();
         for (let k = 0; k <= ENERGY_LOOP_STEPS; k++) {
           const { x, y } = energyContourPoint(w, h, t, i, k);

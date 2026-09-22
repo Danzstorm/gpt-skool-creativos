@@ -78,17 +78,18 @@ export default function MusicMenu({ accountOpen = true }: Props) {
     const panel = panelRef.current;
     const account = panel?.closest(".account-menu");
     if (!open || !panel || !(account instanceof HTMLElement)) return;
+    const menu = account;
+    const flyout = panel;
 
     function place() {
-      const accountBox = account.getBoundingClientRect();
       const next = musicPanelPlacement(
-        accountBox,
-        { width: panel.offsetWidth, height: panel.offsetHeight },
+        menu.getBoundingClientRect(),
+        { width: flyout.offsetWidth, height: flyout.offsetHeight },
         { width: window.innerWidth, height: window.innerHeight },
       );
-      panel.style.left = `${next.left}px`;
-      panel.style.top = `${next.top}px`;
-      panel.dataset.placement = next.placement;
+      flyout.style.left = `${next.left}px`;
+      flyout.style.top = `${next.top}px`;
+      flyout.dataset.placement = next.placement;
     }
 
     place();
