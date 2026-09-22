@@ -82,8 +82,11 @@ body {
   fill: #ea4335;
 }
 
-/* El chat ocupa el viewport: el prototipo usa min-height 100vh y sticky.
-   Acá el shell es fixed inset-0. */
+/* El prototipo scrollea el documento (`min-height: 100vh`). El shell de Next
+   es `html/body/.app { height: 100% }`. Si `.app` Y `.main` tienen
+   overflow:hidden, el catálogo no puede crecer y las tarjetas de abajo se
+   recortan. El sidebar se queda fijo; scrollea `.main` en home y
+   `.messages` en chat. */
 .app {
   min-height: 100%;
   height: 100%;
@@ -100,11 +103,83 @@ body {
 .main {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* El cliente React deja que el documento crezca; el sidebar es sticky.
+   Acá el scrollport es `.main` en home: el sidebar no se va. */
+.main:has(#homeView),
+.app > .main:has(#homeView) {
+  overflow-x: hidden;
+  overflow-y: auto;
+  height: auto;
+  min-height: 0;
+}
+
+.main:has(#chatView) {
   overflow: hidden;
 }
 
+.app > .main:has(#chatView),
+.app > .main:has(#chatView:not([hidden])) {
+  overflow: hidden;
+  height: auto;
+  min-height: 0;
+}
+
+#homeView,
+#homeView.workspace {
+  flex: 0 0 auto;
+  min-height: 100%;
+  height: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-bottom: 96px;
+}
+
+.workspace .tools,
+.workspace .grid {
+  flex-shrink: 0;
+  height: auto;
+  max-height: none;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* El prototipo clava 3 filas (9 GPTs). Acá hay más: filas implícitas,
+   sin techo. */
+.workspace .grid {
+  grid-template-rows: none;
+  grid-auto-rows: minmax(142px, auto);
+}
+
+@media (min-width: 1450px) {
+  .workspace .grid {
+    grid-template-rows: none;
+    grid-auto-rows: minmax(155px, auto);
+  }
+}
+@media (min-width: 651px) and (max-width: 900px) {
+  .workspace .grid {
+    grid-template-rows: none;
+    grid-auto-rows: minmax(142px, auto);
+  }
+}
+@media (max-width: 650px) {
+  .workspace .grid {
+    grid-template-rows: none;
+    grid-auto-rows: minmax(150px, auto);
+  }
+}
+
+/* `#chatView{overflow-y:auto}` del prototipo scrollearía el composer.
+   El hilo vive en `.messages`; el dock se queda abajo. */
+#chatView.chat,
 .chat {
+  overflow: hidden;
   flex: 1;
   min-height: 0;
   display: flex;
@@ -112,6 +187,8 @@ body {
 }
 
 .chat .messages {
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -426,8 +503,23 @@ body {
   flex-shrink: 0;
   font-size: 11px;
   line-height: 1;
+  color: #eeeef2;
+  background: linear-gradient(140deg, #563743, #28233f);
+  border: 1px solid #b892ff30;
+}
+.profile .avatar > * {
+  grid-area: 1 / 1;
+}
+.profile .avatar-fallback {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
 }
 .profile .avatar img {
+  position: relative;
+  z-index: 1;
   display: block;
   width: 30px;
   height: 30px;

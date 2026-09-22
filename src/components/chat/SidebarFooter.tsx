@@ -139,6 +139,7 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
 
       <button type="button" onClick={() => setOpen((v) => !v)} className="profile" aria-label="Cuenta">
         <span className="avatar" aria-hidden>
+          <span className="avatar-fallback">{initialsOf(fullName, email)}</span>
           {showAvatar ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -149,9 +150,7 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
               referrerPolicy="no-referrer"
               onError={() => setAvatarFailed(true)}
             />
-          ) : (
-            initialsOf(fullName, email)
-          )}
+          ) : null}
         </span>
         <div>
           <strong>{displayName}</strong>

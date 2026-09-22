@@ -33,7 +33,7 @@ const csp = [
   // lh3.googleusercontent.com es la foto de perfil de quien entra con Google:
   // sin ella acá, el avatar del sidebar se rompe en cuanto la CSP pase de
   // Report-Only a modo bloqueo.
-  `img-src 'self' data: blob: https://lh3.googleusercontent.com ${supabaseOrigin}`.trim(),
+  `img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com ${supabaseOrigin}`.trim(),
   // blob: es la reproducción del audio grabado antes de transcribirlo.
   // El bucket público `music` de Supabase alimenta el menú de ambiente.
   `media-src 'self' blob: ${supabaseOrigin}`.trim(),
