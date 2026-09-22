@@ -4,6 +4,7 @@ import {
   buildDailySeries,
   currentMonthValue,
   enumerateDays,
+  formatChartValue,
   formatMonthLabel,
   formatRangeCaption,
   money,
@@ -79,5 +80,20 @@ describe("formatters", () => {
     expect(money(0.0012)).toBe("$0.0012");
     expect(activityPct(16, 24)).toBeCloseTo(66.666, 2);
     expect(activityPct(4, 0)).toBe(0);
+  });
+
+  it("las claves del chart son JSON-serializables hacia el client", () => {
+    const payload = {
+      label: "Actividad",
+      value: "67%",
+      series: [1, 2],
+      format: "percent" as const,
+      chartLabel: "Actividad diaria",
+    };
+    expect(() => JSON.stringify(payload)).not.toThrow();
+    expect(JSON.parse(JSON.stringify(payload)).format).toBe("percent");
+    expect(formatChartValue("money", 28.74)).toBe("$28.74");
+    expect(formatChartValue("percent", 66.66)).toBe("66.7%");
+    expect(formatChartValue("count", 12)).toBe("12");
   });
 });

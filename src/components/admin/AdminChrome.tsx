@@ -39,7 +39,9 @@ const HeaderSlotContext = createContext<HTMLElement | null>(null);
 
 export function AdminHeaderActions({ children }: { children: ReactNode }) {
   const slot = useContext(HeaderSlotContext);
-  if (!slot) return null;
+  // Sin nodo (primer paint) o nodo ya desmontado al cambiar de ruta: no portal.
+  // createPortal a un target suelto tira en React 19 y tumba /admin.
+  if (!slot?.isConnected) return null;
   return createPortal(children, slot);
 }
 

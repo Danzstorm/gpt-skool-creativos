@@ -112,7 +112,10 @@ function ThreadListItem({
           <path d="M8 3h8l-1 6 3 3v3H6v-3l3-3-1-6Zm4 12v6" />
         </svg>
       </span>
-      <span className="chat-name" title={isRenaming ? undefined : "Doble clic para cambiar el nombre"}>
+      <span
+        className="chat-name line-clamp-2 whitespace-normal break-words"
+        title={isRenaming ? undefined : "Doble clic para cambiar el nombre"}
+      >
         {isRenaming ? (
           <>
             <span aria-hidden style={{ visibility: "hidden" }}>

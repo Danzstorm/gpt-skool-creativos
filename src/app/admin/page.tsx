@@ -188,7 +188,7 @@ export default async function AdminDashboard({ searchParams }: Props) {
       value: formatCount(activeUsers),
       hint: `De ${formatCount(members)} miembros`,
       series: hasSeries ? daily.map((d) => d.activeUsers) : [],
-      format: formatCount,
+      format: "count",
       chartLabel: "Usuarios activos por día",
     },
     {
@@ -196,7 +196,7 @@ export default async function AdminDashboard({ searchParams }: Props) {
       value: `${Math.round(activity)}%`,
       hint: "Han usado la plataforma",
       series: hasSeries ? daily.map((d) => activityPct(d.activeUsers, members)) : [],
-      format: (n) => `${n.toFixed(1)}%`,
+      format: "percent",
       chartLabel: "Actividad diaria",
     },
     {
@@ -204,7 +204,7 @@ export default async function AdminDashboard({ searchParams }: Props) {
       value: formatCount(newChats),
       hint: `${formatCount(totalMessages)} mensajes`,
       series: hasSeries ? daily.map((d) => d.newThreads) : [],
-      format: formatCount,
+      format: "count",
       chartLabel: "Chats nuevos por día",
     },
     {
@@ -212,7 +212,7 @@ export default async function AdminDashboard({ searchParams }: Props) {
       value: formatCount(totalMessages),
       hint: "En el período",
       series: hasSeries ? daily.map((d) => d.messages) : [],
-      format: formatCount,
+      format: "count",
       chartLabel: "Mensajes por día",
     },
   ];
@@ -223,7 +223,7 @@ export default async function AdminDashboard({ searchParams }: Props) {
       value: money(totalCost),
       hint: "IA e infraestructura · USD",
       series: hasSeries ? daily.map((d) => d.cost) : [],
-      format: money,
+      format: "money",
       chartLabel: "Costo diario",
     },
     {
@@ -231,7 +231,7 @@ export default async function AdminDashboard({ searchParams }: Props) {
       value: money(activeUsers ? totalCost / activeUsers : 0),
       hint: "Costo ÷ usuarios únicos",
       series: hasSeries ? daily.map((d) => (d.activeUsers ? d.cost / d.activeUsers : 0)) : [],
-      format: money,
+      format: "money",
       chartLabel: "Costo por usuario activo diario",
     },
     {
@@ -239,7 +239,7 @@ export default async function AdminDashboard({ searchParams }: Props) {
       value: money(members ? totalCost / members : 0),
       hint: "Costo ÷ miembros con acceso",
       series: hasSeries ? daily.map((d) => (members ? d.cost / members : 0)) : [],
-      format: money,
+      format: "money",
       chartLabel: "Costo por miembro diario",
     },
   ];

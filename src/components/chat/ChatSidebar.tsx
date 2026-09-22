@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, Folder } from "lucide-react";
 import type { Gpt, Project, ThreadSummary } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -11,9 +11,7 @@ import ProtoIcon from "./ProtoIcon";
 import ThreadListItem, { THREAD_DND_TYPE } from "./ThreadListItem";
 import SidebarFooter from "./SidebarFooter";
 
-// Solo para el hint del atajo (⌘K vs Ctrl K); el atajo acepta ambas teclas.
-const APPLE_UA = /Mac|iPhone|iPad/;
-const noSubscribe = () => () => {};
+// El atajo ⌘K / Ctrl K sigue vivo; el prototipo no pinta el badge.
 
 function ProjectHeading({
   project,
@@ -299,12 +297,6 @@ function ChatSidebar({
   const asideRef = useRef<HTMLElement>(null);
 
   const searchRef = useRef<HTMLInputElement>(null);
-  // El user agent solo existe en el navegador; en el servidor se asume Ctrl.
-  const isMac = useSyncExternalStore(
-    noSubscribe,
-    () => APPLE_UA.test(navigator.userAgent),
-    () => false
-  );
 
   // ⌘K / Ctrl K enfoca el buscador; si el panel está contraído lo abre antes.
   // El input ya existe en el DOM (aside de ancho 0), pero se espera un frame
@@ -428,7 +420,6 @@ function ChatSidebar({
               placeholder="Buscar..."
               aria-label="Buscar herramientas"
             />
-            <kbd>{isMac ? "⌘K" : "Ctrl K"}</kbd>
           </label>
 
           <div className="label">GPTs</div>

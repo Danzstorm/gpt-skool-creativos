@@ -21,10 +21,15 @@ function AdminsSection() {
 
   async function load() {
     setLoading(true);
-    const res = await fetch("/api/admin/admins");
-    const data = await res.json();
-    setAdmins(Array.isArray(data) ? data : []);
-    setLoading(false);
+    try {
+      const res = await fetch("/api/admin/admins");
+      const data = await res.json().catch(() => []);
+      setAdmins(Array.isArray(data) ? data : []);
+    } catch {
+      setAdmins([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {

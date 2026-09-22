@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback, useMemo, type CSSProperties }
 import type { Gpt, Project, ThreadSummary } from "@/lib/types";
 import { ArrowDown, Folder, X } from "lucide-react";
 import EnergyCanvas from "@/components/ui/EnergyCanvas";
-import { firstNameOf } from "@/lib/utils";
+import { cn, firstNameOf } from "@/lib/utils";
 import { getGptVisual, LOGO_REST_ACCENT } from "@/lib/gpt-visual";
 import ProtoIcon from "./chat/ProtoIcon";
 import GptCatalog from "@/components/GptCatalog";
@@ -501,96 +501,79 @@ export default function UnifiedChat({
 
         {!activeGpt && (
           <div id="homeView" className="workspace">
-            {isLoadingHistory ? (
-              <div className="mx-auto w-full max-w-2xl animate-pulse space-y-4 py-4">
-                <div className="flex justify-end">
-                  <div className="h-10 w-2/5 bg-white/[0.06] rounded-2xl rounded-br-sm" />
-                </div>
-                <div className="flex justify-start gap-2">
-                  <div className="w-7 h-7 bg-white/[0.06] rounded-lg flex-shrink-0" />
-                  <div className="h-20 w-3/5 bg-white/[0.06] rounded-2xl rounded-bl-sm" />
-                </div>
+            <div className="intro">
+              <div className="brand-energy gpt-home-energy" aria-hidden>
+                <EnergyCanvas size={82} speed={0.0009} />
               </div>
-            ) : (
-              <>
-                <div className="intro">
-                  <div className="brand-energy gpt-home-energy" aria-hidden>
-                    <EnergyCanvas size={82} speed={0.0009} />
-                  </div>
-                  <p className="eyebrow">
-                    {firstName ? `Bienvenido de nuevo, ${firstName}` : "Bienvenido de nuevo"}
-                  </p>
-                  <h1>¿Qué vas a crear hoy?</h1>
-                  {pendingProject && <ProjectDestination name={pendingProject.name} />}
-                </div>
-                <GptCatalog gpts={gpts} onSelect={selectGpt} onPreview={setPreviewAccent} />
-              </>
-            )}
+              <p className="eyebrow">
+                {firstName ? `Bienvenido de nuevo, ${firstName}` : "Bienvenido de nuevo"}
+              </p>
+              <h1>¿Qué vas a crear hoy?</h1>
+              {pendingProject && <ProjectDestination name={pendingProject.name} />}
+            </div>
+            <GptCatalog gpts={gpts} onSelect={selectGpt} onPreview={setPreviewAccent} />
           </div>
         )}
 
         {activeGpt && (
-          <div id="chatView" className={hasChatMessages ? "chat chat-has-messages" : "chat"}>
+          <div
+            id="chatView"
+            className={cn(
+              "chat",
+              showGptIntro && "justify-center",
+              hasChatMessages && "chat-has-messages"
+            )}
+          >
             {showGptIntro && (
               <GptHero gpt={activeGpt} onStarter={sendMessage}>
                 {pendingProject && <ProjectDestination name={pendingProject.name} />}
               </GptHero>
             )}
 
-            <div
-              ref={scrollRef}
-              onScroll={handleScroll}
-              className="messages"
-              hidden={showGptIntro}
-            >
-              {isLoadingHistory && (
-                <div className="mx-auto w-full max-w-2xl animate-pulse space-y-4 py-4">
-                  <div className="flex justify-end">
-                    <div className="h-10 w-2/5 bg-white/[0.06] rounded-2xl rounded-br-sm" />
-                  </div>
-                  <div className="flex justify-start gap-2">
-                    <div className="w-7 h-7 bg-white/[0.06] rounded-lg flex-shrink-0" />
-                    <div className="h-20 w-3/5 bg-white/[0.06] rounded-2xl rounded-bl-sm" />
-                  </div>
-                </div>
-              )}
-
-              {hasChatMessages &&
-                messages.map((msg, i) => {
-                  const isLast = i === messages.length - 1;
-                  const streaming = isLoading && isLast && msg.role === "assistant";
-                  const attachments: ThinkingAttachments =
-                    streaming && !msg.content ? countAttachments(messages[i - 1]) : EMPTY_ATTACHMENTS;
-                  return (
-                    <MessageBubble
-                      key={i}
-                      index={i}
-                      message={msg}
-                      numbers={attachmentNumbers}
-                      mentions={mentionables}
-                      activeGpt={activeGpt}
-                      isLast={isLast}
-                      streaming={streaming}
-                      thinkingSlot={
-                        streaming && !msg.content ? (
-                          <ThinkingIndicator
-                            phase={phase}
-                            attachments={attachments}
-                            startedAt={thinkingStartedAt}
-                          />
-                        ) : undefined
-                      }
-                      canRegenerate={isLast && !isLoading}
-                      canEdit={i === lastUserIndex && !isLoading}
-                      isCopied={copiedIndex === i}
-                      onCopy={copyMessage}
-                      onRegenerate={regenerate}
-                      onEdit={startEdit}
-                    />
-                  );
-                })}
-              <div ref={bottomRef} />
-            </div>
+            {!showGptIntro && (
+              <div
+                ref={scrollRef}
+                onScroll={handleScroll}
+                className="messages"
+              >
+                {hasChatMessages &&
+                  messages.map((msg, i) => {
+                    const isLast = i === messages.length - 1;
+                    const streaming = isLoading && isLast && msg.role === "assistant";
+                    const attachments: ThinkingAttachments =
+                      streaming && !msg.content ? countAttachments(messages[i - 1]) : EMPTY_ATTACHMENTS;
+                    return (
+                      <MessageBubble
+                        key={i}
+                        index={i}
+                        message={msg}
+                        numbers={attachmentNumbers}
+                        mentions={mentionables}
+                        activeGpt={activeGpt}
+                        isLast={isLast}
+                        streaming={streaming}
+                        className={i === 0 ? "mt-auto" : undefined}
+                        thinkingSlot={
+                          streaming && !msg.content ? (
+                            <ThinkingIndicator
+                              phase={phase}
+                              attachments={attachments}
+                              startedAt={thinkingStartedAt}
+                            />
+                          ) : undefined
+                        }
+                        canRegenerate={isLast && !isLoading}
+                        canEdit={i === lastUserIndex && !isLoading}
+                        isCopied={copiedIndex === i}
+                        onCopy={copyMessage}
+                        onRegenerate={regenerate}
+                        onEdit={startEdit}
+                      />
+                    );
+                  })}
+                <div ref={bottomRef} />
+              </div>
+            )}
 
             {showScrollBtn && hasChatMessages && (
               <button
@@ -603,7 +586,7 @@ export default function UnifiedChat({
             )}
 
             {showComposer && (
-              <div className="chat-dock relative z-[1]">
+              <div className="chat-dock relative z-[1] w-full shrink-0 overflow-visible !border-0 !bg-transparent !p-0 !shadow-none">
                 {uploadError && (
                   <div className="mx-auto mb-2 w-full max-w-3xl">
                     <div className="flex items-start gap-3 rounded-xl border border-red-800/50 bg-red-950/40 px-4 py-2.5 text-sm text-red-300">

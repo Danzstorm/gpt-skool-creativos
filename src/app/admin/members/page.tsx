@@ -73,16 +73,26 @@ export default function AdminMembersPage() {
   }
 
   async function loadWebhookEvents() {
-    const res = await fetch("/api/admin/webhook-events");
-    const data = await res.json();
-    setWebhookEvents(Array.isArray(data) ? data : []);
+    try {
+      const res = await fetch("/api/admin/webhook-events");
+      if (!res.ok) return;
+      const data = await res.json();
+      setWebhookEvents(Array.isArray(data) ? data : []);
+    } catch {
+      // Auditoría Zapier es secundaria: no tumbar la tabla de miembros.
+    }
   }
 
   async function loadAuthEvents(email?: string) {
-    const qs = email ? `?email=${encodeURIComponent(email)}` : "";
-    const res = await fetch(`/api/admin/auth-events${qs}`);
-    const data = await res.json();
-    setAuthEvents(Array.isArray(data) ? data : []);
+    try {
+      const qs = email ? `?email=${encodeURIComponent(email)}` : "";
+      const res = await fetch(`/api/admin/auth-events${qs}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setAuthEvents(Array.isArray(data) ? data : []);
+    } catch {
+      // Historial de accesos es secundario: no tumbar la tabla de miembros.
+    }
   }
 
   function exportCsv() {

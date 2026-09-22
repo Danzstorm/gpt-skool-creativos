@@ -1,6 +1,7 @@
 import { forwardRef, memo, useCallback, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { Plus, X, Check, Square } from "lucide-react";
 import type { UploadedFile } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { useDismissable } from "@/hooks/useDismissable";
 import RecordingWave from "./RecordingWave";
 import {
@@ -276,9 +277,19 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
     }
   }
 
+  const canSend = !isUploading && (input.trim().length > 0 || attachedFiles.length > 0);
+  const sendIdle = isUploading || (!input.trim() && attachedFiles.length === 0);
+
   return (
-    <form className="composer" id="composer" onSubmit={(e) => { e.preventDefault(); submit(); }}>
-      <div className="composer-shell">
+    <form
+      className={cn(
+        "composer w-full !m-0 !border-0 !bg-transparent !shadow-none",
+        hideDisclaimer ? "!p-0" : "!px-0 !pt-2 !pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+      )}
+      id="composer"
+      onSubmit={(e) => { e.preventDefault(); submit(); }}
+    >
+      <div className="composer-shell overflow-visible !border-0 !bg-transparent !shadow-none">
       {(attachedFiles.length > 0 || isUploading) && (
         <div className="attachments" id="attachments">
           {attachedFiles.map((f, i) => {
@@ -395,7 +406,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             anchor={tokenPreview.rect}
           />
         )}
-      <div className="composer-row">
+      <div className="composer-row flex min-h-16 items-center gap-2.5 overflow-visible rounded-[22px] !border !border-white/[0.09] !bg-[#111113] px-3 py-3 shadow-[0_8px_30px_#0004]">
         <input
           ref={fileInputRef}
           type="file"
@@ -412,7 +423,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           <button
             type="button"
             onClick={openFilePicker}
-            className="attach-button"
+            className="attach-button !flex h-9 w-9 shrink-0 items-center justify-center rounded-full !bg-transparent text-[#dedee3]"
             title={
               videoEnabled
                 ? VIDEO_ATTACH_TITLE
@@ -420,9 +431,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             }
             aria-label="Agregar archivos"
           >
-            <svg viewBox="0 0 24 24" aria-hidden>
-              <path d="M12 5v14M5 12h14" />
-            </svg>
+            <Plus size={22} strokeWidth={1.6} className="shrink-0" aria-hidden />
           </button>
         )}
 
@@ -459,12 +468,17 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
               type="button"
               onClick={startRecording}
               disabled={isLoading || isTranscribing || isUploading}
-              className="mic-button"
+              className="mic-button !flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
               title="Toca para grabar"
               aria-label="Grabar audio"
               aria-pressed={isRecording}
             >
-              <svg viewBox="0 0 24 24" aria-hidden>
+              <svg
+                viewBox="0 0 24 24"
+                aria-hidden
+                className="h-5 w-5 shrink-0 fill-none stroke-current"
+                strokeWidth={1.6}
+              >
                 <rect x="9" y="3" width="6" height="12" rx="3" />
                 <path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3m-4 0h8" />
               </svg>
@@ -477,23 +491,45 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             <button type="button" onClick={() => stopRecording(true)} aria-label="Descartar grabación">
               <X size={18} />
             </button>
-            <button type="button" className="send" onClick={() => stopRecording(false)} aria-label="Terminar grabación y transcribir">
-              <Check size={19} />
+            <button
+              type="button"
+              className="send relative isolate !flex h-9 w-9 shrink-0 items-center justify-center rounded-full !text-white"
+              style={{ background: "var(--brand-gradient)" }}
+              onClick={() => stopRecording(false)}
+              aria-label="Terminar grabación y transcribir"
+            >
+              <Check size={18} className="relative z-[1] shrink-0" />
             </button>
           </>
         ) : isLoading ? (
-          <button type="button" className="send" onClick={onStop} title="Detener respuesta" aria-label="Detener">
-            <Square size={14} className="fill-current" />
+          <button
+            type="button"
+            className="send relative isolate !flex h-9 w-9 shrink-0 items-center justify-center rounded-full !text-white"
+            style={{ background: "var(--brand-gradient)" }}
+            onClick={onStop}
+            title="Detener respuesta"
+            aria-label="Detener"
+          >
+            <Square size={14} className="relative z-[1] fill-current" />
           </button>
         ) : (
           <button
             type="submit"
-            className="send"
-            disabled={isUploading || (!input.trim() && attachedFiles.length === 0)}
+            className="send relative isolate !flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+            disabled={sendIdle}
+            style={{
+              background: canSend ? "var(--brand-gradient)" : "#242428",
+              color: canSend ? "#fff" : "#66666f",
+            }}
             title={isUploading || analyzingAttached ? "Esperando a que termine el adjunto" : "Enviar mensaje"}
             aria-label="Enviar mensaje"
           >
-            <svg viewBox="0 0 24 24" aria-hidden>
+            <svg
+              viewBox="0 0 24 24"
+              aria-hidden
+              className="relative z-[1] h-5 w-5 shrink-0 fill-none stroke-current"
+              strokeWidth={1.6}
+            >
               <path d="M12 19V5m-6 6 6-6 6 6" />
             </svg>
           </button>
@@ -502,7 +538,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
       </div>
       </div>
       {!hideDisclaimer && (
-        <p className="mt-6 text-center" style={DISCLAIMER_STYLE}>
+        <p className="mt-3 bg-transparent text-center" style={DISCLAIMER_STYLE}>
           Los GPTs pueden cometer errores. Verifica información importante.
         </p>
       )}

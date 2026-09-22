@@ -534,18 +534,15 @@ body {
   min-height: 0;
 }
 
-/* Pie del chat: composer + disclaimer. Placa para que el producto
-   no “se acabe” en negro vacío. overflow visible = el menú @ no se recorta. */
+/* Pie del chat: solo ancla el composer. Sin placa (borde/fondo/sombra);
+   el recuadro es `.composer-row` en el componente. */
 .chat-dock {
   flex-shrink: 0;
   overflow: visible;
-  padding: 0.5rem 1rem 0.35rem;
-  padding-bottom: max(0.35rem, env(safe-area-inset-bottom, 0px));
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, transparent 46%),
-    color-mix(in srgb, var(--color-zinc-900) 92%, #050506);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
 }
 
 /* Columna del chat: negro Creativos. Velo rojo contenido, no flood. */

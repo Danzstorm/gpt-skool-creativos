@@ -37,23 +37,29 @@ describe("prototype-compat: chat y chrome", () => {
     expect(css).toMatch(/#chatView\.chat-has-messages \.messages\s*>\s*:first-child[\s\S]{0,40}margin-top:\s*auto/);
   });
 
-  it("centra #chatIntro como hermano de .messages, no hijo", () => {
+  it("centra #chatIntro como hermano del composer; el scroller no monta vacío", () => {
     expect(chat).toMatch(/showGptIntro && \(/);
-    expect(chat).toMatch(/hidden=\{showGptIntro\}/);
-    expect(chat).toMatch(/className=\{hasChatMessages \? "chat chat-has-messages" : "chat"\}/);
-    expect(css).toMatch(
-      /#chatView:has\(#chatIntro:not\(\[hidden\]\)\)\s*\{[^}]*justify-content:\s*center/
-    );
-    expect(css).toMatch(
-      /#chatView:has\(#chatIntro:not\(\[hidden\]\)\) #chatIntro\s*\{[^}]*flex-shrink:\s*0/
-    );
-    expect(css).toMatch(
-      /#chatView:has\(#chatIntro:not\(\[hidden\]\)\) \.messages\s*\{[^}]*display:\s*none/
-    );
+    expect(chat).toMatch(/!showGptIntro && \(/);
+    expect(chat).toMatch(/showGptIntro && "justify-center"/);
+    expect(chat).not.toMatch(/hidden=\{showGptIntro\}/);
+    expect(chat).toMatch(/hasChatMessages && "chat-has-messages"/);
     expect(css).toMatch(
       /#chatIntro \.gpt-title-row\s*\{[^}]*flex-direction:\s*row/
     );
     expect(css).toMatch(/#chatIntro \.gpt-title-row \.brand-energy\s*\{[^}]*margin:\s*0/);
+  });
+
+  it("el hilo no pinta skeletons pulse; el primer mensaje se acerca al composer", () => {
+    expect(chat).not.toMatch(/animate-pulse/);
+    expect(chat).toMatch(/className=\{i === 0 \? "mt-auto" : undefined\}/);
+  });
+
+  it("el dock no es una placa; el recuadro vive en composer-row", () => {
+    expect(chat).toMatch(/chat-dock[^"]*!bg-transparent/);
+    expect(chat).toMatch(/chat-dock[^"]*!border-0/);
+    expect(composer).toMatch(/composer-row[\s\S]{0,180}!bg-\[#111113\]/);
+    expect(composer).toMatch(/attach-button/);
+    expect(composer).toMatch(/<Plus /);
   });
 
   it("restaura espacios en copy del intro y chrome (sin zoom)", () => {
@@ -110,6 +116,7 @@ describe("prototype-compat: chat y chrome", () => {
     expect(chrome).toMatch(/＋ Importar miembros/);
     expect(chrome).toMatch(/isDashboard/);
     expect(chrome).toMatch(/!isDashboard &&/);
+    expect(chrome).toMatch(/!slot\?\.isConnected/);
     expect(css).toMatch(/\.ax-shell button\[class\*=["']bg-/);
     expect(css).toMatch(/button\.ax-primary[\s\S]{0,300}background:\s*linear-gradient/);
   });
@@ -122,6 +129,21 @@ describe("prototype-compat: chat y chrome", () => {
     expect(adminPage).not.toMatch(/Math\.sin/);
     expect(adminPage).toMatch(/title="Uso"/);
     expect(adminPage).toMatch(/title="Costos"/);
+  });
+
+  it("el RSC de Resumen no pasa funciones format al chart client", () => {
+    expect(adminPage).not.toMatch(/format:\s*formatCount/);
+    expect(adminPage).not.toMatch(/format:\s*money\b/);
+    expect(adminPage).not.toMatch(/format:\s*\(n\)\s*=>/);
+    expect(adminPage).toMatch(/format:\s*"count"/);
+    expect(adminPage).toMatch(/format:\s*"money"/);
+    expect(adminPage).toMatch(/format:\s*"percent"/);
+    const chart = readFileSync(
+      join(here, "..", "components", "admin", "AdminChartPanel.tsx"),
+      "utf8"
+    );
+    expect(chart).toMatch(/format:\s*ChartFormat/);
+    expect(chart).not.toMatch(/format:\s*\(n:\s*number\)\s*=>/);
   });
 
   it("el catálogo admin de GPTs usa cards ax-gpt con métricas reales, no senos del mock", () => {

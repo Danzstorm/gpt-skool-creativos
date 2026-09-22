@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { formatMonthLabel } from "@/lib/admin-summary";
+import { formatChartValue, formatMonthLabel, type ChartFormat } from "@/lib/admin-summary";
 
 export function AdminMonthPill({
   value,
@@ -35,7 +35,7 @@ export type ChartMetric = {
   value: string;
   hint?: string;
   series: number[];
-  format: (n: number) => string;
+  format: ChartFormat;
   chartLabel: string;
 };
 
@@ -65,7 +65,9 @@ export default function AdminChartPanel({ title, chartKey, metrics, dates }: Pro
   const max = Math.max(...series, 0) * 1.15 || 1;
   const points = useMemo(() => polylinePoints(series, max), [series, max]);
   const count = series.length;
-  const labels = [0, 0.5, 1].map((t) => metric?.format(max * t) ?? "");
+  const labels = [0, 0.5, 1].map((t) =>
+    metric ? formatChartValue(metric.format, max * t) : ""
+  );
 
   return (
     <section className="ax-panel ax-chart-panel">
@@ -122,7 +124,7 @@ export default function AdminChartPanel({ title, chartKey, metrics, dates }: Pro
                 fill={count === 1 ? "#cb4a8b" : "transparent"}
               >
                 <title>
-                  {dates[i]}: {metric.format(value)}
+                  {dates[i]}: {formatChartValue(metric.format, value)}
                 </title>
               </circle>
             );

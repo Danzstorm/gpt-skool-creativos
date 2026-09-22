@@ -21,6 +21,7 @@ interface Props {
   canRegenerate: boolean;
   canEdit: boolean;
   isCopied: boolean;
+  className?: string;
   onCopy: (index: number, content: string) => void;
   onRegenerate: () => void;
   onEdit: (index: number) => void;
@@ -37,6 +38,7 @@ function MessageBubble({
   canRegenerate,
   canEdit,
   isCopied,
+  className,
   onCopy,
   onRegenerate,
   onEdit,
@@ -79,11 +81,21 @@ function MessageBubble({
 
   if (!isUser) {
     if (streaming && !msg.content) {
-      return <div className="message assistant shrink-0">{thinkingSlot ?? <span>…</span>}</div>;
+      return (
+        <div className={cn("message assistant shrink-0", className)}>
+          {thinkingSlot ?? <span>…</span>}
+        </div>
+      );
     }
     const promptText = unwrapPromptFence(msg.content);
     return (
-      <div className={cn("message assistant prompt-card shrink-0", !streaming && "new-response")}>
+      <div
+        className={cn(
+          "message assistant prompt-card shrink-0",
+          !streaming && "new-response",
+          className
+        )}
+      >
         {files}
         {promptText ? (
           <>
@@ -126,7 +138,7 @@ function MessageBubble({
   }
 
   return (
-    <div className="message user shrink-0">
+    <div className={cn("message user ml-auto w-fit max-w-[min(100%,32rem)] shrink-0", className)}>
       {files}
       <MentionedText text={msg.content} mentions={mentions} />
       {!streaming && canEdit && (

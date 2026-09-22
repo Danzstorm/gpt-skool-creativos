@@ -102,6 +102,15 @@ export function formatCount(n: number): string {
   return Math.round(n).toLocaleString("es-PE");
 }
 
+/** Claves que un RSC puede pasar a AdminChartPanel. Una función no serializa. */
+export type ChartFormat = "count" | "money" | "percent";
+
+export function formatChartValue(format: ChartFormat, n: number): string {
+  if (format === "money") return money(n);
+  if (format === "percent") return `${n.toFixed(1)}%`;
+  return formatCount(n);
+}
+
 export function activityPct(active: number, members: number): number {
   if (!members) return 0;
   return (active / members) * 100;
