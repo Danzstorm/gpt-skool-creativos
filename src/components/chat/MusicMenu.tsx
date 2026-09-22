@@ -17,10 +17,6 @@ import {
 
 type ListedTrack = MusicTrack & { src: string };
 
-interface Props {
-  accountOpen?: boolean;
-}
-
 function fallbackTracks(): ListedTrack[] {
   const storage = createClient().storage.from(MUSIC_BUCKET);
   return MUSIC_TRACK_PATHS.map((track) => ({
@@ -30,7 +26,7 @@ function fallbackTracks(): ListedTrack[] {
   }));
 }
 
-export default function MusicMenu({ accountOpen = true }: Props) {
+export default function MusicMenu() {
   const [open, setOpen] = useState(false);
   const [tracks, setTracks] = useState<ListedTrack[]>(fallbackTracks);
   const [playingIndex, setPlayingIndex] = useState<number | null>(null);
@@ -43,10 +39,6 @@ export default function MusicMenu({ accountOpen = true }: Props) {
     setVolume(readMusicVolume());
     audio.volume = readMusicVolume();
   }, []);
-
-  useEffect(() => {
-    if (!accountOpen) setOpen(false);
-  }, [accountOpen]);
 
   useEffect(() => {
     let cancelled = false;

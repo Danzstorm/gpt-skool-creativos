@@ -112,7 +112,7 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
               Admin
             </Link>
           )}
-          <MusicMenu accountOpen={open} />
+          <MusicMenu />
           <button
             type="button"
             onClick={() => {
