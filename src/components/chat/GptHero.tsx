@@ -81,11 +81,11 @@ export default function GptHero({ gpt, onStarter, children }: Props) {
     <div className="chat-intro" id="chatIntro" ref={introRef}>
       <div className="gpt-title-row" onPointerMove={trackTitle}>
         <div className="brand-energy" aria-hidden>
-          <EnergyCanvas size={82} speed={0.0025} />
+          <EnergyCanvas size={54} speed={0.0025} />
         </div>
         <h1 data-title={displayed.name}>{displayed.name}</h1>
       </div>
-      {description && <p>{description}</p>}
+      {description && <p className="gpt-intro-copy">{description}</p>}
       {children}
       {starters.length > 0 && (
         <div className="examples">

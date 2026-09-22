@@ -196,12 +196,90 @@ body {
 /* Intro del GPT centrado en el pane. Con mensajes, un spacer empuja el hilo
    hacia el composer (el vacío negro quedaba abajo y el chat pegado arriba). */
 .chat .messages:has(#chatIntro) {
-  justify-content: center;
+  justify-content: stretch;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 .chat .messages:not(:has(#chatIntro))::before {
   content: "";
   flex: 1 1 0;
   min-height: 0;
+}
+
+/* El prototipo centra `#chatIntro` como hijo directo de `#chatView` y pone
+   `margin: 0; flex-shrink: 0`. En Next el hero vive DENTRO de `.messages`,
+   así que esas reglas lo dejan pegado arriba (el composer sí queda abajo).
+   Misma especificidad, más tarde: el hero llena el pane y centra su bloque. */
+#chatView:has(#chatIntro:not([hidden])) {
+  justify-content: flex-start;
+}
+#chatView:has(#chatIntro:not([hidden])) #chatIntro {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  margin: 0;
+  padding: 24px 16px 30px;
+  transform: none;
+  width: 100%;
+  min-height: 0;
+}
+
+/* Fila título + orbe. `.brand-energy { margin: auto 16px }` del prototipo
+   trata el canvas como bloque centrado y lo apila encima del h1. */
+#chatIntro .gpt-title-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+  transform: none;
+}
+#chatIntro .gpt-title-row .brand-energy {
+  width: 54px;
+  height: 54px;
+  margin: 0;
+  flex-shrink: 0;
+}
+#chatIntro .gpt-title-row svg {
+  margin-bottom: 0;
+}
+
+/* Chromium: `background-clip:text` + fill transparente y tracking apretado
+   (la familia del viejo `zoom`) colapsan el glifo de espacio. El prototipo
+   lo pone en `h1` y el overlay `:after`; `#chatIntro>p` lo hereda. */
+#chatIntro > p,
+#chatIntro .gpt-intro-copy,
+#chatIntro .gpt-title-row h1,
+.new,
+.nav,
+.chat-name,
+.history-item,
+.folder-heading {
+  letter-spacing: 0;
+  word-spacing: 0.06em;
+  -webkit-text-fill-color: currentColor;
+}
+#chatIntro > p,
+#chatIntro .gpt-intro-copy {
+  background: none;
+  background-clip: border-box;
+  -webkit-background-clip: border-box;
+  overflow-wrap: break-word;
+}
+#chatIntro .gpt-title-row h1 {
+  color: #eeeef2;
+  -webkit-text-fill-color: #eeeef2;
+  overflow-wrap: break-word;
+}
+#chatIntro .gpt-title-row h1:after {
+  letter-spacing: 0;
+  word-spacing: 0.06em;
 }
 
 .prompt-body {

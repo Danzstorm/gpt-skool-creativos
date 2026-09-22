@@ -14,6 +14,10 @@ const chat = readFileSync(
   join(here, "..", "components", "UnifiedChat.tsx"),
   "utf8"
 );
+const hero = readFileSync(
+  join(here, "..", "components", "chat", "GptHero.tsx"),
+  "utf8"
+);
 
 describe("prototype-compat: chat y chrome", () => {
   it("no deja que flex recorte las tarjetas", () => {
@@ -22,6 +26,31 @@ describe("prototype-compat: chat y chrome", () => {
 
   it("empuja el hilo hacia el composer cuando no hay hero", () => {
     expect(css).toMatch(/\.chat \.messages:not\(:has\(#chatIntro\)\)::before/);
+  });
+
+  it("centra #chatIntro en el pane y no lo deja pegado arriba", () => {
+    expect(css).toMatch(
+      /#chatView:has\(#chatIntro:not\(\[hidden\]\)\) #chatIntro\s*\{[^}]*flex:\s*1 1 auto/
+    );
+    expect(css).toMatch(
+      /#chatView:has\(#chatIntro:not\(\[hidden\]\)\) #chatIntro\s*\{[^}]*justify-content:\s*center/
+    );
+    expect(css).toMatch(
+      /#chatIntro \.gpt-title-row\s*\{[^}]*flex-direction:\s*row/
+    );
+    expect(css).toMatch(/#chatIntro \.gpt-title-row \.brand-energy\s*\{[^}]*margin:\s*0/);
+  });
+
+  it("restaura espacios en copy del intro y chrome (sin zoom)", () => {
+    expect(css).toMatch(/#chatIntro > p[\s\S]{0,400}word-spacing:\s*0\.06em/);
+    expect(css).toMatch(/#chatIntro \.gpt-title-row h1:after\s*\{[^}]*word-spacing:\s*0\.06em/);
+    expect(css).not.toMatch(/zoom\s*:/);
+  });
+
+  it("GptHero sigue pintando .examples y gpt-title-row", () => {
+    expect(hero).toMatch(/className="gpt-title-row"/);
+    expect(hero).toMatch(/className="examples"/);
+    expect(hero).toMatch(/conversation_starters/);
   });
 
   it("centra Configuración con margin auto (Tailwind v4 pone margin:0 al dialog)", () => {

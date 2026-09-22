@@ -32,7 +32,7 @@ export const TEXT_SIZE_RULES: [string, number][] = [
   [".prompt-body", 13],
   [".prompt-label,.prompt-copy", 11],
   ["#chatIntro .gpt-title-row h1", 46],
-  ["#chatIntro>p", 17],
+  ["#chatIntro>p,#chatIntro .gpt-intro-copy", 17],
   [".intro h1", 37],
   [".intro p:last-child", 13],
   [".account-menu>button,.music-options button,.music-flyout button", 13],
