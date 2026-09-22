@@ -109,44 +109,34 @@ body {
   flex-direction: column;
 }
 
-/* El cliente React deja que el documento crezca; el sidebar es sticky.
-   Acá el scrollport es `.main` en home: el sidebar no se va. */
-.main:has(#homeView),
-.app > .main:has(#homeView) {
+/* Un solo scrollport en home: `.main`. Sidebar hermano se queda.
+   No anidar overflow-y en #homeView/.tools/.grid (height:auto no scrollea
+   y height:auto en `.main` lo saca del flex y recorta otra vez). */
+.main:has(#homeView) {
   overflow-x: hidden;
   overflow-y: auto;
-  height: auto;
-  min-height: 0;
+  overscroll-behavior-y: contain;
 }
 
 .main:has(#chatView) {
   overflow: hidden;
 }
 
-.app > .main:has(#chatView),
-.app > .main:has(#chatView:not([hidden])) {
-  overflow: hidden;
-  height: auto;
-  min-height: 0;
-}
-
-#homeView,
 #homeView.workspace {
   flex: 0 0 auto;
   min-height: 100%;
   height: auto;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: visible;
   padding-bottom: 96px;
 }
 
+.workspace .intro,
 .workspace .tools,
 .workspace .grid {
   flex-shrink: 0;
   height: auto;
   max-height: none;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: visible;
 }
 
 /* El prototipo clava 3 filas (9 GPTs). Acá hay más: filas implícitas,

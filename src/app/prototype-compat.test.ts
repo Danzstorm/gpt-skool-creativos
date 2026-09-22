@@ -39,10 +39,10 @@ describe("prototype-compat: catálogo de home scrollea", () => {
     expect(proto).toMatch(/\.grid\{grid-template-rows:repeat\(3,/);
   });
 
-  it("home scrollea en .main; el shell .app sigue clipped para el chat", () => {
+  it("home scrollea en .main; #homeView crece sin overflow anidado", () => {
     expect(css).toMatch(/\.app\s*\{[^}]*overflow:\s*hidden/);
     expect(css).toMatch(/\.main:has\(#homeView\)\s*\{[^}]*overflow-y:\s*auto/);
-    expect(css).toMatch(/#homeView\.workspace\s*\{[^}]*overflow-y:\s*auto/);
+    expect(css).toMatch(/#homeView\.workspace\s*\{[^}]*overflow:\s*visible/);
     expect(css).toMatch(/#homeView\.workspace\s*\{[^}]*height:\s*auto/);
   });
 
