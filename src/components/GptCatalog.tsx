@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { Gpt } from "@/lib/types";
 import GptCard from "./GptCard";
 import { resolveGptCraft, type GptCraft } from "@/lib/gpt-visual";
+import { activeGptsForChat } from "@/lib/gpt-catalog";
 import { gptMatchesSearch } from "@/lib/gpt-recents";
 import ProtoIcon from "./chat/ProtoIcon";
 
@@ -24,18 +25,19 @@ const FILTERS: { id: "Todos" | GptCraft | "images"; label: string; crafts: Array
 export default function GptCatalog({ gpts, onSelect, onPreview }: Props) {
   const [search, setSearch] = useState("");
   const [active, setActive] = useState<(typeof FILTERS)[number]["id"]>("Todos");
+  const catalog = useMemo(() => activeGptsForChat(gpts), [gpts]);
 
   const available = useMemo(() => {
     return FILTERS.filter((filter) => {
       if (filter.id === "Todos") return true;
-      return gpts.some((g) => {
+      return catalog.some((g) => {
         const craft = resolveGptCraft(g.category, g.name, g.description);
         return craft != null && filter.crafts.includes(craft);
       });
     });
-  }, [gpts]);
+  }, [catalog]);
 
-  const filtered = gpts.filter((g) => {
+  const filtered = catalog.filter((g) => {
     if (!gptMatchesSearch(g, search)) return false;
     if (active === "Todos") return true;
     const craft = resolveGptCraft(g.category, g.name, g.description);

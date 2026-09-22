@@ -2,7 +2,10 @@ import { createClient } from "@/lib/supabase/server";
 import { getAppSettings } from "@/lib/app-settings";
 import type { Gpt, Project, ThreadSummary } from "@/lib/types";
 import UnifiedChat from "@/components/UnifiedChat";
+import { activeGptsForChat } from "@/lib/gpt-catalog";
 import { humanDisplayName } from "@/lib/utils";
+
+export const dynamic = "force-dynamic";
 
 // Motivos por los que /admin puede devolver a alguien aquí. Sin esto, quien
 // intenta entrar al panel aterriza en el chat sin una palabra y no sabe si le
@@ -36,7 +39,11 @@ export default async function ChatPage({ searchParams }: Props) {
   // parpadeo con los proyectos vacíos.
   const [{ data: gpts }, { data: threads }, { data: projects }, { data: profile }, settings] =
     await Promise.all([
-      supabase.from("gpts_public").select("*").order("sort_order", { ascending: true }),
+      supabase
+        .from("gpts_public")
+        .select("*")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true }),
       supabase
         .from("threads")
         .select("id, title, gpt_id, project_id, created_at, updated_at")
@@ -54,7 +61,7 @@ export default async function ChatPage({ searchParams }: Props) {
   return (
     <UnifiedChat
       key={threadId ?? gptId ?? "new"}
-      gpts={(gpts as Gpt[]) ?? []}
+      gpts={activeGptsForChat((gpts as Gpt[]) ?? [])}
       threads={(threads as ThreadSummary[]) ?? []}
       initialProjects={(projects as Project[]) ?? []}
       initialThreadId={threadId ?? null}

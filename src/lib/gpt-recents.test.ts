@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  capCatalogList,
   gptIdsFromRecentThreads,
   gptMatchesSearch,
   parseRecentGptIds,
@@ -111,11 +110,3 @@ describe("gptMatchesSearch", () => {
   });
 });
 
-describe("capCatalogList", () => {
-  it("recorta el hero y cuenta lo escondido; expandido no recorta", () => {
-    const items = [1, 2, 3, 4, 5];
-    expect(capCatalogList(items, 3, false)).toEqual({ items: [1, 2, 3], hiddenCount: 2 });
-    expect(capCatalogList(items, 3, true)).toEqual({ items, hiddenCount: 0 });
-    expect(capCatalogList(items, 9, false)).toEqual({ items, hiddenCount: 0 });
-  });
-});

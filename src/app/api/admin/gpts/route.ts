@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/require-admin";
 import { periodBounds } from "@/lib/admin-summary";
 import { attachUsage30d, type GptUsageSummary } from "@/lib/admin-gpt-catalog";
+import { revalidateChatGpts } from "@/lib/revalidate-chat-gpts";
 
 export async function GET() {
   const user = await requireAdmin();
@@ -80,5 +81,6 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  revalidateChatGpts();
   return NextResponse.json(data, { status: 201 });
 }

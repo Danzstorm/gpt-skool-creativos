@@ -1,10 +1,9 @@
-// Recientes del sidebar y tope del hero. La clave y el JSON tienen que
-// sobrevivir deploys: igual que el colapso del sidebar, un rename o un
-// formato distinto vaciaría la lista el día del ship.
+// Recientes del sidebar. La clave y el JSON tienen que sobrevivir deploys:
+// igual que el colapso del sidebar, un rename o un formato distinto vaciaría
+// la lista el día del ship. El catálogo de home no usa este tope.
 
 export const RECENT_GPTS_KEY = "chat_recent_gpts";
 export const SIDEBAR_RECENT_GPT_LIMIT = 6;
-export const HERO_GPT_PREVIEW_LIMIT = 9;
 
 /** Techo del historial persistido: el sidebar solo enseña 6, el resto queda para reordenar. */
 const RECENT_GPTS_STORE_LIMIT = 40;
@@ -100,19 +99,4 @@ export function gptMatchesSearch(
   const q = query.trim().toLowerCase();
   if (!q) return true;
   return `${gpt.name} ${gpt.description ?? ""} ${gpt.author ?? ""}`.toLowerCase().includes(q);
-}
-
-/** Hero: tope de cards grandes. Expandido o pocos ítems = lista completa. */
-export function capCatalogList<T>(
-  items: T[],
-  limit: number,
-  expanded: boolean
-): {
-  items: T[];
-  hiddenCount: number;
-} {
-  if (expanded || items.length <= limit) {
-    return { items, hiddenCount: 0 };
-  }
-  return { items: items.slice(0, limit), hiddenCount: items.length - limit };
 }

@@ -1,6 +1,7 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/require-admin";
+import { revalidateChatGpts } from "@/lib/revalidate-chat-gpts";
 
 export async function POST(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const user = await requireAdmin();
@@ -33,5 +34,6 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  revalidateChatGpts();
   return NextResponse.json(data, { status: 201 });
 }

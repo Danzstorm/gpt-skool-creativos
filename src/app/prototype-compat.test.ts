@@ -210,8 +210,10 @@ describe("prototype-compat: catálogo de home scrollea", () => {
 
   it("GptCatalog pinta filtered.map, sin tope de 9, dentro de #homeView", () => {
     expect(catalog).not.toMatch(/capCatalogList|HERO_GPT_PREVIEW_LIMIT|slice\(\s*0\s*,\s*9\s*\)/);
+    expect(catalog).toMatch(/activeGptsForChat/);
     expect(catalog).toMatch(/filtered\.map/);
     expect(chat).toMatch(/id="homeView"\s+className="workspace"/);
-    expect(chat).toMatch(/<GptCatalog\b/);
+    expect(chat).toMatch(/<GptCatalog gpts=\{gpts\}/);
+    expect(chat).toMatch(/onOpenAllGpts=\{openAllGpts\}/);
   });
 });

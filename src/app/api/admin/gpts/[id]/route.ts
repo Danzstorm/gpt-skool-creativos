@@ -1,6 +1,7 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/require-admin";
+import { revalidateChatGpts } from "@/lib/revalidate-chat-gpts";
 
 export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const user = await requireAdmin();
@@ -55,6 +56,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  revalidateChatGpts();
   return NextResponse.json(data);
 }
 
@@ -69,6 +71,7 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
   if (!gpt) return NextResponse.json({ error: "GPT no encontrado" }, { status: 404 });
 
   await serviceClient.from("gpts").delete().eq("id", id);
+  revalidateChatGpts();
 
   return NextResponse.json({ ok: true });
 }
