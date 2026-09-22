@@ -510,38 +510,40 @@ function ChatSidebar({
                 carpeta, se lee como que los chats se perdieron. Vacía y con
                 su texto, además, es el lugar donde soltar para sacarlos. */}
             {(loose.length > 0 || groups.length > 0) && (
-              <>
+              // Martin: label CHATS vive DENTRO de .history. El border-top de
+              // `.history{border-top:1px solid var(--line)}` queda ARRIBA del
+              // label (separador GPTS→CHATS), no debajo como si el label fuera
+              // hermano previo.
+              <div
+                className={cn(
+                  "history space-y-0.5 rounded-lg",
+                  dropLoose && "ring-1 ring-brand/50 bg-brand/10"
+                )}
+                onDragOver={(e) => {
+                  if (!e.dataTransfer.types.includes(THREAD_DND_TYPE)) return;
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                  setDropLoose(true);
+                }}
+                onDragLeave={() => setDropLoose(false)}
+                onDrop={(e) => {
+                  if (!e.dataTransfer.types.includes(THREAD_DND_TYPE)) return;
+                  e.preventDefault();
+                  setDropLoose(false);
+                  const threadId = e.dataTransfer.getData(THREAD_DND_TYPE);
+                  // `null` = fuera de toda carpeta. Es el gesto inverso al de
+                  // arrastrar hacia un proyecto, que ya existía sin vuelta.
+                  if (threadId) onMoveToProject(threadId, null);
+                }}
+              >
                 <div className="label">Chats</div>
-                <div
-                  className={cn(
-                    "history space-y-0.5 rounded-lg",
-                    dropLoose && "ring-1 ring-brand/50 bg-brand/10"
-                  )}
-                  onDragOver={(e) => {
-                    if (!e.dataTransfer.types.includes(THREAD_DND_TYPE)) return;
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = "move";
-                    setDropLoose(true);
-                  }}
-                  onDragLeave={() => setDropLoose(false)}
-                  onDrop={(e) => {
-                    if (!e.dataTransfer.types.includes(THREAD_DND_TYPE)) return;
-                    e.preventDefault();
-                    setDropLoose(false);
-                    const threadId = e.dataTransfer.getData(THREAD_DND_TYPE);
-                    // `null` = fuera de toda carpeta. Es el gesto inverso al de
-                    // arrastrar hacia un proyecto, que ya existía sin vuelta.
-                    if (threadId) onMoveToProject(threadId, null);
-                  }}
-                >
-                  {looseSorted.map(renderThread)}
-                  {loose.length === 0 && (
-                    <p className="px-2.5 py-2 text-[12px] text-zinc-600">
-                      Arrastra un chat aquí para sacarlo de su proyecto.
-                    </p>
-                  )}
-                </div>
-              </>
+                {looseSorted.map(renderThread)}
+                {loose.length === 0 && (
+                  <p className="px-2.5 py-2 text-[12px] text-zinc-600">
+                    Arrastra un chat aquí para sacarlo de su proyecto.
+                  </p>
+                )}
+              </div>
             )}
           </div>
 
