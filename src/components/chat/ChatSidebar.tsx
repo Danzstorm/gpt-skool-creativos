@@ -401,8 +401,11 @@ function ChatSidebar({
               className="collapse"
               onClick={onToggleCollapse}
               aria-label="Contraer panel"
+              title="Contraer panel"
             >
-              ‹
+              <span aria-hidden className="collapse-chevron">
+                ‹
+              </span>
             </button>
           </div>
 

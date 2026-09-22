@@ -17,11 +17,13 @@ export function humanDisplayName(...candidates: (string | null | undefined)[]): 
   return null;
 }
 
-/** Nombre de pila, o cadena vacía si no hay nombre real. */
+/** Nombre de pila capitalizado (Martin), o cadena vacía si no hay nombre real. */
 export function firstNameOf(...candidates: (string | null | undefined)[]): string {
   const name = humanDisplayName(...candidates);
   if (!name) return "";
-  return name.split(/\s+/)[0] ?? "";
+  const first = name.split(/\s+/)[0] ?? "";
+  if (!first) return "";
+  return first.charAt(0).toLocaleUpperCase("es") + first.slice(1).toLocaleLowerCase("es");
 }
 
 /**

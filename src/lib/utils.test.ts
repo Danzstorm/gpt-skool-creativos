@@ -17,4 +17,10 @@ describe("firstNameOf", () => {
     expect(firstNameOf("daniel.santos.emprende@gmail.com")).toBe("");
     expect(firstNameOf(null, "  ")).toBe("");
   });
+
+  it("capitaliza el saludo como Martin (daniel → Daniel)", () => {
+    expect(firstNameOf("daniel")).toBe("Daniel");
+    expect(firstNameOf("DANIEL SANTOS")).toBe("Daniel");
+    expect(firstNameOf("mArTin")).toBe("Martin");
+  });
 });
