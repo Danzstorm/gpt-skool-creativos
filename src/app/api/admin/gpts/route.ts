@@ -1,6 +1,8 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/require-admin";
+import { periodBounds } from "@/lib/admin-summary";
+import { attachUsage30d, type GptUsageSummary } from "@/lib/admin-gpt-catalog";
 
 export async function GET() {
   const user = await requireAdmin();
@@ -29,7 +31,15 @@ export async function GET() {
     })
   );
 
-  return NextResponse.json(withCounts);
+  const { since, until } = periodBounds({ kind: "range", key: "30d" });
+  const { data: usage, error: usageError } = await serviceClient.rpc("admin_usage_summary", {
+    since: since.toISOString(),
+    until: until.toISOString(),
+  });
+
+  return NextResponse.json(
+    attachUsage30d(withCounts, (usage as GptUsageSummary[] | null) ?? [], !usageError)
+  );
 }
 
 export async function POST(request: NextRequest) {

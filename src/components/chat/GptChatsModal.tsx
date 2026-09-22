@@ -77,7 +77,7 @@ export default function GptChatsModal({
         <div className="p-3">
           <button
             onClick={newChatAndClose}
-            className="w-full flex items-center justify-center gap-2 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/20 text-zinc-100 text-sm font-medium rounded-xl px-3 py-2 transition"
+            className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-zinc-100 transition hover:bg-white/10"
           >
             <SquarePen size={15} />
             Nuevo chat con {gpt.name}

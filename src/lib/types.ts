@@ -13,6 +13,12 @@ export interface Gpt {
   created_at: string;
 }
 
+export type GptUsage30d = {
+  unique_users: number;
+  message_count: number;
+  total_cost: number;
+};
+
 export interface GptWithAssistantId extends Gpt {
   openai_assistant_id: string | null; // legacy (Assistants API)
   system_prompt?: string;
@@ -21,6 +27,9 @@ export interface GptWithAssistantId extends Gpt {
   // de admin (GET /api/admin/gpts) — se usa para advertir antes de borrar, ya
   // que threads.gpt_id tiene ON DELETE CASCADE y se llevaría todas por delante.
   thread_count?: number;
+  // Uso de los últimos 30 días (admin_usage_summary). null = el RPC no respondió;
+  // no es lo mismo que ceros reales.
+  usage_30d?: GptUsage30d | null;
 }
 
 export interface AllowedMember {

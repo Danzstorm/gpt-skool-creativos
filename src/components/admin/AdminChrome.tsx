@@ -7,8 +7,8 @@ import { usePathname } from "next/navigation";
 
 const NAV = [
   { href: "/admin", label: "Resumen", match: (p: string) => p === "/admin" },
-  { href: "/admin/members", label: "Miembros", match: (p: string) => p.startsWith("/admin/members") },
   { href: "/admin/gpts", label: "GPTs", match: (p: string) => p.startsWith("/admin/gpts") },
+  { href: "/admin/members", label: "Miembros", match: (p: string) => p.startsWith("/admin/members") },
   { href: "/admin/settings", label: "Ajustes", match: (p: string) => p.startsWith("/admin/settings") },
 ];
 
@@ -51,6 +51,7 @@ export default function AdminChrome({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const isDashboard = pathname === "/admin";
   const head = HEAD[pathname] ?? HEAD["/admin"];
   const [actionSlot, setActionSlot] = useState<HTMLDivElement | null>(null);
 
@@ -59,6 +60,9 @@ export default function AdminChrome({
       <aside className="ax-side">
         <Link href="/chat" className="ax-brand">
           {communityName} <span>AI</span>
+        </Link>
+        <Link href="/admin/members" className="ax-primary ax-import">
+          ＋ Importar miembros
         </Link>
         <div className="ax-eyebrow">ADMINISTRACIÓN</div>
         <nav className="ax-navigation">
@@ -78,12 +82,14 @@ export default function AdminChrome({
         </div>
       </aside>
       <main className="ax-main">
-        <header className="ax-header">
-          <div>
-            <div className="ax-eyebrow">{head.eyebrow}</div>
-            <h1>{head.title}</h1>
-            <p>{head.sub}</p>
-          </div>
+        <header className={`ax-header${isDashboard ? " ax-header-bare" : ""}`}>
+          {!isDashboard && (
+            <div>
+              <div className="ax-eyebrow">{head.eyebrow}</div>
+              <h1>{head.title}</h1>
+              <p>{head.sub}</p>
+            </div>
+          )}
           <div className="ax-header-actions" ref={setActionSlot} />
         </header>
         <HeaderSlotContext.Provider value={actionSlot}>

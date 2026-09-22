@@ -71,6 +71,21 @@ export default function MusicMenu() {
     }
   }
 
+  useEffect(() => {
+    if (!open || !anchor || !flyoutRef.current) return;
+    const menu = flyoutRef.current;
+    const left = Math.max(
+      8,
+      Math.min(anchor.right + FLYOUT_GAP, window.innerWidth - menu.offsetWidth - 8)
+    );
+    const top = Math.max(
+      8,
+      Math.min(anchor.top, window.innerHeight - menu.offsetHeight - 8)
+    );
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
+  }, [open, anchor]);
+
   const flyout =
     mounted && open && anchor
       ? createPortal(

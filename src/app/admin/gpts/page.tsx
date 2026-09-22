@@ -3,10 +3,11 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import type { GptWithAssistantId } from "@/lib/types";
-import { Plus, Pencil, Trash2, Eye, EyeOff, X, GripVertical, Copy, FlaskConical } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { getGptVisual } from "@/lib/gpt-visual";
 import GptTestModal from "@/components/admin/GptTestModal";
 import { AdminHeaderActions } from "@/components/admin/AdminChrome";
+import { gptCatalogMetricRows, mapGptCatalogMetrics } from "@/lib/admin-gpt-catalog";
 
 const CATEGORIES = ["General", "Imágenes", "Marketing", "Copywriting", "Diseño", "Ventas", "Productividad", "Educación"];
 // Ordenados de más económico a más caro por mensaje real (medido, no por precio
@@ -56,9 +57,9 @@ export default function AdminGptsPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadingIcon, setUploadingIcon] = useState(false);
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [testingGpt, setTestingGpt] = useState<GptWithAssistantId | null>(null);
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+  const [movingId, setMovingId] = useState<string | null>(null);
   // Distingue "no se pudo cargar" de "no hay GPTs todavía": antes un 500 caía
   // en el mismo estado vacío ("Crea el primero.") que el catálogo realmente
   // vacío, sin ninguna pista de que el catálogo real seguía intacto.
@@ -254,24 +255,11 @@ export default function AdminGptsPage() {
     }
   }
 
-  // Reordenar por drag & drop: mueve el arrastrado a la posición soltada y
-  // persiste el nuevo sort_order de todos (best-effort, en paralelo). Si un
-  // PATCH falla, el orden mostrado queda divergido del guardado hasta el
-  // próximo `loadGpts()` — se avisa para que el admin sepa que puede no haber
-  // quedado como lo dejó.
-  function handleDrop(targetIndex: number) {
-    if (dragIndex === null || dragIndex === targetIndex) {
-      setDragIndex(null);
-      return;
-    }
-    const next = [...gpts];
-    const [moved] = next.splice(dragIndex, 1);
-    next.splice(targetIndex, 0, moved);
+  async function persistOrder(next: GptWithAssistantId[]) {
     const reordered = next.map((g, i) => ({ ...g, sort_order: i }));
     setGpts(reordered);
-    setDragIndex(null);
     setActionError("");
-    Promise.all(
+    const results = await Promise.all(
       reordered.map((g, i) =>
         fetch(`/api/admin/gpts/${g.id}`, {
           method: "PATCH",
@@ -279,11 +267,23 @@ export default function AdminGptsPage() {
           body: JSON.stringify({ sort_order: i }),
         })
       )
-    ).then((results) => {
-      if (results.some((r) => !r.ok)) {
-        setActionError("El nuevo orden no se guardó del todo. Recarga para ver el orden real.");
-      }
-    });
+    );
+    if (results.some((r) => !r.ok)) {
+      setActionError("El nuevo orden no se guardó del todo. Recarga para ver el orden real.");
+    }
+  }
+
+  async function moveUp(index: number) {
+    if (index <= 0) return;
+    const gpt = gpts[index];
+    setMovingId(gpt.id);
+    try {
+      const next = [...gpts];
+      [next[index - 1], next[index]] = [next[index], next[index - 1]];
+      await persistOrder(next);
+    } finally {
+      setMovingId(null);
+    }
   }
 
   return (
@@ -500,6 +500,13 @@ export default function AdminGptsPage() {
         </div>
       )}
 
+      <div className="ax-summary-top">
+        <div>
+          GPTs
+          <small className="ax-range-caption">Uso por herramienta · últimos 30 días</small>
+        </div>
+      </div>
+
       {loading ? (
         <div className="text-zinc-400 text-center py-12">Cargando...</div>
       ) : loadError ? (
@@ -516,94 +523,64 @@ export default function AdminGptsPage() {
           <p>No hay GPTs. Crea el primero.</p>
         </div>
       ) : (
-        <div className="space-y-3">
-          <p className="text-zinc-600 text-xs -mt-1 mb-1">Arrastra para reordenar el catálogo.</p>
-          {gpts.map((gpt, i) => (
-            <div
-              key={gpt.id}
-              draggable
-              onDragStart={() => setDragIndex(i)}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={() => handleDrop(i)}
-              onDragEnd={() => setDragIndex(null)}
-              className={`bg-zinc-900 border rounded-2xl p-5 flex items-center gap-4 transition ${
-                gpt.is_active ? "border-zinc-800" : "border-zinc-800 opacity-60"
-              } ${dragIndex === i ? "opacity-40" : ""}`}
-            >
-              <span className="text-zinc-600 cursor-grab active:cursor-grabbing flex-shrink-0" title="Arrastrar para reordenar">
-                <GripVertical size={16} />
-              </span>
-              {(() => {
-                const { Icon, accentClasses } = getGptVisual(gpt.category, gpt.name);
-                return (
-                  <div
-                    className={`relative w-10 h-10 rounded-xl bg-gradient-to-br border flex items-center justify-center flex-shrink-0 overflow-hidden ${accentClasses}`}
-                  >
-                    {gpt.icon_url ? (
-                      <Image src={gpt.icon_url} alt="" fill sizes="40px" className="object-cover" />
-                    ) : (
-                      <Icon size={18} />
-                    )}
-                  </div>
-                );
-              })()}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-white font-semibold truncate">{gpt.name}</h3>
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded-full border bg-gradient-to-br ${getGptVisual(gpt.category, gpt.name).accentClasses}`}
-                  >
-                    {gpt.category}
+        <div className="ax-catalog">
+          {gpts.map((gpt, i) => {
+            const metrics = mapGptCatalogMetrics({
+              usage: gpt.usage_30d ?? null,
+              usageAvailable: gpt.usage_30d != null,
+            });
+            return (
+              <article key={gpt.id} className="ax-gpt">
+                <div className="ax-panel-title">
+                  <span className={`ax-status ${gpt.is_active ? "active" : "expired"}`}>
+                    {gpt.is_active ? "Activo" : "Inactivo"}
                   </span>
-                  {!gpt.is_active && (
-                    <span className="text-xs text-zinc-500 bg-zinc-700 px-2 py-0.5 rounded-full">
-                      Inactivo
-                    </span>
-                  )}
+                  <div>
+                    <button type="button" className="ax-action" onClick={() => openEdit(gpt)}>
+                      Editar
+                    </button>
+                    <button type="button" className="ax-action" onClick={() => setTestingGpt(gpt)}>
+                      Probar
+                    </button>
+                  </div>
                 </div>
-                {gpt.description && (
-                  <p className="text-zinc-400 text-sm mt-0.5 truncate">{gpt.description}</p>
-                )}
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setTestingGpt(gpt)}
-                  className="ax-primary"
-                  title="Probar GPT"
-                >
-                  <FlaskConical size={16} /> Probar
-                </button>
-                <button
-                  onClick={() => duplicateGpt(gpt)}
-                  disabled={duplicatingId === gpt.id}
-                  className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition disabled:opacity-50"
-                  title="Duplicar"
-                >
-                  <Copy size={16} />
-                </button>
-                <button
-                  onClick={() => toggleActive(gpt)}
-                  className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
-                  title={gpt.is_active ? "Desactivar" : "Activar"}
-                >
-                  {gpt.is_active ? <Eye size={16} /> : <EyeOff size={16} />}
-                </button>
-                <button
-                  onClick={() => openEdit(gpt)}
-                  className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
-                >
-                  <Pencil size={16} />
-                </button>
-                <button
-                  onClick={() => deleteGpt(gpt)}
-                  className="p-2 rounded-xl text-zinc-400 hover:text-red-400 hover:bg-zinc-800 transition"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            </div>
-          ))}
+                <h2>{gpt.name}</h2>
+                <p>{gpt.description || ""}</p>
+                <dl className="ax-gpt-metrics">
+                  {gptCatalogMetricRows(metrics).map((row) => (
+                    <div key={row.label}>
+                      <dt>{row.label}</dt>
+                      <dd>{row.display}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <div className="ax-gpt-actions">
+                  <button
+                    type="button"
+                    onClick={() => duplicateGpt(gpt)}
+                    disabled={duplicatingId === gpt.id}
+                  >
+                    {duplicatingId === gpt.id ? "Duplicando…" : "Duplicar"}
+                  </button>
+                  <button type="button" onClick={() => toggleActive(gpt)}>
+                    {gpt.is_active ? "Desactivar" : "Activar"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveUp(i)}
+                    disabled={i === 0 || movingId === gpt.id}
+                    aria-label={`Subir ${gpt.name}`}
+                    title={i === 0 ? "Ya está primero" : "Subir"}
+                  >
+                    ↑
+                  </button>
+                  <button type="button" onClick={() => deleteGpt(gpt)}>
+                    Eliminar
+                  </button>
+                </div>
+              </article>
+            );
+          })}
         </div>
       )}
 

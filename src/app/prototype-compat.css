@@ -1,9 +1,7 @@
-/* Compatibilidad entre prototype.css (sin capa) y el producto.
-
-   1. next/font registra Inter / Plus Jakarta Sans / Inconsolata en 'self'.
-   2. El reset `svg{width:19px}` del prototipo no debe aplastar Lucide ni next/image.
-   3. El chat usa clases del prototipo (`.app .sidebar .nav`). Admin/login
-      también, así que no se aísla el archivo entero. */
+/* Puente: el prototipo es REFERENCIA visual. Next estila con Tailwind.
+   prototype.css sigue pintando el chrome que ya montamos (.sidebar .nav
+   .prompt-card). Los resets globales de button/svg se acotaron al chrome
+   para que las utilities de admin, dialogs y CTAs vuelvan a ganar. */
 
 :root {
   --font-sans: var(--font-inter), Inter, Arial, Helvetica, sans-serif;
@@ -186,44 +184,55 @@ body {
   padding-bottom: 16px;
 }
 
-/* El prototipo pone `#messages>.message{flex-shrink:0}`. Acá el scroller es
-   `.messages` sin ese id: `#chatIntro` vive DENTRO del mismo contenedor. */
 .chat .messages > .message,
 .chat .messages > .prompt-wait {
   flex-shrink: 0;
 }
 
-/* Intro del GPT centrado en el pane. Con mensajes, un spacer empuja el hilo
-   hacia el composer (el vacío negro quedaba abajo y el chat pegado arriba). */
-.chat .messages:has(#chatIntro) {
-  justify-content: stretch;
-  padding-top: 0;
-  padding-bottom: 0;
-}
-.chat .messages:not(:has(#chatIntro))::before {
-  content: "";
-  flex: 1 1 0;
-  min-height: 0;
-}
-
-/* El prototipo centra `#chatIntro` como hijo directo de `#chatView` y pone
-   `margin: 0; flex-shrink: 0`. En Next el hero vive DENTRO de `.messages`,
-   así que esas reglas lo dejan pegado arriba (el composer sí queda abajo).
-   Misma especificidad, más tarde: el hero llena el pane y centra su bloque. */
+/* GPT vacío: #chatIntro es hermano de .messages (no hijo). El cliente
+   centra intro + composer y oculta el scroller. */
 #chatView:has(#chatIntro:not([hidden])) {
-  justify-content: flex-start;
+  justify-content: center;
 }
 #chatView:has(#chatIntro:not([hidden])) #chatIntro {
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
+  flex-shrink: 0;
   margin: 0;
-  padding: 24px 16px 30px;
+  padding: 0 0 30px;
   transform: none;
   width: 100%;
-  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+#chatView:has(#chatIntro:not([hidden])) .messages {
+  display: none;
+}
+#chatView:has(#chatIntro:not([hidden])) .chat-dock,
+#chatView:has(#chatIntro:not([hidden])) .composer {
+  position: relative;
+  bottom: auto;
+  margin: 0;
+  padding: 0 0 50px;
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+
+/* Con mensajes: topbar + breadcrumb visibles; el hilo baja hacia el composer. */
+.main:has(#chatView.chat-has-messages) .topbar {
+  height: 72px;
+  min-height: 72px;
+  padding: 0 38px;
+  border-bottom: 1px solid var(--line, #ffffff0c);
+  background: transparent;
+}
+.main:has(#chatView.chat-has-messages) #breadcrumb {
+  display: flex;
+  margin-left: auto;
+  color: #d0d1d8;
+}
+#chatView.chat-has-messages .messages > :first-child {
+  margin-top: auto;
 }
 
 /* Fila título + orbe. `.brand-energy { margin: auto 16px }` del prototipo
@@ -259,8 +268,6 @@ body {
 #chatIntro > p,
 #chatIntro .gpt-intro-copy,
 .chat-intro p,
-.compose-hint,
-.note,
 .label,
 #chatIntro .gpt-title-row h1,
 .new,
@@ -277,18 +284,12 @@ body {
 #chatIntro p,
 #chatIntro > p,
 #chatIntro .gpt-intro-copy,
-.chat-intro p,
-.compose-hint,
-.note {
+.chat-intro p {
   background: none !important;
   background-clip: border-box !important;
   -webkit-background-clip: border-box !important;
   overflow-wrap: break-word;
-  color: #9691a3;
-}
-.compose-hint,
-.note {
-  color: #62626b;
+  color: #8e909c;
 }
 #chatIntro .gpt-title-row h1 {
   color: #eeeef2;
@@ -363,8 +364,8 @@ body {
   pointer-events: none;
 }
 
-/* CTAs de admin: `button{background:none}` es unlayered y gana a Tailwind
-   aunque el botón viva fuera de `.ax-tw` (header, modal, portal). */
+/* CTAs de admin: el reset global ya no pisa Tailwind. Estas reglas
+   cubren el header fuera de `.ax-tw`. */
 .ax-shell button[class*="bg-"],
 .ax-shell a[class*="bg-"],
 .ax-tw button[class*="bg-"],
@@ -454,6 +455,19 @@ a.ax-primary:hover {
   background: linear-gradient(115deg, #ff682f30, #ff165e35, #7753ff35) !important;
   color: #f4f1f5 !important;
   box-shadow: 0 0 22px #ff165e15;
+}
+
+.ax-gpt-actions button {
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.ax-gpt-actions button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.ax-gpt-actions button:not(:disabled):hover {
+  color: #eeeef2;
 }
 
 .ax-navigation {
@@ -618,6 +632,46 @@ a.ax-primary:hover {
 .ax-main {
   overflow-y: auto;
 }
+.ax-stats,
+.ax-kpis,
+.ax-selectable {
+  display: grid;
+}
+.ax-period a,
+.ax-period label {
+  padding: 9px 11px;
+  color: #888893;
+  font-size: 11px;
+  border-radius: 7px;
+  text-decoration: none;
+}
+.ax-period a.active,
+.ax-period label.active {
+  color: #f0cadb;
+  background: linear-gradient(110deg, #ff682f12, #ff165e22, #7753ff22);
+}
+.ax-period input[type="month"] {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  cursor: pointer;
+}
+.ax-period #axCustomDates {
+  position: relative;
+}
+.ax-header-bare {
+  min-height: 0;
+  margin-bottom: 0;
+}
+.ax-empty-chart,
+.ax-muted {
+  color: #74747f;
+  font-size: 13px;
+  margin: 8px 0 0;
+}
+.ax-sync-stale {
+  border-color: #af7a4033;
+}
 .sidebar-resizer {
   position: absolute;
   top: 0;
@@ -706,6 +760,17 @@ a.ax-primary:hover {
 }
 .settings-dialog::backdrop {
   background: #0008;
+}
+
+/* Wordmark del sidebar: el SVG es fino y el prototipo lo deja en 94×25
+   con filter:none y un offset. Lo agrandamos y subimos contraste. */
+.app .sidebar .brand img {
+  width: 128px;
+  height: 34px;
+  top: 0;
+  left: 0;
+  opacity: 1;
+  filter: brightness(1.55) contrast(1.25);
 }
 
 /* Orbe de energía: el slot recorta el canvas al doble. overflow visible

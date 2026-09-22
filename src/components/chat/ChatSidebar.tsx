@@ -396,7 +396,13 @@ function ChatSidebar({
           <div className="brandrow">
             <a className="brand" href="https://www.skool.com/creativos" aria-label={`${communityName} en Skool`}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.svg" width={94} height={25} alt={communityName} />
+              <img
+                src="/logo.svg"
+                width={128}
+                height={34}
+                alt={communityName}
+                className="h-[34px] w-[128px] object-contain object-left"
+              />
             </a>
             <button
               type="button"

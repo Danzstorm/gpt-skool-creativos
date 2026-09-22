@@ -50,12 +50,25 @@ interface Props {
   onRemoveFile: (index: number) => void;
   onSend: (text: string) => void;
   onStop: () => void;
+  /** El GPT vacío del cliente no muestra el disclaimer debajo del composer. */
+  hideDisclaimer?: boolean;
 }
+
+const DISCLAIMER_STYLE = {
+  letterSpacing: 0,
+  wordSpacing: "0.12em",
+  WebkitTextFillColor: "#62626b",
+  background: "none",
+  whiteSpace: "pre-wrap",
+  fontSize: 11,
+  color: "#62626b",
+  textAlign: "center",
+} as const;
 
 // Composer aislado: el texto y la grabación viven acá, no en el componente padre.
 // Así escribir no re-renderiza el resto del chat (sidebar, lista de mensajes).
 const Composer = forwardRef<ComposerHandle, Props>(function Composer(
-  { isLoading, isUploading, isUploadingVideo, pendingCount, videoEnabled, isEditing, onCancelEdit, attachedFiles, mentions, onFilesSelected, onRemoveFile, onSend, onStop },
+  { isLoading, isUploading, isUploadingVideo, pendingCount, videoEnabled, isEditing, onCancelEdit, attachedFiles, mentions, onFilesSelected, onRemoveFile, onSend, onStop, hideDisclaimer },
   ref
 ) {
   const analyzingAttached = attachedFiles.some((file) => file.analyzing);
@@ -488,7 +501,11 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
       </div>
       </div>
       </div>
-      <p className="note compose-hint">Los GPTs pueden cometer errores. Verifica información importante.</p>
+      {!hideDisclaimer && (
+        <p className="mt-6 text-center" style={DISCLAIMER_STYLE}>
+          Los GPTs pueden cometer errores. Verifica información importante.
+        </p>
+      )}
     </form>
   );
 });

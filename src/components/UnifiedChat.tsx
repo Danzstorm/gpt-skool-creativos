@@ -375,6 +375,10 @@ export default function UnifiedChat({
 
   const lastUserIndex = messages.map((m) => m.role).lastIndexOf("user");
   const showComposer = !!activeGpt;
+  const showGptIntro = Boolean(activeGpt && messages.length === 0 && !isLoadingHistory);
+  const hasChatMessages = messages.length > 0;
+  const chatTitle =
+    threadList.find((thread) => thread.id === activeThreadId)?.title || activeGpt?.name || "";
   const selectedAccent = activeGpt
     ? getGptVisual(activeGpt.category, activeGpt.name, activeGpt.description).accentHex
     : null;
@@ -468,6 +472,11 @@ export default function UnifiedChat({
           >
             <ProtoIcon name="menu" />
           </button>
+          {hasChatMessages && (
+            <div id="breadcrumb" className="crumb">
+              <span>{chatTitle}</span>
+            </div>
+          )}
         </div>
 
         {isDragging && showComposer && (
@@ -521,11 +530,18 @@ export default function UnifiedChat({
         )}
 
         {activeGpt && (
-          <div id="chatView" className="chat">
+          <div id="chatView" className={hasChatMessages ? "chat chat-has-messages" : "chat"}>
+            {showGptIntro && (
+              <GptHero gpt={activeGpt} onStarter={sendMessage}>
+                {pendingProject && <ProjectDestination name={pendingProject.name} />}
+              </GptHero>
+            )}
+
             <div
               ref={scrollRef}
               onScroll={handleScroll}
               className="messages"
+              hidden={showGptIntro}
             >
               {isLoadingHistory && (
                 <div className="mx-auto w-full max-w-2xl animate-pulse space-y-4 py-4">
@@ -539,13 +555,7 @@ export default function UnifiedChat({
                 </div>
               )}
 
-              {messages.length === 0 && !isLoadingHistory && (
-                <GptHero gpt={activeGpt} onStarter={sendMessage}>
-                  {pendingProject && <ProjectDestination name={pendingProject.name} />}
-                </GptHero>
-              )}
-
-              {messages.length > 0 &&
+              {hasChatMessages &&
                 messages.map((msg, i) => {
                   const isLast = i === messages.length - 1;
                   const streaming = isLoading && isLast && msg.role === "assistant";
@@ -582,7 +592,7 @@ export default function UnifiedChat({
               <div ref={bottomRef} />
             </div>
 
-            {showScrollBtn && messages.length > 0 && (
+            {showScrollBtn && hasChatMessages && (
               <button
                 onClick={scrollToBottom}
                 className="absolute bottom-28 left-1/2 z-10 flex h-11 w-11 -translate-x-1/2 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900 text-zinc-300 transition hover:border-zinc-700 hover:text-zinc-100"
@@ -624,6 +634,7 @@ export default function UnifiedChat({
                   onRemoveFile={removeAttached}
                   onSend={sendMessage}
                   onStop={stopStreaming}
+                  hideDisclaimer={showGptIntro}
                 />
               </div>
             )}

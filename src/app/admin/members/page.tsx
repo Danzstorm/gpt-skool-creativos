@@ -508,30 +508,73 @@ export default function AdminMembersPage() {
           <p>No hay miembros. Importa un CSV de Skool o agrega uno manualmente.</p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="overflow-x-auto rounded-xl border border-white/[0.06]">
+          <table className="w-full min-w-[720px] text-left text-sm">
+            <thead>
+              <tr className="border-b border-white/[0.06] text-[11px] uppercase tracking-[0.14em] text-[#74747f]">
+                <th className="px-4 py-3 font-medium">Miembro</th>
+                <th className="hidden px-3 py-3 font-medium sm:table-cell">Estado</th>
+                <th className="hidden px-3 py-3 font-medium md:table-cell">Cupo</th>
+                <th className="px-3 py-3 font-medium text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
           {filtered.map((member) => (
-            <div
-              key={member.id}
-              className={`bg-zinc-900 border rounded-2xl px-5 py-3.5 flex items-center gap-4 ${
-                member.is_active ? "border-zinc-800" : "border-zinc-800 opacity-60"
-              }`}
-            >
-              <div className="flex-1 min-w-0">
-                <div className="text-white text-sm font-medium truncate">{member.email}</div>
-                {member.full_name && (
-                  <div className="text-zinc-400 text-xs mt-0.5">{member.full_name}</div>
-                )}
-              </div>
+              <tr
+                key={member.id}
+                className={`border-b border-white/[0.04] last:border-0 ${
+                  member.is_active ? "" : "opacity-60"
+                }`}
+              >
+                <td className="px-4 py-3">
+                  <div className="truncate text-[#eeeef2]">{member.full_name || member.email}</div>
+                  {member.full_name && (
+                    <div className="truncate text-xs text-[#8e909c]">{member.email}</div>
+                  )}
+                  <div className="mt-1 flex flex-wrap gap-1.5 sm:hidden">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[11px] ${
+                        member.is_active
+                          ? "bg-[#39b97418] text-[#7ed8a4]"
+                          : "bg-zinc-800 text-zinc-500"
+                      }`}
+                    >
+                      {member.is_active ? "Activo" : "Revocado"}
+                    </span>
+                  </div>
+                </td>
+                <td className="hidden px-3 py-3 sm:table-cell">
+                  <div className="flex flex-wrap items-center gap-1.5">
               {member.tier && (
-                <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-zinc-800 text-zinc-300 capitalize hidden sm:inline">
+                      <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[11px] capitalize text-zinc-300">
                   {member.tier}
                 </span>
               )}
               {member.ltv != null && (
-                <span className="text-xs text-zinc-400 tabular-nums hidden sm:inline" title="Lifetime value">
+                      <span className="text-[11px] tabular-nums text-[#8e909c]" title="Lifetime value">
                   {fmtMoney(member.ltv)}
                 </span>
               )}
+              {member.is_active && !member.has_logged_in && (
+                <span
+                        className="rounded-full bg-amber-900/30 px-2 py-0.5 text-[11px] text-amber-400"
+                  title="Tiene acceso habilitado pero todavía no ha iniciado sesión ninguna vez"
+                >
+                  Nunca entró
+                </span>
+              )}
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[11px] ${
+                  member.is_active
+                          ? "bg-[#39b97418] text-[#7ed8a4]"
+                          : "bg-zinc-800 text-zinc-500"
+                }`}
+              >
+                {member.is_active ? "Activo" : "Revocado"}
+              </span>
+            </div>
+                </td>
+                <td className="hidden px-3 py-3 md:table-cell">
               <input
                 type="number"
                 min={0}
@@ -539,55 +582,40 @@ export default function AdminMembersPage() {
                 onBlur={(e) => updateQuota(member, e.target.value)}
                 placeholder="∞"
                 title="Límite mensual de mensajes (vacío = usa el default global de Ajustes)"
-                className="hidden md:block w-16 bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-zinc-200 text-center focus:outline-none focus:ring-1 focus:ring-zinc-500"
+                    className="w-16 rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-1 text-center text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-500"
               />
-              {/* Distingue "invitado pero nunca entró" de "entra normal". Sin
-                  esto, ante un "no puedo entrar" no había forma de saber si la
-                  persona nunca llegó a autenticarse o si el gate la expulsa. */}
-              {member.is_active && !member.has_logged_in && (
-                <span
-                  className="text-xs px-2.5 py-1 rounded-full font-medium bg-amber-900/30 text-amber-400 hidden sm:inline"
-                  title="Tiene acceso habilitado pero todavía no ha iniciado sesión ninguna vez"
-                >
-                  Nunca entró
-                </span>
-              )}
-              <span
-                className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                  member.is_active
-                    ? "bg-green-900/30 text-green-400"
-                    : "bg-zinc-700 text-zinc-500"
-                }`}
-              >
-                {member.is_active ? "Activo" : "Revocado"}
-              </span>
+                </td>
+                <td className="px-3 py-3">
+                  <div className="flex items-center justify-end gap-1">
               <button
                 onClick={() => {
                   setAuthFilter(member.email);
                   loadAuthEvents(member.email);
                 }}
                 title="Ver su historial de accesos"
-                className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition hidden sm:block"
+                      className="hidden rounded-xl p-2 text-zinc-400 transition hover:bg-zinc-800 hover:text-white sm:block"
               >
                 <HistoryIcon size={15} />
               </button>
-              <div className="flex items-center gap-1 flex-shrink-0">
                 <button
                   onClick={() => toggleActive(member)}
-                  className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
+                      className="rounded-xl p-2 text-zinc-400 transition hover:bg-zinc-800 hover:text-white"
                   title={member.is_active ? "Revocar acceso" : "Restaurar acceso"}
                 >
                   {member.is_active ? <UserX size={15} /> : <UserCheck size={15} />}
                 </button>
                 <button
                   onClick={() => deleteMember(member)}
-                  className="p-2 rounded-xl text-zinc-400 hover:text-red-400 hover:bg-zinc-800 transition"
+                      className="rounded-xl p-2 text-zinc-400 transition hover:bg-zinc-800 hover:text-red-400"
                 >
                   <Trash2 size={15} />
                 </button>
-              </div>
             </div>
+                </td>
+              </tr>
           ))}
+            </tbody>
+          </table>
         </div>
       )}
 

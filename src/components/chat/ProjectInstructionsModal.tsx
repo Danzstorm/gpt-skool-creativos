@@ -107,7 +107,7 @@ export default function ProjectInstructionsModal({ project, onClose, onSave }: P
             <button
               onClick={closeSaving}
               disabled={saving}
-              className="bg-zinc-100 hover:bg-white text-zinc-900 text-sm font-medium rounded-xl px-4 py-1.5 transition disabled:opacity-50"
+              className="rounded-xl bg-zinc-100 px-4 py-1.5 text-sm font-medium text-zinc-900 transition hover:bg-white disabled:opacity-50"
             >
               {saving ? "Guardando…" : "Guardar"}
             </button>

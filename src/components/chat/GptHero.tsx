@@ -83,9 +83,33 @@ export default function GptHero({ gpt, onStarter, children }: Props) {
         <div className="brand-energy" aria-hidden>
           <EnergyCanvas size={54} speed={0.0025} />
         </div>
-        <h1 data-title={displayed.name}>{displayed.name}</h1>
+        <h1
+          data-title={displayed.name}
+          style={{
+            letterSpacing: 0,
+            wordSpacing: "0.12em",
+            WebkitTextFillColor: "#eeeef2",
+            color: "#eeeef2",
+          }}
+        >
+          {displayed.name}
+        </h1>
       </div>
-      {description && <p className="gpt-intro-copy">{description}</p>}
+      {description && (
+        <p
+          className="gpt-intro-copy"
+          style={{
+            color: "#8e909c",
+            WebkitTextFillColor: "#8e909c",
+            background: "none",
+            letterSpacing: 0,
+            wordSpacing: "0.12em",
+            whiteSpace: "pre-wrap",
+          }}
+        >
+          {description}
+        </p>
+      )}
       {children}
       {starters.length > 0 && (
         <div className="examples">
