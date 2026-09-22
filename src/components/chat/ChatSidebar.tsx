@@ -390,10 +390,10 @@ function ChatSidebar({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/logo.svg"
-                width={128}
-                height={34}
+                width={94}
+                height={25}
                 alt={communityName}
-                className="h-[34px] w-[128px] object-contain object-left"
+                className="h-[25px] w-[94px] object-contain object-left brightness-[1.55] contrast-125"
               />
             </a>
             <button

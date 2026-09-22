@@ -68,7 +68,7 @@ describe("gptIdsFromRecentThreads", () => {
 describe("pickRecentGpts", () => {
   const catalog = [gpt("a"), gpt("b"), gpt("c"), gpt("d"), gpt("e"), gpt("f"), gpt("g"), gpt("h")];
 
-  it("prioriza persistidos y completa con el último chat, tope 6", () => {
+  it("prioriza persistidos y completa con el último chat, tope 5", () => {
     const picked = pickRecentGpts(
       catalog,
       ["c", "ghost", "a"],
@@ -80,17 +80,28 @@ describe("pickRecentGpts", () => {
         thread("e", "2026-02-01T00:00:00.000Z"),
       ]
     );
-    expect(picked.map((item) => item.id)).toEqual(["c", "a", "h", "b", "g", "f"]);
+    expect(picked.map((item) => item.id)).toEqual(["c", "a", "h", "b", "g"]);
     expect(picked).toHaveLength(SIDEBAR_RECENT_GPT_LIMIT);
+    expect(SIDEBAR_RECENT_GPT_LIMIT).toBe(5);
   });
 
   it("sin persistidos ni chats no rellena con el catálogo", () => {
     expect(pickRecentGpts(catalog, [], [])).toEqual([]);
   });
 
-  it("clava el GPT activo si no entra en los 6", () => {
+  it("clava el GPT activo si no entra en los 5", () => {
     const picked = pickRecentGpts(catalog, ["a", "b", "c", "d", "e", "f"], [], "h");
-    expect(picked.map((item) => item.id)).toEqual(["h", "a", "b", "c", "d", "e"]);
+    expect(picked.map((item) => item.id)).toEqual(["h", "a", "b", "c", "d"]);
+  });
+
+  it("el tope 5 no inventa una lista fija: recorta recientes reales", () => {
+    const many = pickRecentGpts(
+      catalog,
+      ["a", "b", "c", "d", "e", "f", "g"],
+      []
+    );
+    expect(many.map((item) => item.id)).toEqual(["a", "b", "c", "d", "e"]);
+    expect(catalog).toHaveLength(8);
   });
 
   it("no duplica el activo si ya está en la lista", () => {

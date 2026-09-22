@@ -97,6 +97,15 @@ describe("prototype-compat: chat y chrome", () => {
     expect(hero).toMatch(/color:\s*["']#8e909c["']/);
   });
 
+  it("el home intro usa el saludo como h1, no Qué vas a crear hoy", () => {
+    expect(chat).toMatch(/Bienvenido de nuevo, \$\{firstName\}\./);
+    expect(chat).toMatch(/Bienvenido de nuevo\./);
+    expect(chat).toMatch(/Elige tu asistente creativo para empezar a crear\./);
+    expect(chat).not.toMatch(/¿Qué vas a crear hoy\?/);
+    expect(chat).toMatch(/<h1[\s\S]*Bienvenido de nuevo/);
+    expect(chat).not.toMatch(/className="eyebrow"/);
+  });
+
   it("muestra el breadcrumb del hilo solo con mensajes", () => {
     expect(chat).toMatch(/id="breadcrumb"/);
     expect(chat).toMatch(/hasChatMessages && \(/);
@@ -173,14 +182,55 @@ describe("prototype-compat: chat y chrome", () => {
     expect(css).toMatch(/\.profile \.avatar img\s*\{[^}]*width:\s*30px/);
   });
 
-  it("el wordmark del sidebar es 128×34 con contraste", () => {
+  it("el wordmark del sidebar es 94×25 con contraste, no 128", () => {
     const sidebar = readFileSync(
       join(here, "..", "components", "chat", "ChatSidebar.tsx"),
       "utf8"
     );
-    expect(sidebar).toMatch(/width=\{128\}/);
-    expect(sidebar).toMatch(/height=\{34\}/);
+    expect(sidebar).toMatch(/width=\{94\}/);
+    expect(sidebar).toMatch(/height=\{25\}/);
+    expect(sidebar).toMatch(/w-\[94px\]/);
+    expect(sidebar).toMatch(/h-\[25px\]/);
+    expect(sidebar).not.toMatch(/width=\{128\}/);
+    expect(css).toMatch(/\.app \.sidebar \.brand img\s*\{[^}]*width:\s*94px/);
     expect(css).toMatch(/\.app \.sidebar \.brand img\s*\{[^}]*filter:\s*brightness\(1\.55\)/);
+  });
+
+  it("el footer usa foto 30px si hay avatar; si no, iniciales", () => {
+    const footer = readFileSync(
+      join(here, "..", "components", "chat", "SidebarFooter.tsx"),
+      "utf8"
+    );
+    expect(footer).toMatch(/avatar-fallback/);
+    expect(footer).toMatch(/initialsOf\(fullName, email\)/);
+    expect(footer).toMatch(/showAvatar \?/);
+    expect(footer).toMatch(/width=\{30\}/);
+    expect(footer).toMatch(/height=\{30\}/);
+    expect(footer).toMatch(/h-\[30px\] w-\[30px\]/);
+  });
+
+  it("el menú de cuenta se porta a body como Martin; la música es el segundo panel", () => {
+    const footer = readFileSync(
+      join(here, "..", "components", "chat", "SidebarFooter.tsx"),
+      "utf8"
+    );
+    const music = readFileSync(
+      join(here, "..", "components", "chat", "MusicMenu.tsx"),
+      "utf8"
+    );
+    expect(footer).toMatch(/createPortal\(/);
+    expect(footer).toMatch(/positionAccountMenuBox/);
+    expect(footer).toMatch(/document\.body/);
+    expect(music).toMatch(/id="musicToggle"/);
+    expect(music).toMatch(/className="music-options"/);
+    expect(music).toMatch(/className="music-equalizer"/);
+    expect(music).toMatch(/className="music-volume"/);
+    expect(music).toMatch(/data-music=\{index\}/);
+    expect(music).toMatch(/musicPanelPlacement/);
+    expect(music).toMatch(/mergeMusicTracks/);
+    expect(music).not.toMatch(/createPortal/);
+    expect(music).not.toMatch(/music-flyout/);
+    expect(css).toMatch(/\.account-menu \.music-options\[hidden\]/);
   });
 });
 

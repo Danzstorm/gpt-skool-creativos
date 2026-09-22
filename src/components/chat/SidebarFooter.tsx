@@ -1,4 +1,5 @@
-import { memo, useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useDismissable } from "@/hooks/useDismissable";
 import { humanDisplayName } from "@/lib/utils";
@@ -12,7 +13,7 @@ import {
   clampTextSize,
   parseTextSize,
 } from "@/lib/text-size";
-import { stopAmbientMusic } from "@/lib/ambient-music";
+import { positionAccountMenuBox, stopAmbientMusic } from "@/lib/ambient-music";
 import MusicMenu from "./MusicMenu";
 
 interface Props {
@@ -35,8 +36,41 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
   const [avatarFailed, setAvatarFailed] = useState(false);
   const [textSize, setTextSize] = useState(TEXT_SIZE_DEFAULT);
   const close = useCallback(() => setOpen(false), []);
-  const rootRef = useDismissable<HTMLDivElement>(open, close);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLButtonElement>(null);
   const settingsRef = useDismissable<HTMLDialogElement>(settingsOpen, () => setSettingsOpen(false));
+
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(event: PointerEvent) {
+      const target = event.target as Node;
+      if (profileRef.current?.contains(target)) return;
+      if (menuRef.current?.contains(target)) return;
+      close();
+    }
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") close();
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("resize", close);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", close);
+    };
+  }, [open, close]);
+
+  useLayoutEffect(() => {
+    const menu = menuRef.current;
+    const profile = profileRef.current;
+    if (!open || !menu || !profile) return;
+    const box = positionAccountMenuBox(profile.getBoundingClientRect(), menu.offsetHeight);
+    menu.style.width = `${box.width}px`;
+    menu.style.left = `${box.left}px`;
+    menu.style.top = `${box.top}px`;
+  }, [open]);
 
   useEffect(() => {
     const saved = parseTextSize(localStorage.getItem(TEXT_SIZE_KEY));
@@ -67,8 +101,9 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
 
   return (
     <div ref={rootRef} style={{ marginTop: "auto", position: "relative" }}>
-      {open && (
-        <div className="account-menu account-open" style={{ position: "absolute", bottom: "100%", left: 0, right: 0, marginBottom: 8 }}>
+      {open &&
+        createPortal(
+        <div ref={menuRef} className="account-menu account-open">
           {isAdmin && (
             <Link href="/admin" onClick={() => setOpen(false)}>
               <svg viewBox="0 0 24 24" aria-hidden>
@@ -77,7 +112,7 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
               Admin
             </Link>
           )}
-          <MusicMenu />
+          <MusicMenu accountOpen={open} />
           <button
             type="button"
             onClick={() => {
@@ -99,7 +134,8 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
               Salir
             </button>
           </form>
-        </div>
+        </div>,
+        document.body,
       )}
 
       <dialog
@@ -136,8 +172,15 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
         </div>
       </dialog>
 
-      <button type="button" onClick={() => setOpen((v) => !v)} className="profile" aria-label="Cuenta">
-        <span className="avatar" aria-hidden>
+      <button
+        ref={profileRef}
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="profile"
+        aria-label="Cuenta"
+        aria-expanded={open}
+      >
+        <span className="avatar h-[30px] w-[30px] min-h-[30px] min-w-[30px]" aria-hidden>
           <span className="avatar-fallback">{initialsOf(fullName, email)}</span>
           {showAvatar ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -148,6 +191,7 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
               height={30}
               referrerPolicy="no-referrer"
               onError={() => setAvatarFailed(true)}
+              className="h-[30px] w-[30px] rounded-full object-cover"
             />
           ) : null}
         </span>

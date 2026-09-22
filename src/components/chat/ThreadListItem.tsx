@@ -113,7 +113,7 @@ function ThreadListItem({
         </svg>
       </span>
       <span
-        className="chat-name line-clamp-2 whitespace-normal break-words"
+        className="chat-name min-w-0 truncate leading-tight"
         title={isRenaming ? undefined : "Doble clic para cambiar el nombre"}
       >
         {isRenaming ? (

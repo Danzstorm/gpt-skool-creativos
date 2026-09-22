@@ -580,6 +580,12 @@ a.ax-primary:hover {
 .chat-name {
   position: relative;
 }
+.history-item .chat-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.25;
+}
 .folder-title > .folder-rename,
 .chat-name > .folder-rename {
   position: absolute;
@@ -762,11 +768,11 @@ a.ax-primary:hover {
   background: #0008;
 }
 
-/* Wordmark del sidebar: el SVG es fino y el prototipo lo deja en 94×25
-   con filter:none y un offset. Lo agrandamos y subimos contraste. */
+/* Wordmark del sidebar: el prototipo lo deja en 94×25. No agrandar;
+   el SVG es fino, así que solo subimos brillo/contraste. */
 .app .sidebar .brand img {
-  width: 128px;
-  height: 34px;
+  width: 94px;
+  height: 25px;
   top: 0;
   left: 0;
   opacity: 1;
@@ -795,4 +801,20 @@ a.ax-primary:hover {
 }
 #navigation .nav {
   isolation: isolate;
+}
+
+/* Martin cuelga .account-menu en body (fixed). El segundo panel
+   `.music-options` es hijo absoluto a la derecha; overflow visible
+   para que no lo recorte el sidebar. En ~390px el JS clampa. */
+.account-menu {
+  overflow: visible;
+}
+.account-menu .music-options[hidden] {
+  display: none;
+}
+.account-menu .music-options {
+  max-width: calc(100vw - 16px);
+  max-height: min(360px, calc(100dvh - 16px));
+  overflow-x: hidden;
+  overflow-y: auto;
 }

@@ -3,9 +3,9 @@
 // la lista el día del ship. El catálogo de home no usa este tope.
 
 export const RECENT_GPTS_KEY = "chat_recent_gpts";
-export const SIDEBAR_RECENT_GPT_LIMIT = 6;
+export const SIDEBAR_RECENT_GPT_LIMIT = 5;
 
-/** Techo del historial persistido: el sidebar solo enseña 6, el resto queda para reordenar. */
+/** Techo del historial persistido: el sidebar solo enseña 5, el resto queda para reordenar. */
 const RECENT_GPTS_STORE_LIMIT = 40;
 
 export type RecentThreadHint = {

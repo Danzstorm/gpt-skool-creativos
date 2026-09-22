@@ -36,7 +36,7 @@ export const TEXT_SIZE_RULES: [string, number][] = [
   [".note,.compose-hint", 10],
   [".intro h1", 37],
   [".intro p:last-child", 13],
-  [".account-menu>button,.music-options button,.music-flyout button", 13],
+  [".account-menu>button,.music-options button", 13],
   [".folder-options button", 11],
   [".settings-dialog label,.type-preview", 13],
   [".access-main .access-description", 14],

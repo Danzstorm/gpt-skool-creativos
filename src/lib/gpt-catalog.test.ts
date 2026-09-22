@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { activeGptsForChat } from "./gpt-catalog";
+import { SIDEBAR_RECENT_GPT_LIMIT } from "./gpt-recents";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const src = (...parts: string[]) => readFileSync(join(here, "..", ...parts), "utf8");
@@ -68,6 +69,8 @@ describe("chat home vs sidebar", () => {
   });
 
   it("Todos los GPTs abre el home completo, no un subset", () => {
+    expect(SIDEBAR_RECENT_GPT_LIMIT).toBe(5);
+    expect(src("lib", "gpt-recents.ts")).toMatch(/SIDEBAR_RECENT_GPT_LIMIT = 5/);
     expect(sidebar).toMatch(/id="allNav"/);
     expect(sidebar).toMatch(/onClick=\{onOpenAllGpts\}/);
     expect(sidebar).toMatch(/Todos los GPTs/);
@@ -75,6 +78,9 @@ describe("chat home vs sidebar", () => {
     expect(chat).toMatch(/openAllGpts = useCallback\(\(\) => \{\s*newChatWorkspace\(\)/);
     expect(chat).toMatch(/!activeGpt && \(/);
     expect(chat).toMatch(/id="homeView"\s+className="workspace"/);
+    expect(chat).toMatch(/<GptCatalog gpts=\{gpts\}/);
+    expect(sidebar).toMatch(/recentGpts\.map/);
+    expect(sidebar).not.toMatch(/gpts\.slice\(/);
   });
 });
 

@@ -1,33 +1,41 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
   DEFAULT_MUSIC_VOLUME,
   getAmbientAudio,
+  labelMusicTrack,
+  mergeMusicTracks,
   MUSIC_BUCKET,
   MUSIC_TRACK_PATHS,
+  musicPanelPlacement,
   persistMusicVolume,
   readMusicVolume,
+  type MusicTrack,
 } from "@/lib/ambient-music";
 
-const FLYOUT_GAP = 8;
-const noSubscribe = () => () => {};
+type ListedTrack = MusicTrack & { src: string };
 
-const TRACKS = MUSIC_TRACK_PATHS.map((track) => ({
-  label: track.label,
-  src: createClient().storage.from(MUSIC_BUCKET).getPublicUrl(track.path).data.publicUrl,
-}));
+interface Props {
+  accountOpen?: boolean;
+}
 
-export default function MusicMenu() {
+function fallbackTracks(): ListedTrack[] {
+  const storage = createClient().storage.from(MUSIC_BUCKET);
+  return MUSIC_TRACK_PATHS.map((track) => ({
+    label: track.label,
+    path: track.path,
+    src: storage.getPublicUrl(track.path).data.publicUrl,
+  }));
+}
+
+export default function MusicMenu({ accountOpen = true }: Props) {
   const [open, setOpen] = useState(false);
-  const [anchor, setAnchor] = useState<DOMRect | null>(null);
+  const [tracks, setTracks] = useState<ListedTrack[]>(fallbackTracks);
   const [playingIndex, setPlayingIndex] = useState<number | null>(null);
   const [volume, setVolume] = useState(DEFAULT_MUSIC_VOLUME);
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const flyoutRef = useRef<HTMLDivElement>(null);
-  const mounted = useSyncExternalStore(noSubscribe, () => true, () => false);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const audio = getAmbientAudio();
@@ -37,18 +45,59 @@ export default function MusicMenu() {
   }, []);
 
   useEffect(() => {
-    if (!open) return;
-    function onPointerDown(e: PointerEvent) {
-      const target = e.target as Node;
-      if (buttonRef.current?.contains(target)) return;
-      if (flyoutRef.current?.contains(target)) return;
-      setOpen(false);
-    }
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, [open]);
+    if (!accountOpen) setOpen(false);
+  }, [accountOpen]);
 
-  function changeVolume(value: number) {
+  useEffect(() => {
+    let cancelled = false;
+    const client = createClient();
+    void client.storage
+      .from(MUSIC_BUCKET)
+      .list("", { limit: 100, sortBy: { column: "name", order: "asc" } })
+      .then(({ data }) => {
+        if (cancelled || !data?.length) return;
+        const listed = mergeMusicTracks(data);
+        if (!listed.length) return;
+        setTracks(
+          listed.map((track) => ({
+            ...track,
+            label: labelMusicTrack(track.path),
+            src: client.storage.from(MUSIC_BUCKET).getPublicUrl(track.path).data.publicUrl,
+          })),
+        );
+      })
+      .catch(() => {
+        /* el bucket público puede no listar; nos quedamos con los paths conocidos */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    const panel = panelRef.current;
+    const account = panel?.closest(".account-menu");
+    if (!open || !panel || !(account instanceof HTMLElement)) return;
+
+    function place() {
+      const accountBox = account.getBoundingClientRect();
+      const next = musicPanelPlacement(
+        accountBox,
+        { width: panel.offsetWidth, height: panel.offsetHeight },
+        { width: window.innerWidth, height: window.innerHeight },
+      );
+      panel.style.left = `${next.left}px`;
+      panel.style.top = `${next.top}px`;
+      panel.dataset.placement = next.placement;
+    }
+
+    place();
+    window.addEventListener("resize", place);
+    return () => window.removeEventListener("resize", place);
+  }, [open, tracks.length]);
+
+  function changeVolume(percent: number) {
+    const value = Math.min(1, Math.max(0, percent / 100));
     setVolume(value);
     getAmbientAudio().volume = value;
     persistMusicVolume(value);
@@ -62,7 +111,7 @@ export default function MusicMenu() {
       return;
     }
     audio.pause();
-    audio.src = TRACKS[index].src;
+    audio.src = tracks[index].src;
     try {
       await audio.play();
       setPlayingIndex(index);
@@ -71,108 +120,59 @@ export default function MusicMenu() {
     }
   }
 
-  useEffect(() => {
-    if (!open || !anchor || !flyoutRef.current) return;
-    const menu = flyoutRef.current;
-    const left = Math.max(
-      8,
-      Math.min(anchor.right + FLYOUT_GAP, window.innerWidth - menu.offsetWidth - 8)
-    );
-    const top = Math.max(
-      8,
-      Math.min(anchor.top, window.innerHeight - menu.offsetHeight - 8)
-    );
-    menu.style.left = `${left}px`;
-    menu.style.top = `${top}px`;
-  }, [open, anchor]);
-
-  const flyout =
-    mounted && open && anchor
-      ? createPortal(
-          <div
-            ref={flyoutRef}
-            className="music-options music-flyout"
-            style={{ position: "fixed", top: anchor.top, left: anchor.right + FLYOUT_GAP, zIndex: 90 }}
-          >
-            {TRACKS.map((track, i) => (
-              <button
-                key={track.src}
-                type="button"
-                onClick={() => toggleTrack(i)}
-                aria-pressed={playingIndex === i}
-              >
-                {playingIndex === i ? (
-                  <span className="flex items-end gap-[2px] h-3.5 w-3.5" aria-hidden>
-                    {[0, 1, 2].map((bar) => (
-                      <span
-                        key={bar}
-                        className="w-[2px] rounded-full motion-safe:animate-[music-eq_0.8s_ease-in-out_infinite_alternate]"
-                        style={{
-                          height: "100%",
-                          animationDelay: `${bar * 0.15}s`,
-                          background: bar === 0 ? "#ffbd16" : bar === 1 ? "#ff165e" : "#7753ff",
-                        }}
-                      />
-                    ))}
-                  </span>
-                ) : (
-                  <span aria-hidden />
-                )}
-                {track.label}
-              </button>
-            ))}
-            <div className="px-2 pt-1.5 pb-1">
-              <div className="mb-1 text-[11px]" style={{ color: "#777780" }}>
-                Volumen
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.05}
-                value={volume}
-                onChange={(e) => changeVolume(Number(e.target.value))}
-                aria-label="Volumen"
-              />
-            </div>
-          </div>,
-          document.body
-        )
-      : null;
+  const volumePercent = Math.round(volume * 100);
 
   return (
     <>
       <button
-        ref={buttonRef}
+        id="musicToggle"
         type="button"
-        onClick={(e) => {
-          setAnchor(e.currentTarget.getBoundingClientRect());
-          setOpen((v) => !v);
-        }}
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
       >
         <svg viewBox="0 0 24 24" aria-hidden>
-          <path d="M9 18V6l12-2v12" />
-          <circle cx="6" cy="18" r="3" />
-          <circle cx="18" cy="16" r="3" />
+          <path d="M9 17V6.5a1 1 0 0 1 .8-1L19 3.7v11.5M9 9l10-2" />
+          <ellipse cx="6.5" cy="17.5" rx="2.5" ry="2.5" />
+          <ellipse cx="16.5" cy="15.5" rx="2.5" ry="2.5" />
         </svg>
-        <span>Música</span>
-        {playingIndex != null && (
-          <span className="flex items-end gap-[2px] h-3 ml-auto" aria-hidden>
-            {[0, 1, 2].map((bar) => (
-              <span
-                key={bar}
-                className="w-[2px] rounded-full motion-safe:animate-[music-eq_0.8s_ease-in-out_infinite_alternate]"
-                style={{
-                  height: "100%",
-                  animationDelay: `${bar * 0.15}s`,
-                  background: bar === 0 ? "#ffbd16" : bar === 1 ? "#ff165e" : "#7753ff",
-                }}
-              />
-            ))}
-          </span>
-        )}
+        Música
+        <span style={{ marginLeft: "auto" }}>
+          <svg viewBox="0 0 24 24" aria-hidden>
+            <path d="m8 10 4 4 4-4" />
+          </svg>
+        </span>
       </button>
-      {flyout}
+      <div ref={panelRef} className="music-options" hidden={!open}>
+        {tracks.map((track, index) => (
+          <button
+            key={track.path}
+            type="button"
+            data-music={index}
+            aria-pressed={playingIndex === index}
+            onClick={() => toggleTrack(index)}
+          >
+            <span className="music-equalizer" aria-hidden>
+              <i />
+              <i />
+              <i />
+            </span>
+            <span>{track.label}</span>
+          </button>
+        ))}
+        <label className="music-volume">
+          <span>Volumen</span>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            step={1}
+            value={volumePercent}
+            style={{ ["--volume-fill" as string]: `${volumePercent}%` }}
+            onChange={(event) => changeVolume(Number(event.target.value))}
+            aria-label="Volumen de música"
+          />
+        </label>
+      </div>
     </>
   );
 }

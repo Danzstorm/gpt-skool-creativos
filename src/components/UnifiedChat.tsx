@@ -505,10 +505,34 @@ export default function UnifiedChat({
               <div className="brand-energy gpt-home-energy" aria-hidden>
                 <EnergyCanvas size={82} speed={0.0009} />
               </div>
-              <p className="eyebrow">
-                {firstName ? `Bienvenido de nuevo, ${firstName}` : "Bienvenido de nuevo"}
+              <h1
+                style={{
+                  fontSize: 37,
+                  fontWeight: 300,
+                  letterSpacing: 0,
+                  wordSpacing: "0.06em",
+                  color: "#f2edf8",
+                  WebkitTextFillColor: "#f2edf8",
+                  background: "none",
+                  backgroundClip: "border-box",
+                  WebkitBackgroundClip: "border-box",
+                }}
+              >
+                {firstName ? `Bienvenido de nuevo, ${firstName}.` : "Bienvenido de nuevo."}
+              </h1>
+              <p
+                style={{
+                  fontSize: 13,
+                  fontWeight: 400,
+                  letterSpacing: 0,
+                  wordSpacing: "0.06em",
+                  color: "#9691a3",
+                  WebkitTextFillColor: "#9691a3",
+                  background: "none",
+                }}
+              >
+                Elige tu asistente creativo para empezar a crear.
               </p>
-              <h1>¿Qué vas a crear hoy?</h1>
               {pendingProject && <ProjectDestination name={pendingProject.name} />}
             </div>
             <GptCatalog gpts={gpts} onSelect={selectGpt} onPreview={setPreviewAccent} />
