@@ -31,14 +31,55 @@ body {
   font-family: var(--font-prompt);
 }
 
-/* El prototipo fuerza 19px a todo svg. Lucide y los tamaños explícitos
-   recuperan auto; `.nav svg` / `.tool .symbol svg` siguen ganando. */
+/* El prototipo fuerza 19px + fill:none + stroke a TODO svg. Lucide es
+   trazo: deja que width/height del componente ganen. El G de Google es
+   relleno: hay que devolverle el color o el botón de acceso se ve roto. */
 .app svg.lucide,
 .ax-shell svg.lucide,
 .ax-gate svg.lucide,
 .access-home svg.lucide {
-  width: 1em;
-  height: 1em;
+  width: unset;
+  height: unset;
+}
+
+#composer .attach-button svg {
+  width: 22px;
+  height: 22px;
+}
+#composer .mic-button svg {
+  width: 20px;
+  height: 20px;
+}
+#composer .send svg {
+  width: 20px;
+  height: 20px;
+}
+#composer .attachment-add svg {
+  width: 23px;
+  height: 23px;
+}
+
+#accessContinue svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: none;
+  stroke-width: 0;
+}
+#accessContinue svg path {
+  stroke: none;
+}
+#accessContinue svg path:nth-of-type(1) {
+  fill: #4285f4;
+}
+#accessContinue svg path:nth-of-type(2) {
+  fill: #34a853;
+}
+#accessContinue svg path:nth-of-type(3) {
+  fill: #fbbc05;
+}
+#accessContinue svg path:nth-of-type(4) {
+  fill: #ea4335;
 }
 
 /* El chat ocupa el viewport: el prototipo usa min-height 100vh y sticky.
@@ -87,12 +128,68 @@ body {
   height: 0;
 }
 
-/* Islas Tailwind dentro de admin: el reset `button{background:none}` del
-   prototipo es unlayered y ganaría a `bg-*`. Estas reglas unlayered con
-   la misma especificidad + clase útil restauran el look de las páginas. */
+/* Fallback del canvas de energía. El prototipo ya pone 200% / -50% en
+   cada slot; el inline de pixeles lo pisaba y el orbe tapaba títulos. */
+.energy-canvas {
+  position: absolute;
+  width: 200%;
+  height: 200%;
+  left: -50%;
+  top: -50%;
+  pointer-events: none;
+}
+
+/* Islas Tailwind dentro de admin: `button{background:none;border:0}` y
+   `button:hover{color:#fff}` son unlayered y dejan los CTA como texto
+   fantasma (fondo transparente, hover blanco sobre zinc-100). */
 .ax-tw button[class*="bg-"],
 .ax-tw a[class*="bg-"] {
   border-style: solid;
+}
+.ax-tw button[class~="bg-zinc-100"] {
+  background-color: var(--color-zinc-100);
+  color: var(--color-zinc-900);
+}
+.ax-tw button[class~="bg-zinc-800"] {
+  background-color: var(--color-zinc-800);
+  color: #fff;
+}
+.ax-tw button[class~="bg-zinc-900"] {
+  background-color: var(--color-zinc-900);
+}
+.ax-tw button[class~="text-zinc-900"] {
+  color: var(--color-zinc-900);
+}
+.ax-tw button[class~="text-white"] {
+  color: #fff;
+}
+.ax-tw button[class~="text-zinc-400"] {
+  color: var(--color-zinc-400);
+}
+.ax-tw button[class~="text-amber-300"] {
+  color: var(--color-amber-300, #fcd34d);
+}
+.ax-tw button[class~="text-red-400"] {
+  color: var(--color-red-400, #f87171);
+}
+.ax-tw button[class~="hover:bg-white"]:hover {
+  background-color: #fff;
+}
+.ax-tw button[class~="hover:bg-zinc-700"]:hover {
+  background-color: var(--color-zinc-700);
+}
+.ax-tw button[class~="hover:bg-zinc-800"]:hover {
+  background-color: var(--color-zinc-800);
+}
+.ax-tw button[class~="hover:text-white"]:hover {
+  color: #fff;
+}
+.ax-tw button[class~="hover:text-red-400"]:hover {
+  color: var(--color-red-400, #f87171);
+}
+.ax-tw a[class~="bg-violet-600"] {
+  background-color: var(--color-violet-600, #7c3aed);
+  color: #fff;
 }
 
 .undo-toast {

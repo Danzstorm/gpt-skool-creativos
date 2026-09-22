@@ -20,7 +20,7 @@ const STROKE_STOPS: [number, string][] = [
 ];
 
 interface Props {
-  /** Lado del slot visible en CSS px. El canvas se dibuja al doble (bleed para el blur). */
+  /** Lado del slot visible en CSS px. El bitmap se dibuja al doble; el CSS del slot (200% / -50%) recorta el bleed. */
   size: number;
   /** Velocidad temporal: .0009 bienvenida, .0025 header GPT/acceso, .0021 pensando, .0045 carga de imagen. */
   speed?: number;
@@ -126,15 +126,7 @@ export default function EnergyCanvas({ size, speed = 0.0021, className }: Props)
     <canvas
       ref={ref}
       aria-hidden
-      className={className}
-      style={{
-        position: "absolute",
-        width: size * 2,
-        height: size * 2,
-        left: -size / 2,
-        top: -size / 2,
-        pointerEvents: "none",
-      }}
+      className={["energy-canvas", className].filter(Boolean).join(" ")}
     />
   );
 }
