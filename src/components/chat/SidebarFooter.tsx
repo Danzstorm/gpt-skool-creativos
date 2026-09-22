@@ -107,6 +107,9 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
         ref={settingsRef}
         className="settings-dialog"
         onClose={() => setSettingsOpen(false)}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) setSettingsOpen(false);
+        }}
       >
         <h2>Configuración</h2>
         <div className="type-settings">
@@ -134,8 +137,8 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
         </div>
       </dialog>
 
-      <button type="button" onClick={() => setOpen((v) => !v)} className="profile" style={{ width: "100%", border: 0, background: "none", padding: 0, display: "flex", alignItems: "center", gap: 11 }}>
-        <span className="avatar">
+      <button type="button" onClick={() => setOpen((v) => !v)} className="profile" aria-label="Cuenta">
+        <span className="avatar" aria-hidden>
           {showAvatar ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img

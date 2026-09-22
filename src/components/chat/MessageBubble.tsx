@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import MessageContent from "../MessageContent";
 import { imageLabel, type ThreadNumbers } from "@/lib/attachment-labels";
 import type { MentionCandidate } from "@/lib/attachment-mentions";
+import { unwrapPromptFence } from "@/lib/unwrap-prompt";
 import MentionedText from "./MentionedText";
 import AttachmentStill from "./AttachmentStill";
 import AudioPreview from "./AudioPreview";
@@ -78,19 +79,20 @@ function MessageBubble({
 
   if (!isUser) {
     if (streaming && !msg.content) {
-      return <div className="message assistant">{thinkingSlot ?? <span>…</span>}</div>;
+      return <div className="message assistant shrink-0">{thinkingSlot ?? <span>…</span>}</div>;
     }
+    const promptText = unwrapPromptFence(msg.content);
     return (
-      <div className={cn("message assistant prompt-card", !streaming && "new-response")}>
+      <div className={cn("message assistant prompt-card shrink-0", !streaming && "new-response")}>
         {files}
-        {msg.content ? (
+        {promptText ? (
           <>
             <div className="prompt-header">
               <span className="prompt-label">PROMPT</span>
               <button
                 type="button"
                 className={cn("prompt-copy", isCopied && "copy-confirmed")}
-                onClick={() => onCopy(index, msg.content)}
+                onClick={() => onCopy(index, promptText)}
               >
                 <svg viewBox="0 0 24 24" aria-hidden>
                   <rect x="8" y="8" width="12" height="12" rx="2" />
@@ -100,7 +102,7 @@ function MessageBubble({
               </button>
             </div>
             <div className="prompt-body">
-              <MessageContent content={msg.content} />
+              <MessageContent content={promptText} />
               {streaming && (
                 <span className="inline-block w-1.5 h-4 bg-zinc-400 ml-0.5 mb-1 rounded-sm animate-pulse" />
               )}
@@ -124,7 +126,7 @@ function MessageBubble({
   }
 
   return (
-    <div className="message user">
+    <div className="message user shrink-0">
       {files}
       <MentionedText text={msg.content} mentions={mentions} />
       {!streaming && canEdit && (
