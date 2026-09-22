@@ -25,8 +25,8 @@ const TITLE_INSTRUCTIONS = [
   "explicar nada más.",
 ].join("\n");
 
-// Techo del título: el sidebar lo recorta con `truncate` (CSS) a unos 30-35
-// caracteres visibles, así que más largo que esto ya pierde la cola igual.
+// Techo del título: el sidebar muestra hasta ~2 líneas (line-clamp);
+// más largo que esto ya pierde la cola igual.
 const MAX_TITLE_CHARS = 40;
 
 function clip(text: string): string {

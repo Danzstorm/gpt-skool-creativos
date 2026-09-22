@@ -508,11 +508,13 @@ export default function UnifiedChat({
               <h1
                 style={{
                   fontSize: 37,
+                  lineHeight: 1.2,
                   fontWeight: 300,
-                  letterSpacing: 0,
-                  wordSpacing: "0.06em",
-                  color: "#f2edf8",
-                  WebkitTextFillColor: "#f2edf8",
+                  /* Fill sólido: tracking del proto (-1.3px) sin colapsar espacios. */
+                  letterSpacing: "-1.3px",
+                  margin: "0 0 15px",
+                  color: "#f1f1f1",
+                  WebkitTextFillColor: "#f1f1f1",
                   background: "none",
                   backgroundClip: "border-box",
                   WebkitBackgroundClip: "border-box",
@@ -523,11 +525,12 @@ export default function UnifiedChat({
               <p
                 style={{
                   fontSize: 13,
-                  fontWeight: 400,
-                  letterSpacing: 0,
-                  wordSpacing: "0.06em",
-                  color: "#9691a3",
-                  WebkitTextFillColor: "#9691a3",
+                  fontWeight: 300,
+                  letterSpacing: "0.1px",
+                  lineHeight: 1.65,
+                  margin: 0,
+                  color: "#999",
+                  WebkitTextFillColor: "#999",
                   background: "none",
                 }}
               >

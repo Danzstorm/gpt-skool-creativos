@@ -52,7 +52,13 @@ describe("layout del chat: producto, no plantilla CSS", () => {
   it("el buscador no pinta el badge Ctrl K; el atajo sigue en el keydown", () => {
     expect(sidebar).not.toMatch(/<kbd>/);
     expect(sidebar).toMatch(/e\.key\.toLowerCase\(\) !== "k"/);
-    expect(threads).toMatch(/chat-name min-w-0 truncate leading-tight/);
-    expect(threads).not.toMatch(/line-clamp-2 whitespace-normal/);
+    expect(threads).toMatch(/chat-name min-w-0 line-clamp-2 whitespace-normal/);
+    expect(threads).not.toMatch(/chat-name min-w-0 truncate/);
+  });
+
+  it("el chevron de colapsar está en el brandrow", () => {
+    expect(sidebar).toMatch(/className="collapse"/);
+    expect(sidebar).toMatch(/collapse-chevron/);
+    expect(sidebar).toMatch(/Contraer panel/);
   });
 });

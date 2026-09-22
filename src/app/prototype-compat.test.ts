@@ -104,6 +104,9 @@ describe("prototype-compat: chat y chrome", () => {
     expect(chat).not.toMatch(/¿Qué vas a crear hoy\?/);
     expect(chat).toMatch(/<h1[\s\S]*Bienvenido de nuevo/);
     expect(chat).not.toMatch(/className="eyebrow"/);
+    expect(chat).toMatch(/letterSpacing:\s*["']-1\.3px["']/);
+    expect(chat).toMatch(/fontWeight:\s*300/);
+    expect(chat).toMatch(/margin:\s*["']0 0 15px["']/);
   });
 
   it("muestra el breadcrumb del hilo solo con mensajes", () => {
@@ -209,6 +212,23 @@ describe("prototype-compat: chat y chrome", () => {
     expect(footer).toMatch(/h-\[30px\] w-\[30px\]/);
   });
 
+  it("Nuevo chat recupera borde visible pese al reset de button", () => {
+    expect(css).toMatch(/\.app \.sidebar button\.new/);
+    expect(css).toMatch(/border:\s*1px solid #ffffff17/);
+  });
+
+  it("CHATS usa line-clamp-2, no nowrap agresivo", () => {
+    expect(css).toMatch(/\.history-item \.chat-name\s*\{[^}]*-webkit-line-clamp:\s*2/);
+    expect(css).toMatch(/\.history-item \.chat-name\s*\{[^}]*white-space:\s*normal/);
+    expect(css).not.toMatch(
+      /\.history-item \.chat-name\s*\{[^}]*white-space:\s*nowrap/
+    );
+  });
+
+  it("el chevron de colapsar queda visible en el brandrow", () => {
+    expect(css).toMatch(/\.app \.sidebar \.brandrow \.collapse\s*\{[^}]*color:\s*#8a8b96/);
+  });
+
   it("el menú de cuenta se porta a body como Martin; la música es el segundo panel", () => {
     const footer = readFileSync(
       join(here, "..", "components", "chat", "SidebarFooter.tsx"),
@@ -256,6 +276,18 @@ describe("prototype-compat: catálogo de home scrollea", () => {
   it("la grilla no queda clavada a 3 filas (9, 12 y 20 GPTs caben)", () => {
     expect(css).toMatch(/\.workspace \.grid\s*\{[^}]*grid-template-rows:\s*none/);
     expect(css).toMatch(/\.workspace \.grid\s*\{[^}]*grid-auto-rows:\s*minmax\(142px,\s*auto\)/);
+  });
+
+  it("home copia gaps/padding de Martin: filtros, search discreto, tool 21×20", () => {
+    expect(css).toMatch(/\.app #homeView \.filters\s*\{[^}]*gap:\s*7px/);
+    expect(css).toMatch(
+      /\.app #homeView \.filters button\.filter\[aria-pressed=["']true["']\]\s*\{[^}]*border-color:\s*#ed4f7025/
+    );
+    expect(css).toMatch(/\.app #homeView \.search\s*\{[^}]*width:\s*205px/);
+    expect(css).toMatch(/\.app #homeView \.search\s*\{[^}]*background:\s*#ffffff02/);
+    expect(css).toMatch(/#homeView \.tool\s*\{[^}]*padding:\s*21px 20px/);
+    expect(css).toMatch(/#homeView \.tool \.edge-wrap\s*\{[^}]*opacity:\s*0/);
+    expect(css).toMatch(/#homeView \.tool p\s*\{[^}]*-webkit-line-clamp:\s*2/);
   });
 
   it("GptCatalog pinta filtered.map, sin tope de 9, dentro de #homeView", () => {

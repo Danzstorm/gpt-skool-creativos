@@ -21,14 +21,12 @@ export default function GptGlyph({ gpt, size = "sm", className, sizePx, variant 
   const iconName = protoIconForCraft(craft);
   const imageSizes = sizePx || { xs: "20px", sm: "24px", lg: "32px", xl: "48px", hero: "132px" }[size];
 
-  if (gpt?.icon_url) {
+  // Nav del sidebar = trazo fino del prototipo (ProtoIcon). Las fotos
+  // `icon_url` siguen en tarjetas/hero; en la lista engordan el glyph.
+  if (gpt?.icon_url && variant !== "nav") {
     return (
       <span
-        className={cn(
-          variant === "nav" ? "gpt-nav-mark" : "symbol",
-          variant === "nav" && `gpt-nav-mark-${size}`,
-          className
-        )}
+        className={cn("symbol", className)}
         aria-hidden
         style={{ position: "relative", display: "inline-flex", width: imageSizes, height: imageSizes }}
       >
