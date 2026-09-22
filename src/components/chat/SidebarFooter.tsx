@@ -63,7 +63,6 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
 
   const personName = humanDisplayName(fullName);
   const displayName = personName || email || "Cuenta";
-  const subline = personName ? email : "Espacio creativo";
   const showAvatar = !!avatarUrl && !avatarFailed;
 
   return (
@@ -154,7 +153,7 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
         </span>
         <div>
           <strong>{displayName}</strong>
-          <span>{subline}</span>
+          <span>Espacio creativo</span>
         </div>
       </button>
     </div>

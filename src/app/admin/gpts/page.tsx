@@ -6,6 +6,7 @@ import type { GptWithAssistantId } from "@/lib/types";
 import { Plus, Pencil, Trash2, Eye, EyeOff, X, GripVertical, Copy, FlaskConical } from "lucide-react";
 import { getGptVisual } from "@/lib/gpt-visual";
 import GptTestModal from "@/components/admin/GptTestModal";
+import { AdminHeaderActions } from "@/components/admin/AdminChrome";
 
 const CATEGORIES = ["General", "Imágenes", "Marketing", "Copywriting", "Diseño", "Ventas", "Productividad", "Educación"];
 // Ordenados de más económico a más caro por mensaje real (medido, no por precio
@@ -287,15 +288,11 @@ export default function AdminGptsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div />
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-2 bg-zinc-100 hover:bg-white text-zinc-900 font-semibold rounded-xl px-4 py-2.5 text-sm transition"
-        >
-          <Plus size={16} /> Nuevo GPT
+      <AdminHeaderActions>
+        <button type="button" className="ax-primary" onClick={openCreate}>
+          ＋ Nuevo GPT
         </button>
-      </div>
+      </AdminHeaderActions>
 
       {showForm && (
         <div className="modal-backdrop fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
@@ -476,14 +473,14 @@ export default function AdminGptsPage() {
                   <button
                     type="submit"
                     disabled={saving}
-                    className="bg-zinc-100 hover:bg-white disabled:opacity-50 text-zinc-900 font-semibold rounded-xl px-5 py-2.5 text-sm transition"
+                    className="ax-primary disabled:opacity-50"
                   >
                     {saving ? "Guardando..." : editingId ? "Guardar cambios" : "Crear GPT"}
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowForm(false)}
-                    className="bg-zinc-800 hover:bg-zinc-700 text-white font-semibold rounded-xl px-5 py-2.5 text-sm transition"
+                    className="ax-action"
                   >
                     Cancelar
                   </button>
@@ -570,11 +567,12 @@ export default function AdminGptsPage() {
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button
+                  type="button"
                   onClick={() => setTestingGpt(gpt)}
-                  className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
+                  className="ax-primary"
                   title="Probar GPT"
                 >
-                  <FlaskConical size={16} />
+                  <FlaskConical size={16} /> Probar
                 </button>
                 <button
                   onClick={() => duplicateGpt(gpt)}

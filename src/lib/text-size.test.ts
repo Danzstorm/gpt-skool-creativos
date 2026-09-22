@@ -38,6 +38,8 @@ describe("textSizeCss", () => {
     const css = textSizeCss(100);
     expect(css).toContain("--text-scale:1");
     expect(css).toContain("13.75px!important");
+    expect(css).toContain("word-spacing:.06em!important");
+    expect(css).toContain(".compose-hint");
     expect(css).not.toContain("zoom");
   });
 });

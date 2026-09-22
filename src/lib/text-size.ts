@@ -32,7 +32,8 @@ export const TEXT_SIZE_RULES: [string, number][] = [
   [".prompt-body", 13],
   [".prompt-label,.prompt-copy", 11],
   ["#chatIntro .gpt-title-row h1", 46],
-  ["#chatIntro>p,#chatIntro .gpt-intro-copy", 17],
+  ["#chatIntro p,#chatIntro>p,#chatIntro .gpt-intro-copy,.chat-intro p", 17],
+  [".note,.compose-hint", 10],
   [".intro h1", 37],
   [".intro p:last-child", 13],
   [".account-menu>button,.music-options button,.music-flyout button", 13],
@@ -57,6 +58,8 @@ export function textSizeCss(percent: number): string {
   return (
     `:root{--text-scale:${factor}}` +
     rules +
+    `#chatIntro p,#chatIntro .gpt-intro-copy,.chat-intro p,.compose-hint,.note,.label,.nav,.new,.chat-name,.history-item,.folder-heading,.profile strong,.profile span:last-child{letter-spacing:0!important;word-spacing:.06em!important;-webkit-text-fill-color:currentColor!important}` +
+    `#chatIntro p,#chatIntro .gpt-intro-copy,.chat-intro p,.compose-hint,.note{background:none!important;background-clip:border-box!important;-webkit-background-clip:border-box!important}` +
     `@media(max-width:650px){#chatIntro .gpt-title-row h1{font-size:${32 * factor}px!important}.intro h1{font-size:${30 * factor}px!important}}`
   );
 }

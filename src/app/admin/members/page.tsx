@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef } from "react";
 import type { AllowedMember, WebhookEvent, AuthEvent } from "@/lib/types";
 // `History` se importa con alias: el nombre choca con el tipo global History del DOM.
-import { Upload, UserX, UserCheck, Trash2, Plus, Download, History as HistoryIcon } from "lucide-react";
+import { UserX, UserCheck, Trash2, Download, History as HistoryIcon } from "lucide-react";
 import Papa from "papaparse";
+import { AdminHeaderActions } from "@/components/admin/AdminChrome";
 
 // Los valores crudos de auth_events son para grep; acá se leen de un vistazo.
 const AUTH_EVENT_LABELS: Record<string, { text: string; tone: string }> = {
@@ -259,40 +260,33 @@ export default function AdminMembersPage() {
 
   return (
     <div>
+      <AdminHeaderActions>
+        <button type="button" className="ax-primary" onClick={() => setShowAddForm(!showAddForm)}>
+          ＋ Agregar
+        </button>
+        <button type="button" className="ax-primary" onClick={() => fileInputRef.current?.click()}>
+          ＋ Importar CSV
+        </button>
+        <button
+          type="button"
+          className="ax-action"
+          onClick={exportCsv}
+          disabled={members.length === 0}
+        >
+          <Download size={16} /> Exportar CSV
+        </button>
+      </AdminHeaderActions>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".csv"
+        className="hidden"
+        onChange={(e) => e.target.files?.[0] && handleCsvFile(e.target.files[0])}
+      />
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-        <div>
-          <p className="text-zinc-400 text-sm mt-0.5">
-            {activeCount} activos de {members.length} total
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-white font-semibold rounded-xl px-4 py-2.5 text-sm transition"
-          >
-            <Plus size={16} /> Agregar
-          </button>
-          <button
-            onClick={exportCsv}
-            disabled={members.length === 0}
-            className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 text-white font-semibold rounded-xl px-4 py-2.5 text-sm transition"
-          >
-            <Download size={16} /> Exportar CSV
-          </button>
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-2 bg-zinc-100 hover:bg-white text-zinc-900 font-semibold rounded-xl px-4 py-2.5 text-sm transition"
-          >
-            <Upload size={16} /> Importar CSV
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv"
-            className="hidden"
-            onChange={(e) => e.target.files?.[0] && handleCsvFile(e.target.files[0])}
-          />
-        </div>
+        <p className="text-zinc-400 text-sm mt-0.5">
+          {activeCount} activos de {members.length} total
+        </p>
       </div>
 
       {importMsg && (
@@ -386,9 +380,10 @@ export default function AdminMembersPage() {
               className="flex-1 min-w-[200px] bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500 text-sm"
             />
             <button
+              type="button"
               onClick={addSingle}
               disabled={!newEmail}
-              className="bg-zinc-100 hover:bg-white disabled:opacity-50 text-zinc-900 font-semibold rounded-xl px-5 py-2.5 text-sm transition"
+              className="ax-primary disabled:opacity-50"
             >
               Agregar
             </button>
@@ -466,15 +461,17 @@ export default function AdminMembersPage() {
           </div>
           <div className="flex gap-3">
             <button
+              type="button"
               onClick={confirmImport}
               disabled={importing}
-              className="bg-zinc-100 hover:bg-white disabled:opacity-50 text-zinc-900 font-semibold rounded-xl px-5 py-2.5 text-sm transition"
+              className="ax-primary disabled:opacity-50"
             >
               {importing ? "Importando..." : `Confirmar import (${preview.length})`}
             </button>
             <button
+              type="button"
               onClick={() => setPreview(null)}
-              className="bg-zinc-800 hover:bg-zinc-700 text-white font-semibold rounded-xl px-5 py-2.5 text-sm transition"
+              className="ax-action"
             >
               Cancelar
             </button>

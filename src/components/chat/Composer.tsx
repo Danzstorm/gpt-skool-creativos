@@ -488,7 +488,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
       </div>
       </div>
       </div>
-      <p className="note">Los GPTs pueden cometer errores. Verifica información importante.</p>
+      <p className="note compose-hint">Los GPTs pueden cometer errores. Verifica información importante.</p>
     </form>
   );
 });

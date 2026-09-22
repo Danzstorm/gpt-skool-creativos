@@ -252,25 +252,43 @@ body {
 
 /* Chromium: `background-clip:text` + fill transparente y tracking apretado
    (la familia del viejo `zoom`) colapsan el glifo de espacio. El prototipo
-   lo pone en `h1` y el overlay `:after`; `#chatIntro>p` lo hereda. */
+   lo pone en `h1` y el overlay `:after`; `#chatIntro>p` y `.note` lo heredan
+   si no se fuerza relleno sólido. `!important` gana al `h1` global y a
+   text-size inyectado que solo toca font-size. */
+#chatIntro p,
 #chatIntro > p,
 #chatIntro .gpt-intro-copy,
+.chat-intro p,
+.compose-hint,
+.note,
+.label,
 #chatIntro .gpt-title-row h1,
 .new,
 .nav,
 .chat-name,
 .history-item,
-.folder-heading {
-  letter-spacing: 0;
-  word-spacing: 0.06em;
-  -webkit-text-fill-color: currentColor;
+.folder-heading,
+.profile strong,
+.profile span:last-child {
+  letter-spacing: 0 !important;
+  word-spacing: 0.06em !important;
+  -webkit-text-fill-color: currentColor !important;
 }
+#chatIntro p,
 #chatIntro > p,
-#chatIntro .gpt-intro-copy {
-  background: none;
-  background-clip: border-box;
-  -webkit-background-clip: border-box;
+#chatIntro .gpt-intro-copy,
+.chat-intro p,
+.compose-hint,
+.note {
+  background: none !important;
+  background-clip: border-box !important;
+  -webkit-background-clip: border-box !important;
   overflow-wrap: break-word;
+  color: #9691a3;
+}
+.compose-hint,
+.note {
+  color: #62626b;
 }
 #chatIntro .gpt-title-row h1 {
   color: #eeeef2;
@@ -345,57 +363,119 @@ body {
   pointer-events: none;
 }
 
-/* Islas Tailwind dentro de admin: `button{background:none;border:0}` y
-   `button:hover{color:#fff}` son unlayered y dejan los CTA como texto
-   fantasma (fondo transparente, hover blanco sobre zinc-100). */
+/* CTAs de admin: `button{background:none}` es unlayered y gana a Tailwind
+   aunque el botón viva fuera de `.ax-tw` (header, modal, portal). */
+.ax-shell button[class*="bg-"],
+.ax-shell a[class*="bg-"],
 .ax-tw button[class*="bg-"],
 .ax-tw a[class*="bg-"] {
   border-style: solid;
 }
+.ax-shell button[class~="bg-zinc-100"],
 .ax-tw button[class~="bg-zinc-100"] {
   background-color: var(--color-zinc-100);
   color: var(--color-zinc-900);
 }
+.ax-shell button[class~="bg-zinc-800"],
 .ax-tw button[class~="bg-zinc-800"] {
   background-color: var(--color-zinc-800);
   color: #fff;
 }
+.ax-shell button[class~="bg-zinc-900"],
 .ax-tw button[class~="bg-zinc-900"] {
   background-color: var(--color-zinc-900);
 }
+.ax-shell button[class~="text-zinc-900"],
 .ax-tw button[class~="text-zinc-900"] {
   color: var(--color-zinc-900);
 }
+.ax-shell button[class~="text-white"],
 .ax-tw button[class~="text-white"] {
   color: #fff;
 }
+.ax-shell button[class~="text-zinc-400"],
 .ax-tw button[class~="text-zinc-400"] {
   color: var(--color-zinc-400);
 }
+.ax-shell button[class~="text-amber-300"],
 .ax-tw button[class~="text-amber-300"] {
   color: var(--color-amber-300, #fcd34d);
 }
+.ax-shell button[class~="text-red-400"],
 .ax-tw button[class~="text-red-400"] {
   color: var(--color-red-400, #f87171);
 }
+.ax-shell button[class~="hover:bg-white"]:hover,
 .ax-tw button[class~="hover:bg-white"]:hover {
   background-color: #fff;
 }
+.ax-shell button[class~="hover:bg-zinc-700"]:hover,
 .ax-tw button[class~="hover:bg-zinc-700"]:hover {
   background-color: var(--color-zinc-700);
 }
+.ax-shell button[class~="hover:bg-zinc-800"]:hover,
 .ax-tw button[class~="hover:bg-zinc-800"]:hover {
   background-color: var(--color-zinc-800);
 }
+.ax-shell button[class~="hover:text-white"]:hover,
 .ax-tw button[class~="hover:text-white"]:hover {
   color: #fff;
 }
+.ax-shell button[class~="hover:text-red-400"]:hover,
 .ax-tw button[class~="hover:text-red-400"]:hover {
   color: var(--color-red-400, #f87171);
 }
+.ax-shell a[class~="bg-violet-600"],
 .ax-tw a[class~="bg-violet-600"] {
   background-color: var(--color-violet-600, #7c3aed);
   color: #fff;
+}
+
+/* El reset `button{background:none}` pisa el `.ax-primary` del prototipo
+   si un utility o un hover llega después. Se reafirma aquí. */
+.ax-shell button.ax-primary,
+.ax-shell a.ax-primary,
+button.ax-primary,
+a.ax-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 13px 20px;
+  border-radius: 11px;
+  border: 1px solid #ffffff20 !important;
+  background: linear-gradient(115deg, #ff682f20, #ff165e24, #7753ff26) !important;
+  color: #f4f1f5 !important;
+}
+.ax-shell button.ax-primary:hover,
+.ax-shell a.ax-primary:hover,
+button.ax-primary:hover,
+a.ax-primary:hover {
+  background: linear-gradient(115deg, #ff682f30, #ff165e35, #7753ff35) !important;
+  color: #f4f1f5 !important;
+  box-shadow: 0 0 22px #ff165e15;
+}
+
+.ax-navigation {
+  display: grid;
+  gap: 6px;
+}
+.ax-navigation .ax-nav {
+  display: block;
+  width: 100%;
+  color: inherit;
+  text-decoration: none;
+}
+.ax-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.ax-main {
+  flex: 1;
+  min-width: 0;
+  width: auto;
 }
 
 .undo-toast {
@@ -549,15 +629,33 @@ body {
 }
 
 /* Foto de Google: el prototipo nunca estiló `img` dentro de `.avatar`, y
-   `svg{width:19px}` / tiles de 64px no deben aplastarla. */
+   `svg{width:19px}` / tiles de 64px no deben aplastarla. Footer = avatar +
+   nombre + «Espacio creativo» (sin email), con el padding/gap del cliente. */
 .profile {
   width: 100%;
+  min-width: 0;
+  margin-top: auto;
+  padding-top: 22px;
   border: 0;
+  border-top: 1px solid #ffffff0a;
   background: none;
   display: flex;
   align-items: center;
   gap: 11px;
   text-align: left;
+}
+.profile > div {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 2px;
+}
+.profile strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
 }
 .profile .avatar {
   display: grid;

@@ -42,9 +42,42 @@ describe("prototype-compat: chat y chrome", () => {
   });
 
   it("restaura espacios en copy del intro y chrome (sin zoom)", () => {
-    expect(css).toMatch(/#chatIntro > p[\s\S]{0,400}word-spacing:\s*0\.06em/);
+    expect(css).toMatch(/#chatIntro p[\s\S]{0,500}word-spacing:\s*0\.06em/);
+    expect(css).toMatch(/\.chat-intro p[\s\S]{0,400}word-spacing:\s*0\.06em/);
+    expect(css).toMatch(/\.compose-hint[\s\S]{0,400}word-spacing:\s*0\.06em/);
+    expect(css).toMatch(/\.note[\s\S]{0,400}word-spacing:\s*0\.06em/);
     expect(css).toMatch(/#chatIntro \.gpt-title-row h1:after\s*\{[^}]*word-spacing:\s*0\.06em/);
     expect(css).not.toMatch(/zoom\s*:/);
+  });
+
+  it("el footer de cuenta no inventa email; el prototipo pone Espacio creativo", () => {
+    const footer = readFileSync(
+      join(here, "..", "components", "chat", "SidebarFooter.tsx"),
+      "utf8"
+    );
+    expect(footer).toMatch(/Espacio creativo/);
+    expect(footer).not.toMatch(/subline = personName \? email/);
+    expect(footer).not.toMatch(/<span>\{email\}/);
+  });
+
+  it("el disclaimer del composer usa .compose-hint con relleno sólido", () => {
+    const composer = readFileSync(
+      join(here, "..", "components", "chat", "Composer.tsx"),
+      "utf8"
+    );
+    expect(composer).toMatch(/className="note compose-hint"/);
+    expect(css).toMatch(/\.compose-hint[\s\S]{0,500}background-clip:\s*border-box/);
+  });
+
+  it("el nav admin va en .ax-navigation y los CTA usan .ax-primary fuera de .ax-tw", () => {
+    const chrome = readFileSync(
+      join(here, "..", "components", "admin", "AdminChrome.tsx"),
+      "utf8"
+    );
+    expect(chrome).toMatch(/className="ax-navigation"/);
+    expect(chrome).toMatch(/AdminHeaderActions/);
+    expect(css).toMatch(/\.ax-shell button\[class\*=["']bg-/);
+    expect(css).toMatch(/button\.ax-primary[\s\S]{0,300}background:\s*linear-gradient/);
   });
 
   it("GptHero sigue pintando .examples y gpt-title-row", () => {

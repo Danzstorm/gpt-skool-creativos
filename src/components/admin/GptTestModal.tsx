@@ -125,9 +125,10 @@ export default function GptTestModal({ gptId, gptName, onClose }: Props) {
             className="flex-1 bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-white placeholder-zinc-500 resize-none focus:outline-none focus:border-zinc-500 max-h-24"
           />
           <button
+            type="button"
             onClick={send}
             disabled={isLoading || !input.trim()}
-            className="bg-zinc-100 hover:bg-white disabled:bg-zinc-700 disabled:text-zinc-500 text-zinc-900 rounded-full p-2 flex-shrink-0 transition"
+            className="ax-primary disabled:opacity-50 rounded-full p-2"
             aria-label="Enviar"
           >
             <Send size={15} />

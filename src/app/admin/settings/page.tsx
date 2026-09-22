@@ -87,7 +87,7 @@ function AdminsSection() {
         <button
           type="submit"
           disabled={submitting || !email.trim()}
-          className="flex items-center gap-2 bg-zinc-100 hover:bg-white disabled:opacity-50 text-zinc-900 font-semibold rounded-xl px-4 py-2.5 text-sm transition"
+          className="ax-primary disabled:opacity-50"
         >
           <UserPlus size={15} /> Hacer admin
         </button>
@@ -297,9 +297,9 @@ export default function AdminSettingsPage() {
           <button
             type="submit"
             disabled={saving}
-            className="bg-zinc-100 hover:bg-white disabled:opacity-50 text-zinc-900 font-semibold rounded-xl px-5 py-2.5 text-sm transition"
+            className="ax-primary disabled:opacity-50"
           >
-            {saving ? "Guardando..." : "Guardar cambios"}
+            {saving ? "Guardando..." : "Guardar ajustes"}
           </button>
           {saved && <span className="text-emerald-400 text-sm">Guardado.</span>}
           {saveError && <span className="text-red-400 text-sm">{saveError}</span>}
