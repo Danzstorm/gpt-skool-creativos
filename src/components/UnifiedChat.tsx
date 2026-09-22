@@ -524,10 +524,12 @@ export default function UnifiedChat({
               </h1>
               <p
                 style={{
+                  fontFamily: "var(--font-display), 'Plus Jakarta Sans', sans-serif",
                   fontSize: 13,
-                  fontWeight: 300,
-                  letterSpacing: "0.1px",
-                  lineHeight: 1.65,
+                  fontWeight: 400,
+                  letterSpacing: 0,
+                  wordSpacing: "normal",
+                  lineHeight: 1.6,
                   margin: 0,
                   color: "#999",
                   WebkitTextFillColor: "#999",

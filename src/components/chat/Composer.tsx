@@ -1,4 +1,4 @@
-import { forwardRef, memo, useCallback, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { forwardRef, memo, useCallback, useImperativeHandle, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Plus, X, Check, Square } from "lucide-react";
 import type { UploadedFile } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,21 @@ import AudioPreview from "./AudioPreview";
 import MentionField, { type MentionFieldHandle } from "./MentionField";
 import MentionMenu from "./MentionMenu";
 import MentionPreview from "./MentionPreview";
+
+/**
+ * Cómo se ve el botón de enviar.
+ * "plain" = círculo claro de Martin (activo).
+ * "gradient" = el efecto anterior. Cambiar esta constante lo enciende de nuevo.
+ */
+const SEND_LOOK: "plain" | "gradient" = "plain";
+
+function sendLookStyle(enabled: boolean): CSSProperties | undefined {
+  if (SEND_LOOK !== "gradient") return undefined;
+  return {
+    background: enabled ? "var(--brand-gradient)" : "#242428",
+    color: enabled ? "#fff" : "#66666f",
+  };
+}
 
 // Tipos que acepta el <input type="file">. El video va aparte porque depende
 // de que Gemini esté configurado (ver `videoEnabled`).
@@ -277,7 +292,6 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
     }
   }
 
-  const canSend = !isUploading && (input.trim().length > 0 || attachedFiles.length > 0);
   const sendIdle = isUploading || (!input.trim() && attachedFiles.length === 0);
 
   return (
@@ -493,8 +507,8 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             </button>
             <button
               type="button"
-              className="send relative isolate !flex h-9 w-9 shrink-0 items-center justify-center rounded-full !text-white"
-              style={{ background: "var(--brand-gradient)" }}
+              className="send relative isolate !flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full"
+              style={sendLookStyle(true)}
               onClick={() => stopRecording(false)}
               aria-label="Terminar grabación y transcribir"
             >
@@ -504,8 +518,8 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
         ) : isLoading ? (
           <button
             type="button"
-            className="send relative isolate !flex h-9 w-9 shrink-0 items-center justify-center rounded-full !text-white"
-            style={{ background: "var(--brand-gradient)" }}
+            className="send relative isolate !flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full"
+            style={sendLookStyle(true)}
             onClick={onStop}
             title="Detener respuesta"
             aria-label="Detener"
@@ -515,12 +529,9 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
         ) : (
           <button
             type="submit"
-            className="send relative isolate !flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+            className="send relative isolate !flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full"
+            style={sendLookStyle(!sendIdle)}
             disabled={sendIdle}
-            style={{
-              background: canSend ? "var(--brand-gradient)" : "#242428",
-              color: canSend ? "#fff" : "#66666f",
-            }}
             title={isUploading || analyzingAttached ? "Esperando a que termine el adjunto" : "Enviar mensaje"}
             aria-label="Enviar mensaje"
           >

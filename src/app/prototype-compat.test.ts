@@ -63,8 +63,8 @@ describe("prototype-compat: chat y chrome", () => {
   });
 
   it("restaura espacios en copy del intro y chrome (sin zoom)", () => {
-    expect(css).toMatch(/#chatIntro p[\s\S]{0,500}word-spacing:\s*0\.06em/);
-    expect(css).toMatch(/\.chat-intro p[\s\S]{0,400}word-spacing:\s*0\.06em/);
+    expect(css).toMatch(/#chatIntro \.gpt-title-row h1\s*\{[^}]*letter-spacing:\s*-0\.5px/);
+    expect(css).toMatch(/#chatIntro \.gpt-intro-copy[\s\S]{0,240}word-spacing:\s*normal/);
     expect(css).toMatch(/#chatIntro \.gpt-title-row h1:after\s*\{[^}]*word-spacing:\s*0\.06em/);
     expect(css).not.toMatch(/zoom\s*:/);
     expect(proto).not.toMatch(/zoom\s*:/);

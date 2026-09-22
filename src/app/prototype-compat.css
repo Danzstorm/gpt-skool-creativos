@@ -22,11 +22,20 @@ body {
   font-family: var(--font-display);
 }
 
-#composer textarea,
-.composer-row textarea,
-.mention-field,
+/* Inconsolata solo en la tarjeta PROMPT. El composer de Martin es Inter
+   (hereda el body), no mono. */
 .prompt-body {
   font-family: var(--font-prompt);
+}
+
+#composer textarea,
+.composer-row textarea,
+.mention-field {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.57;
+  letter-spacing: 0;
+  word-spacing: normal;
 }
 
 /* El prototipo fuerza 19px + fill:none + stroke a TODO svg. Lucide es
@@ -417,7 +426,6 @@ body {
 #chatIntro .gpt-intro-copy,
 .chat-intro p,
 .label,
-#chatIntro .gpt-title-row h1,
 .new,
 .nav,
 .chat-name,
@@ -439,10 +447,24 @@ body {
   overflow-wrap: break-word;
   color: #8e909c;
 }
+/* Fill sólido: el tracking de Martin (-0.5px) ya no colapsa el espacio. */
 #chatIntro .gpt-title-row h1 {
   color: #eeeef2;
-  -webkit-text-fill-color: #eeeef2;
+  -webkit-text-fill-color: #eeeef2 !important;
+  letter-spacing: -0.5px !important;
+  word-spacing: normal !important;
+  font-weight: 300;
+  line-height: 1.2;
   overflow-wrap: break-word;
+}
+#chatIntro .gpt-intro-copy,
+#chatIntro > p,
+#homeView .intro > p {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0 !important;
+  word-spacing: normal !important;
+  line-height: 1.6;
 }
 #chatIntro .gpt-title-row h1:after {
   letter-spacing: 0;

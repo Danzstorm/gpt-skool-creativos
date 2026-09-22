@@ -39,6 +39,7 @@ describe("textSizeCss", () => {
     expect(css).toContain("--text-scale:1");
     expect(css).toContain("13.75px!important");
     expect(css).toContain("word-spacing:.06em!important");
+    expect(css).toContain("word-spacing:normal!important");
     expect(css).toContain("#chatIntro .gpt-intro-copy");
     expect(css).not.toContain("zoom");
   });

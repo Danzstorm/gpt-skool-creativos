@@ -86,10 +86,12 @@ export default function GptHero({ gpt, onStarter, children }: Props) {
         <h1
           data-title={displayed.name}
           style={{
-            letterSpacing: 0,
-            wordSpacing: "0.12em",
+            letterSpacing: "-0.5px",
+            wordSpacing: "normal",
+            fontWeight: 300,
             WebkitTextFillColor: "#eeeef2",
             color: "#eeeef2",
+            background: "none",
           }}
         >
           {displayed.name}
@@ -102,8 +104,11 @@ export default function GptHero({ gpt, onStarter, children }: Props) {
             color: "#8e909c",
             WebkitTextFillColor: "#8e909c",
             background: "none",
+            fontFamily: "var(--font-display), 'Plus Jakarta Sans', sans-serif",
+            fontWeight: 400,
             letterSpacing: 0,
-            wordSpacing: "0.12em",
+            wordSpacing: "normal",
+            lineHeight: 1.6,
             whiteSpace: "pre-wrap",
           }}
         >
