@@ -13,8 +13,6 @@ import SidebarFooter from "./SidebarFooter";
 
 // El atajo ⌘K / Ctrl K sigue vivo; el prototipo no pinta el badge.
 
-const SIDEBAR_PAD_X = 40; // px-5 × 2 — ancho interior sin padding
-
 const labelClass =
   "mx-2.5 mb-3 mt-[31px] text-[11px] font-normal uppercase !tracking-[1.3px] text-[#858585]";
 
@@ -312,7 +310,6 @@ function ChatSidebar({
   const asideRef = useRef<HTMLElement>(null);
 
   const searchRef = useRef<HTMLInputElement>(null);
-  const innerWidth = Math.max(sidebarWidth - SIDEBAR_PAD_X, 0);
 
   // ⌘K / Ctrl K enfoca el buscador; si el panel está contraído lo abre antes.
   // El input ya existe en el DOM (aside de ancho 0), pero se espera un frame
@@ -400,9 +397,7 @@ function ChatSidebar({
           "motion-reduce:transition-none",
           "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
           resizing && "!transition-none",
-          collapsed
-            ? "pointer-events-none border-r-0 px-0 py-[25px]"
-            : "px-5 py-[25px]",
+          collapsed && "pointer-events-none border-r-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         )}
         style={
@@ -414,16 +409,15 @@ function ChatSidebar({
       >
         <div
           className={cn(
-            "flex h-full min-h-0 min-w-0 shrink-0 flex-col overflow-hidden",
+            "chat-sidebar-column flex min-h-0 min-w-0 flex-col",
             "transition-transform duration-[320ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
             "motion-reduce:transition-none",
             resizing && "!transition-none",
             collapsed && "-translate-x-full"
           )}
-          style={{ width: innerWidth, minWidth: innerWidth }}
         >
           {/* brandrow Martin: logo + ‹ hermanos en la misma fila (nunca dentro de #new) */}
-          <div className="chat-sidebar-brand relative z-[2] mb-9 flex min-h-[30px] w-full shrink-0 items-center justify-between gap-2 overflow-visible">
+          <div className="chat-sidebar-brand flex min-h-[30px] w-full shrink-0 items-center justify-between gap-2 overflow-visible">
             <a
               className="block w-[94px] max-w-[94px] shrink-0 overflow-visible leading-none text-inherit no-underline"
               href="https://www.skool.com/creativos"
@@ -435,13 +429,13 @@ function ChatSidebar({
                 width={94}
                 height={25}
                 alt={communityName}
-                className="relative top-2.5 left-2 block h-[25px] w-[94px] object-fill opacity-100 [filter:none]"
+                className="relative block h-[25px] w-[94px] object-fill opacity-100 [filter:none]"
               />
             </a>
             <button
               type="button"
               className={cn(
-                "relative top-2.5 z-[5] grid h-[30px] w-[30px] min-w-[30px] max-w-[30px] shrink-0 place-items-center",
+                "grid h-[30px] w-[30px] min-w-[30px] max-w-[30px] shrink-0 place-items-center",
                 "cursor-pointer border-0 bg-transparent p-[5px]",
                 "text-[22px] font-normal leading-none text-[#666978]",
                 "[-webkit-text-fill-color:#666978] opacity-100",
@@ -497,7 +491,7 @@ function ChatSidebar({
           {/* Lista que scrollea: GPTS + Proyectos + CHATS. Pie queda fuera con mt-auto. */}
           <div
             className={cn(
-              "min-h-0 flex-1 overflow-x-hidden overflow-y-auto",
+              "chat-sidebar-scroll min-h-0 flex-1 overflow-x-hidden overflow-y-auto",
               "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
             )}
           >

@@ -95,17 +95,17 @@ describe("layout del chat: producto, no plantilla CSS", () => {
   });
 
   it("el look del sidebar vive en Tailwind del componente, no en sidebar.css", () => {
-    expect(layout).not.toMatch(/sidebar\.css/);
+    expect(layout).toMatch(/chat-sidebar-fence\.css/);
+    expect(layout).not.toMatch(/chat\/sidebar\.css/);
     expect(layout).toMatch(/components\/chat\/composer\.css/);
     expect(sidebar).toMatch(/chat-sidebar/);
     expect(sidebar).toMatch(/w-\[94px\]/);
     expect(sidebar).toMatch(/h-\[25px\]/);
-    expect(sidebar).toMatch(/top-2\.5/);
+    expect(sidebar).toMatch(/chat-sidebar-column/);
     expect(sidebar).toMatch(/text-\[22px\]/);
     expect(sidebar).toMatch(/px-2\.5 py-\[12px\]/);
     expect(sidebar).toMatch(/!tracking-\[1\.3px\]/);
-    expect(sidebar).toMatch(/py-\[25px\]/);
-    expect(sidebar).toMatch(/px-5/);
+    expect(layout).toMatch(/chat-sidebar-fence\.css/);
     expect(sidebar).toMatch(/navActiveClass|ffbd1626/);
     expect(sidebar).toMatch(/relative mb-\[15px\].*overflow-hidden/);
     expect(threads).toMatch(/gap-3.*px-2\.5 py-\[9px\]|px-2\.5 py-\[9px\].*gap-3/);

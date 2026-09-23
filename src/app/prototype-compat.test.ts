@@ -5,6 +5,8 @@ import { describe, expect, it } from "vitest";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "prototype-compat.css"), "utf8");
+const compat = css;
+const fence = readFileSync(join(here, "chat-sidebar-fence.css"), "utf8");
 const proto = readFileSync(join(here, "prototype.css"), "utf8");
 const composerCss = readFileSync(
   join(here, "..", "components", "chat", "composer.css"),
@@ -230,7 +232,7 @@ describe("prototype-compat: chat y chrome", () => {
     expect(chatSidebar).toMatch(/height=\{25\}/);
     expect(chatSidebar).toMatch(/w-\[94px\]/);
     expect(chatSidebar).toMatch(/h-\[25px\]/);
-    expect(chatSidebar).toMatch(/top-2\.5 left-2/);
+    expect(chatSidebar).not.toMatch(/top-2\.5/);
     expect(chatSidebar).toMatch(/\[filter:none\]/);
     expect(chatSidebar).not.toMatch(/width=\{128\}/);
     expect(chatSidebar).not.toMatch(/className="sidebar"/);
@@ -267,7 +269,10 @@ describe("prototype-compat: chat y chrome", () => {
     expect(chatSidebar).toMatch(/px-2\.5 py-\[12px\]/);
     expect(chatSidebar).toMatch(/!tracking-\[1\.3px\]/);
     expect(chatSidebar).toMatch(/duration-\[320ms\].*ease-\[cubic-bezier\(0\.4,0,0\.2,1\)\]/);
-    expect(chatSidebar).toMatch(/mb-9/);
+    expect(chatSidebar).toMatch(/chat-sidebar-column/);
+    expect(layout).toMatch(/chat-sidebar-fence\.css/);
+    expect(compat).not.toMatch(/chat-sidebar-brand > button\[aria-label="Contraer panel"\]\s*\{[^}]*top:\s*10px/);
+    expect(fence).toMatch(/chat-sidebar-brand > button\[aria-label="Contraer panel"\]\s*\{[^}]*top:\s*auto/);
     expect(chatSidebar).toMatch(/ffbd1626/);
     expect(chatSidebar).not.toMatch(/className="side-scroll"/);
     expect(chatSidebar).not.toMatch(/className="collapse"/);
@@ -289,12 +294,12 @@ describe("prototype-compat: chat y chrome", () => {
     expect(sidebarFooter).toMatch(/createPortal\(settingsDialog/);
   });
 
-  it("el dump no pisa el panel Next: #new acotado y svg del chat-sidebar con fill", () => {
+  it("el dump no pisa el panel Next: #new acotado y cerca del chat-sidebar", () => {
     expect(proto).toMatch(/\.sidebar #new\{/);
     expect(proto.replace(/\.sidebar #new\{/g, "")).not.toMatch(/#new\{/);
-    expect(css).toMatch(/\.chat-sidebar svg:not\(\.rim-svg\)/);
-    expect(css).toMatch(/\.chat-sidebar-brand/);
-    expect(css).toMatch(/\.chat-sidebar-footer > button\[aria-label="Cuenta"\]/);
+    expect(fence).toMatch(/\.chat-sidebar svg:not\(\.rim-svg\)/);
+    expect(fence).toMatch(/\.chat-sidebar-brand/);
+    expect(fence).toMatch(/\.chat-sidebar-footer > button/);
     expect(css).toMatch(/dialog\.settings-dialog:not\(\[open\]\)/);
     expect(chatSidebar).toMatch(/chat-sidebar-brand/);
     const protoIcon = readFileSync(

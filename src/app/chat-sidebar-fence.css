@@ -1,0 +1,184 @@
+/* Cerca del sidebar. Carga al final y sin capa: prototype.css gana a
+   Tailwind, así que el layout de .chat-sidebar se fija aquí. No pinta
+   composer, home, mensajes, admin ni acceso. */
+
+.chat-sidebar {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.chat-sidebar-column {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 0;
+  padding: 25px 20px;
+}
+
+.chat-sidebar-brand {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  flex: 0 0 auto;
+  width: 100%;
+  min-height: 30px;
+  margin: 0 0 36px;
+  position: relative;
+  top: auto;
+  overflow: visible;
+}
+
+.chat-sidebar-brand > a {
+  display: block;
+  position: relative;
+  top: auto;
+  flex: 0 0 94px;
+  width: 94px;
+  max-width: 94px;
+}
+
+.chat-sidebar-brand img {
+  display: block;
+  position: relative;
+  top: 0;
+  left: 0;
+  width: 94px;
+  height: 25px;
+  filter: none;
+}
+
+/* Misma especificidad que el aislamiento viejo de compat (aria-label),
+   para que top:10px no vuelva a bajar el ‹ encima de Nuevo chat. */
+.chat-sidebar-brand > button[aria-label="Contraer panel"] {
+  position: static;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  float: none;
+  flex: 0 0 30px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin: 0;
+  padding: 5px;
+  border: 0;
+  background: transparent;
+  color: #666978;
+  -webkit-text-fill-color: #666978;
+  font-size: 22px;
+  line-height: 1;
+  opacity: 1;
+  z-index: 2;
+}
+
+.chat-sidebar #new {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  flex: 0 0 auto;
+  gap: 13px;
+  width: 100%;
+  min-height: 0;
+  margin: 0 0 15px;
+  overflow: hidden;
+}
+
+.chat-sidebar-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.chat-sidebar-scroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.chat-sidebar svg:not(.rim-svg) {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.chat-sidebar-footer {
+  display: block;
+  position: relative;
+  top: auto;
+  flex: 0 0 auto;
+  width: 100%;
+  height: auto;
+  margin-top: auto;
+}
+
+.chat-sidebar-footer > button {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 11px;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  margin: 0;
+  padding: 22px 0 0;
+  position: relative;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  border: 0;
+  border-top: 1px solid #ffffff0a;
+  background: transparent;
+  text-align: left;
+}
+
+.chat-sidebar-footer > button > span {
+  position: relative;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  display: grid;
+  place-items: center;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  margin: 0;
+}
+
+.chat-sidebar-footer > button > div {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  flex: 1 1 auto;
+  min-width: 0;
+  position: relative;
+  top: auto;
+  margin: 0;
+}
+
+.chat-sidebar-footer > button strong,
+.chat-sidebar-footer > button span {
+  position: static;
+}

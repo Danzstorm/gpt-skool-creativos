@@ -5,12 +5,11 @@ import TextSizeBoot from "@/components/TextSizeBoot";
 import "./globals.css";
 import "./prototype.css";
 import "./prototype-compat.css";
-/* Hojas propias DESPUÉS del dump + compat (cascada). */
 import "../components/chat/composer.css";
 import "../components/chat/home.css";
 import "../components/chat/gpt-intro.css";
 import "../components/chat/messages.css";
-
+import "./chat-sidebar-fence.css";
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
