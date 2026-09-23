@@ -70,6 +70,20 @@ describe("layout del chat: producto, no plantilla CSS", () => {
     expect(sidebar).not.toMatch(/flex-1 overflow-y-auto/);
   });
 
+  it("expandir en desktop togglea collapsed como Martin, no openSidebar", () => {
+    expect(unified).toMatch(/window\.innerWidth <= 650/);
+    expect(unified).toMatch(/toggleSidebarCollapsed\(\)/);
+    expect(unified).toMatch(/className="mobile-menu"/);
+    // El handler de desktop no debe caer en openSidebar cuando ya hay panel.
+    const menuHandler = unified.match(
+      /className="mobile-menu"[\s\S]*?onClick=\{\(\) => \{([\s\S]*?)\}\}/
+    )?.[1];
+    expect(menuHandler).toBeTruthy();
+    expect(menuHandler).toMatch(/toggleSidebarCollapsed\(\)/);
+    expect(menuHandler).toMatch(/openSidebar\(\)/);
+    expect(menuHandler).toMatch(/closeSidebar\(\)/);
+  });
+
   it("el look del sidebar vive en sidebar.css, no en parches de compat", () => {
     expect(layout).toMatch(/components\/chat\/sidebar\.css/);
     expect(layout).toMatch(/prototype-compat\.css[\s\S]*sidebar\.css/);

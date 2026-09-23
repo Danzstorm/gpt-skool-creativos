@@ -465,8 +465,15 @@ export default function UnifiedChat({
             type="button"
             className="mobile-menu"
             onClick={() => {
-              if (sidebarCollapsed) toggleSidebarCollapsed();
-              else openSidebar();
+              // Martin runtime.js: ≤650 → mobile-open; desktop → toggle collapsed.
+              // Antes: si no estaba collapsed llamaba openSidebar() y en desktop
+              // el click del borde no devolvía la barra.
+              if (window.innerWidth <= 650) {
+                if (sidebarOpen) closeSidebar();
+                else openSidebar();
+              } else {
+                toggleSidebarCollapsed();
+              }
             }}
             aria-label={sidebarCollapsed ? "Expandir panel" : "Abrir panel"}
           >

@@ -274,6 +274,9 @@ describe("prototype-compat: chat y chrome", () => {
     expect(sidebarCss).toMatch(/\.app \.sidebar \.history \.history-item\s*\{[^}]*padding:\s*12px 10px/);
     expect(sidebarCss).toMatch(/\.app \.sidebar \.label\s*\{[^}]*letter-spacing:\s*1\.3px !important/);
     expect(sidebarCss).toMatch(/\.app\.collapsed \.main \.topbar \.mobile-menu\s*\{[^}]*visibility:\s*visible/);
+    expect(sidebarCss).toMatch(/\.app\.collapsed \.main \.topbar \.mobile-menu\s*\{[^}]*pointer-events:\s*auto/);
+    expect(sidebarCss).toMatch(/\.app\.collapsed \.main > \.topbar\s*\{[^}]*z-index:\s*50/);
+    expect(sidebarCss).toMatch(/\.app \.sidebar\s*\{[^}]*transition:[\s\S]*?width 0\.32s cubic-bezier\(0\.4, 0, 0\.2, 1\)/);
     expect(sidebarCss).toMatch(/\.app \.sidebar \.brandrow\s*\{[^}]*margin:\s*0 0 36px/);
   });
 

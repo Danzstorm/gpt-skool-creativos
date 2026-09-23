@@ -12,10 +12,24 @@
   padding: 25px 20px 25px;
   background: #111113;
   border-right: 1px solid #ffffff08;
-  /* Martin: el panel scrollea sin barra visible. En Next el overflow real
-     vive en .side-scroll (hijo); igual ocultamos en el aside por si acaso. */
+  overflow: hidden;
+  /* Abrir/cerrar: width/padding cortos (~0.32s), no fade largo. */
+  transition:
+    width 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+    padding 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Scroll del panel sin barra visible; el overflow real vive en .side-scroll. */
   scrollbar-width: none;
   -ms-overflow-style: none;
+}
+
+body.resizing-sidebar .app .sidebar {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app .sidebar {
+    transition: none;
+  }
 }
 
 .app .sidebar::-webkit-scrollbar {
@@ -141,22 +155,34 @@
   transform: none;
 }
 
-/* Al contraer, el mismo control reaparece en el borde para expandir.
-   En home el topbar mide 0; fixed evita que ese alto lo recorte. */
+/* Expandir: mismo .mobile-menu del topbar (Martin runtime.js).
+   Causa del click muerto: .topbar queda en height:0 bajo #homeView/#chatView;
+   el icono se veía a través del fondo pero el workspace se comía el hit.
+   Subimos el stacking del topbar y devolvemos pointer-events al botón. */
+.app.collapsed .main > .topbar {
+  position: relative;
+  z-index: 50;
+  overflow: visible;
+  pointer-events: none;
+}
+
 .app.collapsed .main .topbar .mobile-menu {
   display: grid;
   place-items: center;
   visibility: visible;
-  position: fixed;
+  pointer-events: auto;
+  position: absolute;
   top: var(--panel-toggle-top, 32px);
   left: 20px;
-  z-index: 40;
+  z-index: 1;
   width: 30px;
   height: 30px;
   padding: 4px;
   color: #9a9aa4;
   -webkit-text-fill-color: #9a9aa4;
   background: transparent;
+  /* Sin delay de visibility del dump: debe ser clickeable al instante. */
+  transition: none;
 }
 
 /* ── Nuevo chat + búsqueda ─────────────────────────────────────────── */
