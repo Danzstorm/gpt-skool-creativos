@@ -423,7 +423,7 @@ function ChatSidebar({
           style={{ width: innerWidth, minWidth: innerWidth }}
         >
           {/* brandrow Martin: logo + ‹ hermanos en la misma fila (nunca dentro de #new) */}
-          <div className="relative z-[2] mb-9 flex min-h-[30px] w-full shrink-0 items-center justify-between gap-2 overflow-visible">
+          <div className="chat-sidebar-brand relative z-[2] mb-9 flex min-h-[30px] w-full shrink-0 items-center justify-between gap-2 overflow-visible">
             <a
               className="block w-[94px] max-w-[94px] shrink-0 overflow-visible leading-none text-inherit no-underline"
               href="https://www.skool.com/creativos"

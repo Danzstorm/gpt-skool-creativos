@@ -282,10 +282,26 @@ describe("prototype-compat: chat y chrome", () => {
   });
 
   it("el pie ancla avatar+nombre en una sola fila; settings no parte el flex", () => {
+    expect(sidebarFooter).toMatch(/chat-sidebar-footer/);
     expect(sidebarFooter).toMatch(/mt-auto w-full shrink-0/);
     expect(sidebarFooter).toMatch(/flex-row items-center gap-\[11px\]/);
     expect(sidebarFooter).toMatch(/showAvatar \?/);
     expect(sidebarFooter).toMatch(/createPortal\(settingsDialog/);
+  });
+
+  it("el dump no pisa el panel Next: #new acotado y svg del chat-sidebar con fill", () => {
+    expect(proto).toMatch(/\.sidebar #new\{/);
+    expect(proto.replace(/\.sidebar #new\{/g, "")).not.toMatch(/#new\{/);
+    expect(css).toMatch(/\.chat-sidebar svg:not\(\.rim-svg\)/);
+    expect(css).toMatch(/\.chat-sidebar-brand/);
+    expect(css).toMatch(/\.chat-sidebar-footer > button\[aria-label="Cuenta"\]/);
+    expect(css).toMatch(/dialog\.settings-dialog:not\(\[open\]\)/);
+    expect(chatSidebar).toMatch(/chat-sidebar-brand/);
+    const protoIcon = readFileSync(
+      join(here, "..", "components", "chat", "ProtoIcon.tsx"),
+      "utf8"
+    );
+    expect(protoIcon).toMatch(/fill-none stroke-current/);
   });
 
   it("expandir desde el borde usa z-index y pointer-events en UnifiedChat", () => {

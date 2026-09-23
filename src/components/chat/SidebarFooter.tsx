@@ -146,7 +146,7 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
     // Pie anclado abajo (Martin .profile { margin-top: auto }). Solo el botón
     // de cuenta vive en el flujo: menú y settings van a body para no partir
     // el flex avatar+nombre.
-    <div ref={rootRef} className="relative mt-auto w-full shrink-0">
+    <div ref={rootRef} className="chat-sidebar-footer relative mt-auto w-full shrink-0">
       {open &&
         createPortal(
           <div ref={menuRef} className="account-menu account-open">

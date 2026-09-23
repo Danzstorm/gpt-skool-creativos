@@ -58,7 +58,7 @@ export default function ProtoIcon({ name, className }: Props) {
     <svg
       viewBox="0 0 24 24"
       aria-hidden
-      className={cn("h-[18px] w-[18px] shrink-0", className)}
+      className={cn("h-[18px] w-[18px] shrink-0 fill-none stroke-current", className)}
       dangerouslySetInnerHTML={{ __html: paths }}
     />
   );

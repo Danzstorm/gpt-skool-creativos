@@ -187,7 +187,9 @@ svg{stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}.tool .symbol sv
 .main:has(#homeView:not([hidden])) .topbar #breadcrumb{display:none}
 .main:has(#homeView:not([hidden])) .topbar .mobile-menu{position:absolute;top:18px;left:18px;z-index:5}
 
-#new{min-height:0;padding:13px 14px;border-radius:12px;animation:none;flex-shrink:0}
+/* Solo el aside.sidebar del dump. .chat-sidebar de Next usa id=new pero el look
+   vive en Tailwind; sin este acote el padding/flex-shrink sin capa pisaba el botón. */
+.sidebar #new{min-height:0;padding:13px 14px;border-radius:12px;animation:none;flex-shrink:0}
 
 .nav.active{position:relative;background:linear-gradient(135deg,#ffbd160d 0%,#ff682f10 22%,#ff165e12 46%,#ee0de410 73%,#7753ff14 100%);box-shadow:none}
 .nav.active:after{content:"";position:absolute;right:0;top:7px;bottom:7px;width:1px;border-radius:2px;pointer-events:none;background:linear-gradient(180deg,#ffbd16 0%,#ff682f 22%,#ff165e 46%,#ee0de4 73%,#7753ff 100%);box-shadow:0 0 7px #ee0de430}
