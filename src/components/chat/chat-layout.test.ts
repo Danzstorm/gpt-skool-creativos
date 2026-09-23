@@ -69,6 +69,15 @@ describe("layout del chat: producto, no plantilla CSS", () => {
     expect(sidebar).toMatch(/\[scrollbar-width:none\]/);
     expect(sidebar).not.toMatch(/className="collapse"/);
     expect(sidebar).not.toMatch(/className="side-scroll"/);
+    const collapseAt = sidebar.indexOf("Contraer panel");
+    const newAt = sidebar.indexOf('id="new"');
+    expect(collapseAt).toBeGreaterThan(-1);
+    expect(newAt).toBeGreaterThan(collapseAt);
+  });
+
+  it("GPTS y CHATS scrollean juntos; el pie queda fuera con mt-auto", () => {
+    expect(sidebar).toMatch(/min-h-0 flex-1 overflow-x-hidden overflow-y-auto[\s\S]*GPTs[\s\S]*Chats/);
+    expect(sidebar).toMatch(/Chats[\s\S]*SidebarFooter/);
   });
 
   it("expandir en desktop togglea collapsed como Martin, no openSidebar", () => {

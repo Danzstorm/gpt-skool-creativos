@@ -35,11 +35,17 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [avatarFailed, setAvatarFailed] = useState(false);
   const [textSize, setTextSize] = useState(TEXT_SIZE_DEFAULT);
+  const [mounted, setMounted] = useState(false);
   const close = useCallback(() => setOpen(false), []);
   const rootRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLButtonElement>(null);
   const settingsRef = useDismissable<HTMLDialogElement>(settingsOpen, () => setSettingsOpen(false));
+
+  useEffect(() => {
+    /* eslint-disable-next-line react-hooks/set-state-in-effect -- portal solo tras hidratar */
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -97,87 +103,96 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
 
   const personName = humanDisplayName(fullName);
   const displayName = personName || email || "Cuenta";
+  // Foto de Google: avatarUrl viene de la sesión (user_metadata), no inventar otra fuente.
   const showAvatar = !!avatarUrl && !avatarFailed;
 
+  const settingsDialog = (
+    <dialog
+      ref={settingsRef}
+      className="settings-dialog"
+      onClose={() => setSettingsOpen(false)}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) setSettingsOpen(false);
+      }}
+    >
+      <h2>Configuración</h2>
+      <div className="type-settings">
+        <label>
+          <span>Tamaño de letra</span>
+          <output id="textSizeValue">{textSize}%</output>
+        </label>
+        <input
+          id="textSize"
+          type="range"
+          min={TEXT_SIZE_MIN}
+          max={TEXT_SIZE_MAX}
+          step={TEXT_SIZE_STEP}
+          value={textSize}
+          onChange={(e) => changeTextSize(Number(e.target.value))}
+          aria-label="Tamaño de letra"
+        />
+        <div className="type-range-labels">
+          <span>Más pequeña</span>
+          <span>Más grande</span>
+        </div>
+        <button id="resetTextSize" type="button" onClick={() => changeTextSize(TEXT_SIZE_DEFAULT)}>
+          Restablecer
+        </button>
+      </div>
+    </dialog>
+  );
+
   return (
-    <div ref={rootRef} className="relative mt-auto">
+    // Pie anclado abajo (Martin .profile { margin-top: auto }). Solo el botón
+    // de cuenta vive en el flujo: menú y settings van a body para no partir
+    // el flex avatar+nombre.
+    <div ref={rootRef} className="relative mt-auto w-full shrink-0">
       {open &&
         createPortal(
-        <div ref={menuRef} className="account-menu account-open">
-          {isAdmin && (
-            <Link href="/admin" onClick={() => setOpen(false)}>
+          <div ref={menuRef} className="account-menu account-open">
+            {isAdmin && (
+              <Link href="/admin" onClick={() => setOpen(false)}>
+                <svg viewBox="0 0 24 24" aria-hidden>
+                  <path d="M12 3 4.5 6.5v4.2c0 5 3.2 8.8 7.5 10.3 4.3-1.5 7.5-5.3 7.5-10.3V6.5Z" />
+                </svg>
+                Admin
+              </Link>
+            )}
+            <MusicMenu />
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                setSettingsOpen(true);
+              }}
+            >
               <svg viewBox="0 0 24 24" aria-hidden>
-                <path d="M12 3 4.5 6.5v4.2c0 5 3.2 8.8 7.5 10.3 4.3-1.5 7.5-5.3 7.5-10.3V6.5Z" />
+                <circle cx="12" cy="12" r="3" />
+                <path d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.4-6.4-1.4 1.4M8 16.9 6.6 18.3m10.8 0L16 16.9M8 7.1 6.6 5.7" />
               </svg>
-              Admin
-            </Link>
-          )}
-          <MusicMenu />
-          <button
-            type="button"
-            onClick={() => {
-              setOpen(false);
-              setSettingsOpen(true);
-            }}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden>
-              <circle cx="12" cy="12" r="3" />
-              <path d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.4-6.4-1.4 1.4M8 16.9 6.6 18.3m10.8 0L16 16.9M8 7.1 6.6 5.7" />
-            </svg>
-            Configuración
-          </button>
-          <form action="/api/auth/signout" method="POST" onSubmit={() => stopAmbientMusic()}>
-            <button type="submit">
-              <svg viewBox="0 0 24 24" aria-hidden>
-                <path d="M10 6H6.5A1.5 1.5 0 0 0 5 7.5v9A1.5 1.5 0 0 0 6.5 18H10M15 8l4 4-4 4M10 12h9" />
-              </svg>
-              Salir
+              Configuración
             </button>
-          </form>
-        </div>,
-        document.body,
-      )}
+            <form action="/api/auth/signout" method="POST" onSubmit={() => stopAmbientMusic()}>
+              <button type="submit">
+                <svg viewBox="0 0 24 24" aria-hidden>
+                  <path d="M10 6H6.5A1.5 1.5 0 0 0 5 7.5v9A1.5 1.5 0 0 0 6.5 18H10M15 8l4 4-4 4M10 12h9" />
+                </svg>
+                Salir
+              </button>
+            </form>
+          </div>,
+          document.body
+        )}
 
-      <dialog
-        ref={settingsRef}
-        className="settings-dialog"
-        onClose={() => setSettingsOpen(false)}
-        onClick={(e) => {
-          if (e.target === e.currentTarget) setSettingsOpen(false);
-        }}
-      >
-        <h2>Configuración</h2>
-        <div className="type-settings">
-          <label>
-            <span>Tamaño de letra</span>
-            <output id="textSizeValue">{textSize}%</output>
-          </label>
-          <input
-            id="textSize"
-            type="range"
-            min={TEXT_SIZE_MIN}
-            max={TEXT_SIZE_MAX}
-            step={TEXT_SIZE_STEP}
-            value={textSize}
-            onChange={(e) => changeTextSize(Number(e.target.value))}
-            aria-label="Tamaño de letra"
-          />
-          <div className="type-range-labels">
-            <span>Más pequeña</span>
-            <span>Más grande</span>
-          </div>
-          <button id="resetTextSize" type="button" onClick={() => changeTextSize(TEXT_SIZE_DEFAULT)}>
-            Restablecer
-          </button>
-        </div>
-      </dialog>
+      {mounted ? createPortal(settingsDialog, document.body) : null}
 
       <button
         ref={profileRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "relative mt-auto flex w-full min-w-0 shrink-0 cursor-pointer items-center gap-[11px] border-0 border-t border-white/[0.04] bg-transparent pt-[22px] text-left",
+          "flex w-full min-w-0 shrink-0 cursor-pointer flex-row items-center gap-[11px]",
+          "border-0 border-t border-white/[0.04] bg-transparent pt-[22px] text-left",
           "focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#999]"
         )}
         aria-label="Cuenta"

@@ -272,6 +272,20 @@ describe("prototype-compat: chat y chrome", () => {
     expect(chatSidebar).not.toMatch(/className="side-scroll"/);
     expect(chatSidebar).not.toMatch(/className="collapse"/);
     expect(layout).not.toMatch(/sidebar\.css/);
+    // ‹ es hermano del logo, nunca hijo de #new
+    const collapseAt = chatSidebar.indexOf("Contraer panel");
+    const newAt = chatSidebar.indexOf('id="new"');
+    expect(collapseAt).toBeGreaterThan(-1);
+    expect(newAt).toBeGreaterThan(collapseAt);
+    // GPTS + CHATS viven en la misma lista con scroll; el pie queda fuera
+    expect(chatSidebar).toMatch(/min-h-0 flex-1 overflow-x-hidden overflow-y-auto[\s\S]*GPTs[\s\S]*Chats[\s\S]*SidebarFooter/);
+  });
+
+  it("el pie ancla avatar+nombre en una sola fila; settings no parte el flex", () => {
+    expect(sidebarFooter).toMatch(/mt-auto w-full shrink-0/);
+    expect(sidebarFooter).toMatch(/flex-row items-center gap-\[11px\]/);
+    expect(sidebarFooter).toMatch(/showAvatar \?/);
+    expect(sidebarFooter).toMatch(/createPortal\(settingsDialog/);
   });
 
   it("expandir desde el borde usa z-index y pointer-events en UnifiedChat", () => {
