@@ -230,8 +230,8 @@ describe("prototype-compat: chat y chrome", () => {
   });
 
   it("el chevron de colapsar queda visible en el brandrow", () => {
-    expect(css).toMatch(/\.app \.sidebar \.brandrow \.collapse\s*\{[^}]*color:\s*#666978/);
-    expect(css).toMatch(/\.app \.sidebar \.brandrow \.collapse\s*\{[^}]*top:\s*10px/);
+    expect(css).toMatch(/\.app \.sidebar \.brandrow \.collapse\s*\{[^}]*position:\s*absolute/);
+    expect(css).toMatch(/\.app\.collapsed \.main \.topbar \.mobile-menu\s*\{[^}]*visibility:\s*visible/);
     expect(css).toMatch(/\.app \.sidebar \.brandrow\s*\{[^}]*margin:\s*0 0 36px/);
   });
 

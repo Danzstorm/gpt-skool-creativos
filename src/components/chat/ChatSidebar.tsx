@@ -399,13 +399,17 @@ function ChatSidebar({
             <button
               type="button"
               className="collapse"
-              onClick={onToggleCollapse}
+              onClick={(event) => {
+                const rect = event.currentTarget.getBoundingClientRect();
+                document.documentElement.style.setProperty("--panel-toggle-top", `${Math.round(rect.top)}px`);
+                onToggleCollapse();
+              }}
               aria-label="Contraer panel"
               title="Contraer panel"
             >
-              <span aria-hidden className="collapse-chevron">
-                ‹
-              </span>
+              <svg className="collapse-chevron" viewBox="0 0 24 24" aria-hidden>
+                <path d="M14.5 6.5 9 12l5.5 5.5" />
+              </svg>
             </button>
           </div>
 
