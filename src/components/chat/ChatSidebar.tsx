@@ -407,9 +407,9 @@ function ChatSidebar({
               aria-label="Contraer panel"
               title="Contraer panel"
             >
-              <svg className="collapse-chevron" viewBox="0 0 24 24" aria-hidden>
-                <path d="M14.5 6.5 9 12l5.5 5.5" />
-              </svg>
+              <span className="collapse-chevron" aria-hidden>
+                ‹
+              </span>
             </button>
           </div>
 

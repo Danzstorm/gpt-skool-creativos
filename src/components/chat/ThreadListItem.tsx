@@ -88,7 +88,7 @@ function ThreadListItem({
         if (draggedId && draggedId !== thread.id) onDropOnThread(draggedId, thread.id);
       }}
       className={cn(
-        "nav history-item group relative flex items-center gap-1.5",
+        "nav history-item group relative flex items-center",
         isActive && "active selected chat-selected",
         pinned && "chat-pinned",
         dropTarget && "drop-target"

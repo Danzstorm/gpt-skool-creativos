@@ -230,7 +230,18 @@ describe("prototype-compat: chat y chrome", () => {
   });
 
   it("el chevron de colapsar queda visible en el brandrow", () => {
-    expect(css).toMatch(/\.app \.sidebar \.brandrow \.collapse\s*\{[^}]*position:\s*absolute/);
+    const sidebar = readFileSync(
+      join(here, "..", "components", "chat", "ChatSidebar.tsx"),
+      "utf8"
+    );
+    expect(sidebar).toMatch(/‹/);
+    expect(css).toMatch(/\.app \.sidebar \.brandrow \.collapse\s*\{[^}]*position:\s*relative/);
+    expect(css).toMatch(/\.app \.sidebar \.brandrow \.collapse\s*\{[^}]*top:\s*10px/);
+    expect(css).toMatch(/\.app \.sidebar \.brandrow \.collapse\s*\{[^}]*color:\s*#666978/);
+    expect(css).not.toMatch(/\.app \.sidebar \.brand\s*\{[^}]*overflow:\s*hidden/);
+    expect(css).toMatch(/\.app \.sidebar #navigation \.nav\s*\{[^}]*padding:\s*12px 10px/);
+    expect(css).toMatch(/\.app \.sidebar \.history \.history-item\s*\{[^}]*padding:\s*12px 10px/);
+    expect(css).toMatch(/\.app \.sidebar \.label\s*\{[^}]*letter-spacing:\s*1\.3px !important/);
     expect(css).toMatch(/\.app\.collapsed \.main \.topbar \.mobile-menu\s*\{[^}]*visibility:\s*visible/);
     expect(css).toMatch(/\.app \.sidebar \.brandrow\s*\{[^}]*margin:\s*0 0 36px/);
   });
