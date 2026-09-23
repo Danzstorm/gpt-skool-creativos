@@ -5,6 +5,8 @@ import TextSizeBoot from "@/components/TextSizeBoot";
 import "./globals.css";
 import "./prototype.css";
 import "./prototype-compat.css";
+/* Sidebar: fuente de verdad visual DESPUÉS del dump + compat. */
+import "../components/chat/sidebar.css";
 
 const inter = Inter({
   variable: "--font-inter",

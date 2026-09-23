@@ -6,6 +6,10 @@ import { describe, expect, it } from "vitest";
 const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "prototype-compat.css"), "utf8");
 const proto = readFileSync(join(here, "prototype.css"), "utf8");
+const sidebarCss = readFileSync(
+  join(here, "..", "components", "chat", "sidebar.css"),
+  "utf8"
+);
 const catalog = readFileSync(
   join(here, "..", "components", "GptCatalog.tsx"),
   "utf8"
@@ -184,7 +188,7 @@ describe("prototype-compat: chat y chrome", () => {
   });
 
   it("fija el tamaño de la foto de Google en .avatar img", () => {
-    expect(css).toMatch(/\.profile \.avatar img\s*\{[^}]*width:\s*30px/);
+    expect(sidebarCss).toMatch(/\.profile \.avatar img\s*\{[^}]*width:\s*30px/);
   });
 
   it("el wordmark del sidebar es 94×25 con contraste, no 128", () => {
@@ -197,10 +201,10 @@ describe("prototype-compat: chat y chrome", () => {
     expect(sidebar).toMatch(/w-\[94px\]/);
     expect(sidebar).toMatch(/h-\[25px\]/);
     expect(sidebar).not.toMatch(/width=\{128\}/);
-    expect(css).toMatch(/\.app \.sidebar \.brand img\s*\{[^}]*width:\s*94px/);
-    expect(css).toMatch(/\.app \.sidebar \.brand img\s*\{[^}]*top:\s*10px/);
-    expect(css).toMatch(/\.app \.sidebar \.brand img\s*\{[^}]*left:\s*8px/);
-    expect(css).toMatch(/\.app \.sidebar \.brand img\s*\{[^}]*filter:\s*none/);
+    expect(sidebarCss).toMatch(/\.app \.sidebar \.brand img\s*\{[^}]*width:\s*94px/);
+    expect(sidebarCss).toMatch(/\.app \.sidebar \.brand img\s*\{[^}]*top:\s*10px/);
+    expect(sidebarCss).toMatch(/\.app \.sidebar \.brand img\s*\{[^}]*left:\s*8px/);
+    expect(sidebarCss).toMatch(/\.app \.sidebar \.brand img\s*\{[^}]*filter:\s*none/);
   });
 
   it("el footer usa foto 30px si hay avatar; si no, iniciales", () => {
@@ -217,14 +221,14 @@ describe("prototype-compat: chat y chrome", () => {
   });
 
   it("Nuevo chat recupera borde visible pese al reset de button", () => {
-    expect(css).toMatch(/\.app \.sidebar button\.new/);
-    expect(css).toMatch(/border:\s*1px solid #ffffff17/);
+    expect(sidebarCss).toMatch(/\.app \.sidebar button\.new/);
+    expect(sidebarCss).toMatch(/border:\s*1px solid #ffffff17/);
   });
 
   it("CHATS usa line-clamp-2, no nowrap agresivo", () => {
-    expect(css).toMatch(/\.history-item \.chat-name\s*\{[^}]*-webkit-line-clamp:\s*2/);
-    expect(css).toMatch(/\.history-item \.chat-name\s*\{[^}]*white-space:\s*normal/);
-    expect(css).not.toMatch(
+    expect(sidebarCss).toMatch(/\.history-item \.chat-name\s*\{[^}]*-webkit-line-clamp:\s*2/);
+    expect(sidebarCss).toMatch(/\.history-item \.chat-name\s*\{[^}]*white-space:\s*normal/);
+    expect(sidebarCss).not.toMatch(
       /\.history-item \.chat-name\s*\{[^}]*white-space:\s*nowrap/
     );
   });
@@ -235,15 +239,15 @@ describe("prototype-compat: chat y chrome", () => {
       "utf8"
     );
     expect(sidebar).toMatch(/‹/);
-    expect(css).toMatch(/\.app \.sidebar \.brandrow \.collapse\s*\{[^}]*position:\s*relative/);
-    expect(css).toMatch(/\.app \.sidebar \.brandrow \.collapse\s*\{[^}]*top:\s*10px/);
-    expect(css).toMatch(/\.app \.sidebar \.brandrow \.collapse\s*\{[^}]*color:\s*#666978/);
-    expect(css).not.toMatch(/\.app \.sidebar \.brand\s*\{[^}]*overflow:\s*hidden/);
-    expect(css).toMatch(/\.app \.sidebar #navigation \.nav\s*\{[^}]*padding:\s*12px 10px/);
-    expect(css).toMatch(/\.app \.sidebar \.history \.history-item\s*\{[^}]*padding:\s*12px 10px/);
-    expect(css).toMatch(/\.app \.sidebar \.label\s*\{[^}]*letter-spacing:\s*1\.3px !important/);
-    expect(css).toMatch(/\.app\.collapsed \.main \.topbar \.mobile-menu\s*\{[^}]*visibility:\s*visible/);
-    expect(css).toMatch(/\.app \.sidebar \.brandrow\s*\{[^}]*margin:\s*0 0 36px/);
+    expect(sidebarCss).toMatch(/\.app \.sidebar \.brandrow \.collapse\s*\{[^}]*position:\s*relative/);
+    expect(sidebarCss).toMatch(/\.app \.sidebar \.brandrow \.collapse\s*\{[^}]*top:\s*10px/);
+    expect(sidebarCss).toMatch(/\.app \.sidebar \.brandrow \.collapse\s*\{[^}]*color:\s*#666978/);
+    expect(sidebarCss).not.toMatch(/\.app \.sidebar \.brand\s*\{[^}]*overflow:\s*hidden/);
+    expect(sidebarCss).toMatch(/\.app \.sidebar #navigation \.nav\s*\{[^}]*padding:\s*12px 10px/);
+    expect(sidebarCss).toMatch(/\.app \.sidebar \.history \.history-item\s*\{[^}]*padding:\s*12px 10px/);
+    expect(sidebarCss).toMatch(/\.app \.sidebar \.label\s*\{[^}]*letter-spacing:\s*1\.3px !important/);
+    expect(sidebarCss).toMatch(/\.app\.collapsed \.main \.topbar \.mobile-menu\s*\{[^}]*visibility:\s*visible/);
+    expect(sidebarCss).toMatch(/\.app \.sidebar \.brandrow\s*\{[^}]*margin:\s*0 0 36px/);
   });
 
   it("el menú de cuenta se porta a body como Martin; la música es el segundo panel", () => {

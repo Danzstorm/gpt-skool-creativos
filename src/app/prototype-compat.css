@@ -1,7 +1,8 @@
 /* Puente: el prototipo es REFERENCIA visual. Next estila con Tailwind.
-   prototype.css sigue pintando el chrome que ya montamos (.sidebar .nav
-   .prompt-card). Los resets globales de button/svg se acotaron al chrome
-   para que las utilities de admin, dialogs y CTAs vuelvan a ganar. */
+   prototype.css sigue pintando chrome compartido (composer, home, acceso).
+   El look del sidebar vive en components/chat/sidebar.css. Los resets
+   globales de button/svg se acotaron al chrome para que las utilities de
+   admin, dialogs y CTAs vuelvan a ganar. */
 
 :root {
   --font-sans: var(--font-inter), Inter, Arial, Helvetica, sans-serif;
@@ -520,18 +521,8 @@ body {
   font-size: 15px;
 }
 
-.app .sidebar {
-  position: relative;
-  height: 100%;
-  box-sizing: border-box;
-  padding: 25px 20px 25px;
-}
-
-/* Scrollbar oculto, desplazamiento vivo (CHECKLIST). */
-.app .sidebar::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-}
+/* Sidebar chrome (padding, brand, nav, history, footer, resizer) vive en
+   src/components/chat/sidebar.css — no re-parchear aquí. */
 
 /* Fallback del canvas de energía. El prototipo ya pone 200% / -50% en
    cada slot; el inline de pixeles lo pisaba y el orbe tapaba títulos. */
@@ -755,33 +746,6 @@ a.ax-primary:hover {
   object-fit: cover;
 }
 
-/* Overlay de rename: el ghost conserva el alto; el input no empuja la fila. */
-.folder-title,
-.chat-name {
-  position: relative;
-}
-/* Martin: .sidebar .history-item { white-space:normal }. Una línea si
-   cabe; si no, hasta 2 (line-clamp) — no ellipsis a media palabra. */
-.history-item .chat-name {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  line-height: 1.35;
-}
-.folder-title > .folder-rename,
-.chat-name > .folder-rename {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 20px;
-}
-
 .audio-preview audio {
   position: absolute;
   width: 0;
@@ -790,14 +754,6 @@ a.ax-primary:hover {
   pointer-events: none;
 }
 .audio-preview.is-playing {
-  color: #eeeef2;
-}
-
-.history-item.selected,
-.nav.history-item.active {
-  background: #222225;
-  border-color: transparent;
-  box-shadow: none;
   color: #eeeef2;
 }
 
@@ -865,88 +821,6 @@ a.ax-primary:hover {
 .ax-sync-stale {
   border-color: #af7a4033;
 }
-.sidebar-resizer {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 6px;
-  height: 100%;
-  cursor: col-resize;
-  z-index: 4;
-}
-
-/* Foto de Google: el prototipo nunca estiló `img` dentro de `.avatar`, y
-   `svg{width:19px}` / tiles de 64px no deben aplastarla. Footer = avatar +
-   nombre + «Espacio creativo» (sin email), con el padding/gap del cliente. */
-.profile {
-  width: 100%;
-  min-width: 0;
-  margin-top: auto;
-  padding-top: 22px;
-  border: 0;
-  border-top: 1px solid #ffffff0a;
-  background: none;
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  text-align: left;
-}
-.profile > div {
-  min-width: 0;
-  flex: 1;
-  display: grid;
-  gap: 2px;
-}
-.profile strong {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 12px;
-  font-weight: 400;
-  margin-bottom: 4px;
-  color: #eeeef2;
-}
-.profile span:last-child {
-  color: #8e909c;
-  font-size: 11px;
-}
-.profile .avatar {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  min-width: 30px;
-  min-height: 30px;
-  overflow: hidden;
-  border-radius: 50%;
-  flex-shrink: 0;
-  font-size: 11px;
-  line-height: 1;
-  color: #eeeef2;
-  background: linear-gradient(140deg, #563743, #28233f);
-  border: 1px solid #b892ff30;
-}
-.profile .avatar > * {
-  grid-area: 1 / 1;
-}
-.profile .avatar-fallback {
-  display: grid;
-  place-items: center;
-  width: 100%;
-  height: 100%;
-  z-index: 0;
-}
-.profile .avatar img {
-  position: relative;
-  z-index: 1;
-  display: block;
-  width: 30px;
-  height: 30px;
-  max-width: none;
-  object-fit: cover;
-  border-radius: 50%;
-}
 
 /* Tailwind v4 pone margin:0 a todo, incluido `dialog`. Sin `margin: auto`
    el modal de Configuración queda pegado arriba a la izquierda. */
@@ -960,140 +834,6 @@ a.ax-primary:hover {
 }
 .settings-dialog::backdrop {
   background: #0008;
-}
-
-/* Wordmark: 94×25, bajado 10px y corrido 8px como Martin.
-   El SVG ya trae su filtro a blanco; un brightness extra lo adelgaza. */
-.app .sidebar .brandrow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  margin: 0 0 36px;
-  overflow: visible;
-}
-.app .sidebar .brand {
-  display: block;
-  flex: 0 0 94px;
-  width: 94px;
-  min-width: 0;
-  overflow: visible;
-  line-height: 0;
-}
-.app .sidebar .brand img {
-  position: relative;
-  display: block;
-  width: 94px;
-  height: 25px;
-  top: 10px;
-  left: 8px;
-  opacity: 1;
-  filter: none;
-  object-fit: fill;
-}
-
-/* El reset `.app .sidebar button { border:0 }` gana a `.new` (especificidad).
-   Martin restaura borde visible (#ffffff17) — hay que empatarlo acá.
-   `#new` también limpia el min-height de `.tool` (comparten class). */
-.app .sidebar button.new,
-.app .sidebar #new {
-  border: 1px solid #ffffff17;
-  background: linear-gradient(120deg, #ffffff06, transparent);
-  box-shadow: inset 0 1px 0 #ffffff06;
-  border-radius: 12px;
-  min-height: 0;
-  margin-bottom: 15px;
-  gap: 13px;
-  padding: 13px 14px;
-}
-.app .sidebar .side-search {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  box-sizing: border-box;
-  padding: 10px;
-  border-radius: 7px;
-}
-.app .sidebar button.new:hover,
-.app .sidebar #new:hover {
-  background: #ffffff09;
-  border-color: #ffffff28;
-  box-shadow: 0 0 18px #f04e7110;
-}
-
-/* El ‹ de Martin vive en la fila, al lado del logo. Ancho fijo del
-   wordmark para que overflow:hidden del sidebar no se coma el botón. */
-.app .sidebar .brandrow .collapse {
-  position: relative;
-  top: 10px;
-  flex: 0 0 30px;
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  margin: 0 0 0 auto;
-  padding: 5px;
-  color: #666978;
-  -webkit-text-fill-color: #666978;
-  background: none;
-  font-size: inherit;
-  line-height: 1;
-}
-.app .sidebar .brandrow .collapse:hover {
-  color: #c8c8d0;
-  -webkit-text-fill-color: #c8c8d0;
-}
-.app .sidebar .collapse-chevron {
-  display: block;
-  line-height: 1;
-}
-/* Al contraer, el mismo control reaparece en el borde para expandir.
-   En home el topbar mide 0; fixed evita que ese alto lo recorte. */
-.app.collapsed .main .topbar .mobile-menu {
-  display: grid;
-  place-items: center;
-  visibility: visible;
-  position: fixed;
-  top: var(--panel-toggle-top, 32px);
-  left: 20px;
-  z-index: 40;
-  width: 30px;
-  height: 30px;
-  padding: 4px;
-  color: #9a9aa4;
-  -webkit-text-fill-color: #9a9aa4;
-  background: transparent;
-}
-
-/* GPTS / CHATS: el reset de letter-spacing 0 aplasta el tracking de Martin. */
-.app .sidebar .label {
-  letter-spacing: 1.3px !important;
-  word-spacing: normal !important;
-  margin: 31px 10px 12px;
-}
-.app .sidebar .history {
-  margin-top: 25px;
-}
-
-/* Filas GPT: trazo fino, gap y muted del prototipo. */
-.app .sidebar #navigation .nav {
-  gap: 12px;
-  color: #ababab;
-  padding: 12px 10px;
-}
-.app .sidebar #navigation .nav svg {
-  width: 18px;
-  height: 18px;
-  stroke-width: 1.4;
-}
-.app .sidebar #navigation .nav.active {
-  color: #fff;
-}
-
-/* Chats: mismo alto que .nav de Martin (12×10), no 9px. */
-.app .sidebar .history .history-item {
-  gap: 12px;
-  padding: 12px 10px;
 }
 
 /* Orbe de energía: el slot recorta el canvas al doble. overflow visible
@@ -1115,9 +855,6 @@ a.ax-primary:hover {
   height: 58px;
   margin: 0 0 0 -8px;
   flex-shrink: 0;
-}
-#navigation .nav {
-  isolation: isolate;
 }
 
 /* Martin cuelga .account-menu en body (fixed). El segundo panel
