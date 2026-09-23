@@ -12,11 +12,30 @@
   padding: 25px 20px 25px;
   background: #111113;
   border-right: 1px solid #ffffff08;
+  /* Martin: el panel scrollea sin barra visible. En Next el overflow real
+     vive en .side-scroll (hijo); igual ocultamos en el aside por si acaso. */
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
 
 .app .sidebar::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* El scroller de CHATS/Proyectos: Tailwind overflow-y-auto pinta la barra
+   nativa; el aside no scrollea, así que hay que ocultarla aquí. */
+.app .sidebar .side-scroll {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.app .sidebar .side-scroll::-webkit-scrollbar {
   display: none;
   width: 0;
   height: 0;
@@ -35,11 +54,17 @@
 /* ── Brand / wordmark / collapse ───────────────────────────────────── */
 
 .app .sidebar .brandrow {
+  position: relative;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   width: 100%;
   margin: 0 0 36px;
+  flex-shrink: 0;
+  /* visible: .sidebar{overflow:hidden} del dump no debe comerse el ‹
+     cuando top:10px lo desplaza; la fila se queda dentro del padding. */
   overflow: visible;
 }
 
@@ -47,6 +72,7 @@
   display: block;
   flex: 0 0 94px;
   width: 94px;
+  max-width: 94px;
   min-width: 0;
   overflow: visible;
   line-height: 0;
@@ -68,23 +94,36 @@
   object-fit: fill;
 }
 
-/* El ‹ vive en la fila, al lado del logo. */
+/* El ‹ vive en la fila, al lado del logo (texto, no SVG absoluto).
+   Causa previa de invisibilidad: font-size:inherit + sin ink explícito
+   dejaba el glifo ‹ casi imperceptible; además overflow:hidden del
+   aside podía recortar si el control se salía del box. */
 .app .sidebar .brandrow .collapse {
   position: relative;
   top: 10px;
+  z-index: 5;
   flex: 0 0 30px;
+  flex-shrink: 0;
   display: grid;
   place-items: center;
+  box-sizing: border-box;
   width: 30px;
+  min-width: 30px;
+  max-width: 30px;
   height: 30px;
-  margin: 0 0 0 auto;
-  padding: 5px;
+  margin: 0;
+  padding: 0;
   color: #666978;
   -webkit-text-fill-color: #666978;
-  background: none;
+  opacity: 1;
+  visibility: visible;
+  background: transparent;
   border: 0;
-  font-size: inherit;
+  font-size: 22px;
+  font-weight: 400;
   line-height: 1;
+  overflow: visible;
+  cursor: pointer;
 }
 
 .app .sidebar .brandrow .collapse:hover {
@@ -94,7 +133,12 @@
 
 .app .sidebar .collapse-chevron {
   display: block;
+  font-size: 22px;
   line-height: 1;
+  color: inherit;
+  -webkit-text-fill-color: inherit;
+  opacity: 1;
+  transform: none;
 }
 
 /* Al contraer, el mismo control reaparece en el borde para expandir.

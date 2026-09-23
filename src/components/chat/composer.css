@@ -1,0 +1,351 @@
+/* Composer chrome — fuente de verdad visual (Martin plain send + pill en
+   .composer-row). Se carga DESPUÉS de prototype.css + prototype-compat.css.
+   No toca lava del título GPT ni el layout de #chatIntro (compartido). */
+
+/* Form: sin placa; el dock ancla abajo. */
+#composer.composer,
+.app #composer.composer {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+/* Shell transparente: la pill vive en .composer-row (markup + Tailwind). */
+#composer .composer-shell {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  border-radius: 0;
+  overflow: visible;
+}
+
+#composer .composer-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid #ffffff16;
+  border-radius: 22px;
+  background: #111113;
+  box-shadow: 0 8px 30px #0004;
+  transition: border-color 0.2s;
+}
+
+#composer .composer-row:focus-within {
+  border-color: #ffffff2a;
+}
+
+#composer textarea,
+#composer .mention-field,
+.composer-row textarea {
+  font-family: var(--font-sans, Inter, Arial, Helvetica, sans-serif);
+  font-size: 14px;
+  line-height: 1.57;
+  letter-spacing: 0;
+  word-spacing: normal;
+  min-height: 36px;
+  height: 36px;
+  max-height: 160px;
+  resize: none;
+  padding: 7px 0;
+  margin: 0;
+  flex: 1;
+  border: 0;
+  background: none;
+  color: var(--text, #eeeef2);
+  outline: none;
+}
+
+#composer textarea::placeholder,
+#composer .mention-field:empty:before {
+  color: #777780;
+}
+
+/* Controles 36×36; send plain (SEND_LOOK=plain), no gradient fill. */
+#composer .attach-button,
+#composer .mic-button,
+#composer .send {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  align-self: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  line-height: 1;
+  transition: background 0.2s, color 0.2s, transform 0.2s;
+}
+
+#composer .attach-button {
+  font-size: 25px;
+  font-weight: 300;
+  background: transparent;
+  color: #dedee3;
+}
+
+#composer .attach-button:hover {
+  background: #ffffff09;
+}
+
+#composer .attach-button svg {
+  width: 22px;
+  height: 22px;
+  stroke-width: 1.6;
+}
+
+#composer .mic-button {
+  margin-right: 0;
+  color: #a0a0a9;
+  background: transparent;
+}
+
+#composer .mic-button:hover {
+  color: #eee;
+  background: #ffffff08;
+}
+
+#composer .mic-button:active {
+  transform: scale(0.92);
+}
+
+#composer .mic-button[aria-pressed="true"] {
+  color: #eeeef2;
+  background: #ffffff0b;
+}
+
+#composer .mic-button svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 1.6;
+}
+
+/* Plain look (Martin): círculo claro. Gradient queda en dump por si
+   SEND_LOOK vuelve a "gradient"; esta hoja gana en cascada. */
+#composer .send {
+  position: relative;
+  isolation: isolate;
+  background: #dedee3;
+  color: #19191d;
+  box-shadow: none;
+  border: 0;
+}
+
+#composer .send:disabled,
+#composer .send:disabled:hover {
+  background: #242428;
+  color: #66666f;
+  box-shadow: none;
+  cursor: default;
+  transform: none;
+}
+
+#composer .send:not(:disabled):hover {
+  background: #f0f0f3;
+  box-shadow: none;
+  transform: none;
+}
+
+#composer .send:not(:disabled):active {
+  transform: scale(0.88);
+  transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#composer .send svg {
+  position: relative;
+  z-index: 1;
+  width: 20px;
+  height: 20px;
+  stroke-width: 1.6;
+}
+
+/* Halo de envío (just-sent): se conserva del dump. */
+#composer .send:before {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, #ffbd16, #ff165e 46%, #ee0de4 73%, #7753ff);
+  filter: blur(8px);
+  opacity: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+#composer .send:after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, #ffbd16, #ff165e 46%, #ee0de4 73%, #7753ff);
+  filter: blur(5px);
+  opacity: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+#composer .send.just-sent {
+  animation: send-release 0.5s ease-in-out;
+}
+
+#composer .send.just-sent:before {
+  inset: 0;
+  filter: none;
+  z-index: 0;
+  animation: send-reflection 0.6s ease-out;
+}
+
+#composer .send.just-sent:after {
+  animation: send-soft-halo 0.6s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #composer .send.just-sent,
+  #composer .send.just-sent:before,
+  #composer .send.just-sent:after {
+    animation: none;
+  }
+}
+
+/* Adjuntos dentro del shell. */
+#composer .attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 14px 14px 2px 24px;
+  margin: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+
+#composer .attachments[hidden] {
+  display: none;
+}
+
+#composer .composer-shell:has(.attachments:not([hidden])) .composer-row {
+  padding-left: 24px;
+}
+
+#composer .composer-shell:has(.attachments:not([hidden])) .attach-button {
+  display: none;
+}
+
+#composer .attachment,
+#composer .attachment-add {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  border-radius: 12px;
+}
+
+#composer .attachment img,
+#composer .attachment video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+#composer .attachment-add {
+  display: grid;
+  place-items: center;
+  background: #ffffff07;
+  border: 1px solid #ffffff0c;
+  color: #aaaab3;
+  transition: background 0.2s, color 0.2s;
+}
+
+#composer .attachment-add:hover {
+  background: #ffffff0d;
+  color: #eee;
+}
+
+#composer .attachment-add svg {
+  width: 23px;
+  height: 23px;
+  stroke-width: 1.5;
+}
+
+#composer .attachment > button:not(.audio-preview) {
+  position: absolute;
+  right: -5px;
+  top: -5px;
+  width: 21px;
+  height: 21px;
+  padding: 0;
+  border-radius: 50%;
+  background: #29292d;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+}
+
+#composer .attachment:hover > button:not(.audio-preview),
+#composer .attachment:focus-within > button:not(.audio-preview) {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (hover: none) {
+  #composer .attachment > button:not(.audio-preview) {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+#composer .attachment .audio-preview,
+#composer .audio-preview {
+  position: relative;
+  inset: auto;
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  background: #202024;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: #b6b6bd;
+}
+
+#composer .voice-live {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+}
+
+#composer .voice-live[hidden],
+#composer .voice-preview[hidden] {
+  display: none;
+}
+
+#composer .voice-live canvas {
+  height: 36px;
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+}
+
+@media (max-width: 650px) {
+  #composer .composer-row {
+    gap: 7px;
+    padding: 10px;
+  }
+
+  #composer .composer-shell:has(.attachments:not([hidden])) .composer-row {
+    padding-left: 18px;
+  }
+
+  #composer .attachments {
+    padding-left: 18px;
+  }
+}

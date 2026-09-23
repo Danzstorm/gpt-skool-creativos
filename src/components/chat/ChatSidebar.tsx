@@ -458,7 +458,7 @@ function ChatSidebar({
               </button>
           </nav>
 
-          <div className="flex-1 overflow-y-auto">
+          <div className="side-scroll">
             {groups.length > 0 && (
               <>
                 <div className="label">Proyectos</div>

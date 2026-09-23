@@ -1,0 +1,181 @@
+/* Mensajes / burbujas — user bubble + prompt card.
+   Streaming, thinking y sent-images se conservan del dump; esta hoja fija
+   el look de producto que antes vivía en parches de compat. */
+
+.chat .messages {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  gap: 26px;
+  padding-top: 28px;
+  padding-bottom: 16px;
+}
+
+.chat .messages > .message,
+.chat .messages > .prompt-wait {
+  flex-shrink: 0;
+}
+
+#chatView.chat-has-messages .messages > :first-child {
+  margin-top: auto;
+}
+
+.chat .message.user {
+  padding: 13px 18px;
+  border: 1px solid #ffffff0e;
+  background: #131315;
+  border-radius: 16px 16px 5px 16px;
+  color: #e7e7e9;
+  font-size: 14px;
+  line-height: 1.65;
+  width: fit-content;
+  margin-left: auto;
+}
+
+.chat .prompt-card {
+  padding: 0;
+  overflow: hidden;
+  white-space: normal;
+  border: 1px solid #ffffff13;
+  border-radius: 16px;
+  background: #101012;
+  box-shadow: 0 10px 35px #0002;
+}
+
+#chatView .prompt-card {
+  animation: none;
+}
+
+.prompt-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-bottom: 1px solid #ffffff0b;
+  background: linear-gradient(110deg, #ffffff03, transparent);
+}
+
+.prompt-body {
+  padding: 22px 24px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: var(--font-prompt, Inconsolata, ui-monospace, monospace);
+  font-size: 13px;
+  line-height: 1.6;
+  color: #d3d3d8;
+  -webkit-text-fill-color: currentColor;
+  font-weight: 400;
+  height: auto;
+  max-height: none;
+  overflow: visible;
+}
+
+.prompt-body pre,
+.prompt-body .prompt-source {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.prompt-body h1,
+.prompt-body h2,
+.prompt-body h3,
+.prompt-body h4 {
+  background: none;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  -webkit-text-fill-color: currentColor;
+  color: inherit;
+  letter-spacing: 0;
+  font-weight: 600;
+}
+
+.prompt-body h1 {
+  font-size: 18px;
+}
+
+.prompt-body h2 {
+  font-size: 16px;
+}
+
+.prompt-body h3,
+.prompt-body h4 {
+  font-size: 15px;
+}
+
+.prompt-body p {
+  margin: 0 0 12px;
+  white-space: pre-wrap;
+}
+
+.prompt-body p:last-child {
+  margin-bottom: 0;
+}
+
+.message.user .sent-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin: 0 0 10px;
+}
+
+.message.user .sent-images img,
+.message.user .sent-images video {
+  display: block;
+  width: 64px;
+  height: 64px;
+  min-width: 64px;
+  max-width: 64px;
+  max-height: 64px;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+.prompt-copy {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  margin: -4px -8px -4px 0;
+  border-radius: 7px;
+  color: #aaaab1;
+  font-size: 12px;
+  transition: background 0.2s, color 0.2s, transform 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.prompt-copy svg {
+  width: 15px;
+  height: 15px;
+}
+
+.prompt-copy:not(:disabled):hover {
+  background: #ffffff0c;
+  color: #eeeef2;
+}
+
+.prompt-copy:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+@media (max-width: 650px) {
+  .prompt-body {
+    padding: 18px;
+    font-size: 14px;
+  }
+
+  .prompt-header {
+    padding: 12px 18px;
+  }
+}

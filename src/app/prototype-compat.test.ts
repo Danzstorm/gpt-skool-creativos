@@ -10,6 +10,23 @@ const sidebarCss = readFileSync(
   join(here, "..", "components", "chat", "sidebar.css"),
   "utf8"
 );
+const composerCss = readFileSync(
+  join(here, "..", "components", "chat", "composer.css"),
+  "utf8"
+);
+const homeCss = readFileSync(
+  join(here, "..", "components", "chat", "home.css"),
+  "utf8"
+);
+const gptIntroCss = readFileSync(
+  join(here, "..", "components", "chat", "gpt-intro.css"),
+  "utf8"
+);
+const messagesCss = readFileSync(
+  join(here, "..", "components", "chat", "messages.css"),
+  "utf8"
+);
+const layout = readFileSync(join(here, "layout.tsx"), "utf8");
 const catalog = readFileSync(
   join(here, "..", "components", "GptCatalog.tsx"),
   "utf8"
@@ -33,12 +50,17 @@ const chrome = readFileSync(
 const adminPage = readFileSync(join(here, "admin", "page.tsx"), "utf8");
 
 describe("prototype-compat: chat y chrome", () => {
+  it("las hojas propias cargan después del dump", () => {
+    expect(layout).toMatch(/prototype-compat\.css[\s\S]*sidebar\.css[\s\S]*composer\.css[\s\S]*home\.css[\s\S]*gpt-intro\.css[\s\S]*messages\.css/);
+    expect(composerCss).toMatch(/#composer \.send\s*\{[^}]*background:\s*#dedee3/);
+  });
+
   it("no deja que flex recorte las tarjetas", () => {
-    expect(css).toMatch(/\.chat \.messages\s*>\s*\.message[\s\S]{0,80}flex-shrink:\s*0/);
+    expect(messagesCss).toMatch(/\.chat \.messages\s*>\s*\.message[\s\S]{0,80}flex-shrink:\s*0/);
   });
 
   it("empuja el hilo hacia el composer con margin-top:auto en el primer hijo", () => {
-    expect(css).toMatch(/#chatView\.chat-has-messages \.messages\s*>\s*:first-child[\s\S]{0,40}margin-top:\s*auto/);
+    expect(messagesCss).toMatch(/#chatView\.chat-has-messages \.messages\s*>\s*:first-child[\s\S]{0,40}margin-top:\s*auto/);
   });
 
   it("centra #chatIntro como hermano del composer; el scroller no monta vacío", () => {
@@ -47,10 +69,10 @@ describe("prototype-compat: chat y chrome", () => {
     expect(chat).toMatch(/showGptIntro && "justify-center"/);
     expect(chat).not.toMatch(/hidden=\{showGptIntro\}/);
     expect(chat).toMatch(/hasChatMessages && "chat-has-messages"/);
-    expect(css).toMatch(
+    expect(gptIntroCss).toMatch(
       /#chatIntro \.gpt-title-row\s*\{[^}]*flex-direction:\s*row/
     );
-    expect(css).toMatch(/#chatIntro \.gpt-title-row \.brand-energy\s*\{[^}]*margin:\s*0/);
+    expect(gptIntroCss).toMatch(/#chatIntro \.gpt-title-row \.brand-energy\s*\{[^}]*margin:\s*0/);
   });
 
   it("el hilo no pinta skeletons pulse; el primer mensaje se acerca al composer", () => {
@@ -67,11 +89,11 @@ describe("prototype-compat: chat y chrome", () => {
   });
 
   it("restaura espacios en copy del intro y chrome (sin zoom)", () => {
-    expect(css).toMatch(/#chatIntro \.gpt-title-row h1\s*\{[^}]*letter-spacing:\s*-0\.5px/);
-    expect(css).toMatch(/#chatIntro \.gpt-intro-copy[\s\S]{0,240}word-spacing:\s*normal/);
-    expect(css).toMatch(/#chatIntro \.gpt-title-row h1:after\s*\{[^}]*letter-spacing:\s*-0\.5px/);
-    expect(css).toMatch(/#chatIntro \.gpt-title-row h1:after\s*\{[^}]*word-spacing:\s*normal/);
-    expect(css).toMatch(/#chatIntro \.gpt-title-row\s*\{[^}]*translateX\(-8px\)/);
+    expect(gptIntroCss).toMatch(/#chatIntro \.gpt-title-row h1\s*\{[^}]*letter-spacing:\s*-0\.5px/);
+    expect(gptIntroCss).toMatch(/#chatIntro \.gpt-intro-copy[\s\S]{0,240}word-spacing:\s*normal/);
+    expect(gptIntroCss).toMatch(/#chatIntro \.gpt-title-row h1:after\s*\{[^}]*letter-spacing:\s*-0\.5px/);
+    expect(gptIntroCss).toMatch(/#chatIntro \.gpt-title-row h1:after\s*\{[^}]*word-spacing:\s*normal/);
+    expect(gptIntroCss).toMatch(/#chatIntro \.gpt-title-row\s*\{[^}]*translateX\(-8px\)/);
     expect(css).not.toMatch(/zoom\s*:/);
     expect(proto).not.toMatch(/zoom\s*:/);
   });
@@ -239,9 +261,14 @@ describe("prototype-compat: chat y chrome", () => {
       "utf8"
     );
     expect(sidebar).toMatch(/‹/);
+    expect(sidebar).toMatch(/className="side-scroll"/);
     expect(sidebarCss).toMatch(/\.app \.sidebar \.brandrow \.collapse\s*\{[^}]*position:\s*relative/);
     expect(sidebarCss).toMatch(/\.app \.sidebar \.brandrow \.collapse\s*\{[^}]*top:\s*10px/);
     expect(sidebarCss).toMatch(/\.app \.sidebar \.brandrow \.collapse\s*\{[^}]*color:\s*#666978/);
+    expect(sidebarCss).toMatch(/\.app \.sidebar \.brandrow \.collapse\s*\{[^}]*font-size:\s*22px/);
+    expect(sidebarCss).toMatch(/\.app \.sidebar \.brandrow \.collapse\s*\{[^}]*-webkit-text-fill-color:\s*#666978/);
+    expect(sidebarCss).toMatch(/\.app \.sidebar \.brandrow \.collapse\s*\{[^}]*opacity:\s*1/);
+    expect(sidebarCss).toMatch(/\.app \.sidebar \.side-scroll\s*\{[^}]*scrollbar-width:\s*none/);
     expect(sidebarCss).not.toMatch(/\.app \.sidebar \.brand\s*\{[^}]*overflow:\s*hidden/);
     expect(sidebarCss).toMatch(/\.app \.sidebar #navigation \.nav\s*\{[^}]*padding:\s*12px 10px/);
     expect(sidebarCss).toMatch(/\.app \.sidebar \.history \.history-item\s*\{[^}]*padding:\s*12px 10px/);
@@ -283,32 +310,32 @@ describe("prototype-compat: catálogo de home scrollea", () => {
 
   it("home scrollea en .main; #homeView crece sin overflow anidado", () => {
     expect(css).toMatch(/\.app\s*\{[^}]*overflow:\s*hidden/);
-    expect(css).toMatch(/\.main:has\(#homeView\)\s*\{[^}]*overflow-y:\s*auto/);
-    expect(css).toMatch(/#homeView\.workspace\s*\{[^}]*overflow:\s*visible/);
-    expect(css).toMatch(/#homeView\.workspace\s*\{[^}]*height:\s*auto/);
+    expect(homeCss).toMatch(/\.main:has\(#homeView\)\s*\{[^}]*overflow-y:\s*auto/);
+    expect(homeCss).toMatch(/#homeView\.workspace\s*\{[^}]*overflow:\s*visible/);
+    expect(homeCss).toMatch(/#homeView\.workspace\s*\{[^}]*height:\s*auto/);
   });
 
   it("no re-rompe el scroll del chat ni el composer", () => {
     expect(css).toMatch(/\.main:has\(#chatView\)\s*\{[^}]*overflow:\s*hidden/);
     expect(css).toMatch(/#chatView\.chat[\s\S]{0,80}overflow:\s*hidden/);
-    expect(css).toMatch(/\.chat \.messages\s*\{[^}]*overflow-y:\s*auto/);
+    expect(messagesCss).toMatch(/\.chat \.messages\s*\{[^}]*overflow-y:\s*auto/);
   });
 
   it("la grilla no queda clavada a 3 filas (9, 12 y 20 GPTs caben)", () => {
-    expect(css).toMatch(/\.workspace \.grid\s*\{[^}]*grid-template-rows:\s*none/);
-    expect(css).toMatch(/\.workspace \.grid\s*\{[^}]*grid-auto-rows:\s*minmax\(142px,\s*auto\)/);
+    expect(homeCss).toMatch(/\.workspace \.grid\s*\{[^}]*grid-template-rows:\s*none/);
+    expect(homeCss).toMatch(/\.workspace \.grid\s*\{[^}]*grid-auto-rows:\s*minmax\(142px,\s*auto\)/);
   });
 
   it("home copia gaps/padding de Martin: filtros, search discreto, tool 21×20", () => {
-    expect(css).toMatch(/\.app #homeView \.filters\s*\{[^}]*gap:\s*7px/);
-    expect(css).toMatch(
+    expect(homeCss).toMatch(/\.app #homeView \.filters\s*\{[^}]*gap:\s*7px/);
+    expect(homeCss).toMatch(
       /\.app #homeView \.filters button\.filter\[aria-pressed=["']true["']\]\s*\{[^}]*border-color:\s*#ed4f7025/
     );
-    expect(css).toMatch(/\.app #homeView \.search\s*\{[^}]*width:\s*205px/);
-    expect(css).toMatch(/\.app #homeView \.search\s*\{[^}]*background:\s*#ffffff02/);
-    expect(css).toMatch(/#homeView \.tool\s*\{[^}]*padding:\s*21px 20px/);
-    expect(css).toMatch(/#homeView \.tool \.edge-wrap\s*\{[^}]*opacity:\s*0/);
-    expect(css).toMatch(/#homeView \.tool p\s*\{[^}]*-webkit-line-clamp:\s*2/);
+    expect(homeCss).toMatch(/\.app #homeView \.search\s*\{[^}]*width:\s*205px/);
+    expect(homeCss).toMatch(/\.app #homeView \.search\s*\{[^}]*background:\s*#ffffff02/);
+    expect(homeCss).toMatch(/#homeView \.tool\s*\{[^}]*padding:\s*21px 20px/);
+    expect(homeCss).toMatch(/#homeView \.tool \.edge-wrap\s*\{[^}]*opacity:\s*0/);
+    expect(homeCss).toMatch(/#homeView \.tool p\s*\{[^}]*-webkit-line-clamp:\s*2/);
   });
 
   it("GptCatalog pinta filtered.map, sin tope de 9, dentro de #homeView", () => {

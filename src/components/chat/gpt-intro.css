@@ -1,0 +1,101 @@
+/* GPT vacío (#chatIntro) — título lava, orbe, intro.
+   No tocar el lava ya alineado: h1 sólido + :after con el mismo tracking. */
+
+/* GPT vacío: #chatIntro hermano del composer; centra intro + dock. */
+#chatView:has(#chatIntro:not([hidden])) {
+  justify-content: center;
+}
+
+#chatView:has(#chatIntro:not([hidden])) #chatIntro {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0 0 30px;
+  transform: none;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+#chatView:has(#chatIntro:not([hidden])) .messages {
+  display: none;
+}
+
+#chatView:has(#chatIntro:not([hidden])) .chat-dock,
+#chatView:has(#chatIntro:not([hidden])) .composer {
+  position: relative;
+  bottom: auto;
+  margin: 0;
+  padding: 0 0 50px;
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+
+/* Fila orbe + título (Martin): corrida -8px. */
+#chatIntro .gpt-title-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+  transform: translateX(-8px);
+}
+
+#chatIntro .gpt-title-row .brand-energy {
+  position: relative;
+  overflow: visible;
+  width: 58px;
+  height: 58px;
+  margin: 0 0 0 -8px;
+  flex-shrink: 0;
+}
+
+#chatIntro .gpt-title-row svg {
+  margin-bottom: 0;
+}
+
+/* Copy del intro: fill sólido (Chromium + tracking no colapsan espacios). */
+#chatIntro p,
+#chatIntro > p,
+#chatIntro .gpt-intro-copy,
+.chat-intro p {
+  letter-spacing: 0 !important;
+  word-spacing: normal !important;
+  -webkit-text-fill-color: currentColor !important;
+  background: none !important;
+  background-clip: border-box !important;
+  -webkit-background-clip: border-box !important;
+  overflow-wrap: break-word;
+  color: #8e909c;
+  font-family: var(--font-display, "Plus Jakarta Sans", sans-serif);
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+/* Fill sólido del h1; el lava es el :after. */
+#chatIntro .gpt-title-row h1 {
+  position: relative;
+  color: #eeeef2;
+  -webkit-text-fill-color: #eeeef2 !important;
+  background: none;
+  filter: none;
+  letter-spacing: -0.5px !important;
+  word-spacing: normal !important;
+  font-weight: 300;
+  line-height: 1.2;
+  overflow-wrap: break-word;
+}
+
+/* Lava: mismo tracking que el h1. No cambiar inset/attr/degradado del dump. */
+#chatIntro .gpt-title-row h1:after {
+  letter-spacing: -0.5px !important;
+  word-spacing: normal !important;
+  font-weight: 300;
+  font-family: inherit;
+  -webkit-text-fill-color: transparent !important;
+}

@@ -9,6 +9,7 @@ const composer = readFileSync(join(here, "Composer.tsx"), "utf8");
 const bubble = readFileSync(join(here, "MessageBubble.tsx"), "utf8");
 const sidebar = readFileSync(join(here, "ChatSidebar.tsx"), "utf8");
 const sidebarCss = readFileSync(join(here, "sidebar.css"), "utf8");
+const composerCss = readFileSync(join(here, "composer.css"), "utf8");
 const threads = readFileSync(join(here, "ThreadListItem.tsx"), "utf8");
 const globals = readFileSync(join(here, "..", "..", "app", "globals.css"), "utf8");
 const layout = readFileSync(join(here, "..", "..", "app", "layout.tsx"), "utf8");
@@ -38,6 +39,9 @@ describe("layout del chat: producto, no plantilla CSS", () => {
     expect(composer).toMatch(/attachedFiles\.length === 0 && \(/);
     expect(composer).toMatch(/<Plus /);
     expect(composer).toMatch(/aria-label="Agregar archivos"/);
+    expect(composer).toMatch(/SEND_LOOK:\s*"plain"\s*\|\s*"gradient"\s*=\s*"plain"/);
+    expect(composerCss).toMatch(/#composer \.send\s*\{[^}]*background:\s*#dedee3/);
+    expect(composerCss).toMatch(/#composer \.composer-row\s*\{[^}]*border-radius:\s*22px/);
   });
 
   it("el form del composer no arrastra fondo de placa", () => {
@@ -62,13 +66,19 @@ describe("layout del chat: producto, no plantilla CSS", () => {
     expect(sidebar).toMatch(/className="collapse"/);
     expect(sidebar).toMatch(/collapse-chevron/);
     expect(sidebar).toMatch(/Contraer panel/);
+    expect(sidebar).toMatch(/className="side-scroll"/);
+    expect(sidebar).not.toMatch(/flex-1 overflow-y-auto/);
   });
 
   it("el look del sidebar vive en sidebar.css, no en parches de compat", () => {
     expect(layout).toMatch(/components\/chat\/sidebar\.css/);
     expect(layout).toMatch(/prototype-compat\.css[\s\S]*sidebar\.css/);
+    expect(layout).toMatch(/components\/chat\/composer\.css/);
+    expect(layout).toMatch(/sidebar\.css[\s\S]*composer\.css/);
     expect(sidebarCss).toMatch(/\.app \.sidebar \.brand img\s*\{[^}]*width:\s*94px/);
     expect(sidebarCss).toMatch(/\.app \.sidebar \.brandrow \.collapse\s*\{[^}]*top:\s*10px/);
+    expect(sidebarCss).toMatch(/\.app \.sidebar \.brandrow \.collapse\s*\{[^}]*font-size:\s*22px/);
+    expect(sidebarCss).toMatch(/\.app \.sidebar \.side-scroll\s*\{[^}]*scrollbar-width:\s*none/);
     expect(sidebarCss).toMatch(/\.app \.sidebar #navigation \.nav\s*\{[^}]*padding:\s*12px 10px/);
     expect(sidebarCss).toMatch(/\.app \.sidebar \.history \.history-item\s*\{[^}]*padding:\s*12px 10px/);
     expect(sidebarCss).toMatch(/\.app \.sidebar \.label\s*\{[^}]*letter-spacing:\s*1\.3px !important/);
