@@ -18,12 +18,12 @@ const home = readFileSync(join(here, "..", "UnifiedChat.tsx"), "utf8");
 const hero = readFileSync(join(here, "..", "chat", "GptHero.tsx"), "utf8");
 
 describe("EnergyCanvas: parámetros del prototipo", () => {
-  it("home 82 / 0.0009 y GPT 54 / 0.0025; thinking default 0.0021", () => {
+  it("home 82 / 0.0009 y GPT 58 / 0.0025; thinking default 0.0021", () => {
     expect(ENERGY_HOME).toEqual({ size: 82, speed: 0.0009 });
-    expect(ENERGY_GPT).toEqual({ size: 54, speed: 0.0025 });
+    expect(ENERGY_GPT).toEqual({ size: 58, speed: 0.0025 });
     expect(ENERGY_DEFAULT_SPEED).toBe(0.0021);
     expect(home).toMatch(/<EnergyCanvas size=\{82\} speed=\{0\.0009\}/);
-    expect(hero).toMatch(/<EnergyCanvas size=\{54\} speed=\{0\.0025\}/);
+    expect(hero).toMatch(/<EnergyCanvas size=\{ENERGY_GPT\.size\} speed=\{ENERGY_GPT\.speed\}/);
   });
 
   it("porta el campo de Martin: 160 puntos, 7 contornos, blobs desplazados", () => {

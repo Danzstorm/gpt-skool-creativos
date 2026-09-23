@@ -394,22 +394,24 @@ body {
 
 /* Fila título + orbe. `.brand-energy { margin: auto 16px }` del prototipo
    trata el canvas como bloque centrado y lo apila encima del h1. */
+/* Encuadre de Martin: la fila es orbe + título, corrida -8px para que
+   las letras queden sobre el subtítulo, no el bloque entero. */
 #chatIntro .gpt-title-row {
   display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 5px;
   width: fit-content;
   max-width: 100%;
   margin: 0 auto;
-  transform: none;
+  transform: translateX(-8px);
 }
 #chatIntro .gpt-title-row .brand-energy {
-  width: 54px;
-  height: 54px;
-  margin: 0;
+  width: 58px;
+  height: 58px;
+  margin: 0 0 0 -8px;
   flex-shrink: 0;
 }
 #chatIntro .gpt-title-row svg {
@@ -466,9 +468,15 @@ body {
   word-spacing: normal !important;
   line-height: 1.6;
 }
+/* El lava vive en h1:after (content: attr(data-title)). Tiene que usar
+   el mismo tracking que el h1 o el color sale como un segundo título
+   corrido. El relleno transparente es el del degradado, no el sólido. */
 #chatIntro .gpt-title-row h1:after {
-  letter-spacing: 0;
-  word-spacing: 0.06em;
+  letter-spacing: -0.5px !important;
+  word-spacing: normal !important;
+  font-weight: 300;
+  font-family: inherit;
+  -webkit-text-fill-color: transparent !important;
 }
 
 .prompt-body {
@@ -1038,9 +1046,9 @@ a.ax-primary:hover {
   margin: -12px auto 16px;
 }
 #chatIntro .gpt-title-row .brand-energy {
-  width: 54px;
-  height: 54px;
-  margin: 0;
+  width: 58px;
+  height: 58px;
+  margin: 0 0 0 -8px;
   flex-shrink: 0;
 }
 #navigation .nav {

@@ -8,7 +8,7 @@ import { useEffect, useRef } from "react";
 // se pinta con fillRect, no con un arc recortado.
 
 export const ENERGY_HOME = { size: 82, speed: 0.0009 } as const;
-export const ENERGY_GPT = { size: 54, speed: 0.0025 } as const;
+export const ENERGY_GPT = { size: 58, speed: 0.0025 } as const;
 export const ENERGY_DEFAULT_SPEED = 0.0021;
 export const ENERGY_LOOP_STEPS = 160;
 export const ENERGY_CONTOURS = 7;

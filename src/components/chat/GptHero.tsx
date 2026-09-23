@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Gpt } from "@/lib/types";
-import EnergyCanvas from "@/components/ui/EnergyCanvas";
+import EnergyCanvas, { ENERGY_GPT } from "@/components/ui/EnergyCanvas";
 
 interface Props {
   gpt: Gpt;
@@ -69,19 +69,67 @@ export default function GptHero({ gpt, onStarter, children }: Props) {
     ? displayed.conversation_starters.filter((s): s is string => typeof s === "string" && s.trim().length > 0)
     : [];
 
-  function trackTitle(e: PointerEvent<HTMLDivElement>) {
-    const title = e.currentTarget.querySelector("h1");
-    if (!title) return;
-    const rect = title.getBoundingClientRect();
-    e.currentTarget.style.setProperty("--title-x", `${e.clientX - rect.left}px`);
-    e.currentTarget.style.setProperty("--title-y", `${e.clientY - rect.top}px`);
-  }
+  useEffect(() => {
+    const root = introRef.current;
+    if (!root) return;
+    let motionTimer = 0;
+
+    function row(): HTMLElement | null {
+      return root?.querySelector<HTMLElement>(".gpt-title-row") ?? null;
+    }
+
+    function onMove(event: PointerEvent) {
+      const heading = row();
+      const title = heading?.querySelector("h1");
+      if (!heading || !title) return;
+      const titleRect = title.getBoundingClientRect();
+      heading.style.setProperty("--title-x", `${event.clientX - titleRect.left}px`);
+      heading.style.setProperty("--title-y", `${event.clientY - titleRect.top}px`);
+
+      const bounds = heading.getBoundingClientRect();
+      const progress = Math.max(0, Math.min(1, (event.clientX - bounds.left) / Math.max(bounds.width, 1)));
+      heading.style.setProperty("--flow-x", `${progress * 100}%`);
+      heading.classList.add("is-moving");
+      window.clearTimeout(motionTimer);
+      motionTimer = window.setTimeout(() => heading.classList.remove("is-moving"), 180);
+
+      const distance = Math.hypot(
+        Math.max(bounds.left - event.clientX, 0, event.clientX - bounds.right),
+        Math.max(bounds.top - event.clientY, 0, event.clientY - bounds.bottom),
+      );
+      heading.style.setProperty(
+        "--lava-drift",
+        `${Math.max(-70, Math.min(70, (event.clientX - (bounds.left + bounds.width / 2)) * 0.22))}px`,
+      );
+      if (distance === 0) heading.classList.add("color-awake");
+      if (heading.classList.contains("color-awake")) {
+        const t = Math.max(0, Math.min(1, (distance - 35) / 100));
+        heading.style.setProperty("--color-presence", String(1 - t * t * (3 - 2 * t)));
+        if (distance >= 135) heading.classList.remove("color-awake");
+      }
+    }
+
+    function onLeave() {
+      const heading = row();
+      if (!heading) return;
+      heading.style.setProperty("--color-presence", "0");
+      heading.classList.remove("color-awake");
+    }
+
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerleave", onLeave);
+    return () => {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerleave", onLeave);
+      window.clearTimeout(motionTimer);
+    };
+  }, []);
 
   return (
     <div className="chat-intro" id="chatIntro" ref={introRef}>
-      <div className="gpt-title-row" onPointerMove={trackTitle}>
+      <div className="gpt-title-row">
         <div className="brand-energy" aria-hidden>
-          <EnergyCanvas size={54} speed={0.0025} />
+          <EnergyCanvas size={ENERGY_GPT.size} speed={ENERGY_GPT.speed} />
         </div>
         <h1
           data-title={displayed.name}
