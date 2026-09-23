@@ -6,10 +6,6 @@ import { describe, expect, it } from "vitest";
 const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "prototype-compat.css"), "utf8");
 const proto = readFileSync(join(here, "prototype.css"), "utf8");
-const sidebarCss = readFileSync(
-  join(here, "..", "components", "chat", "sidebar.css"),
-  "utf8"
-);
 const composerCss = readFileSync(
   join(here, "..", "components", "chat", "composer.css"),
   "utf8"
@@ -27,6 +23,18 @@ const messagesCss = readFileSync(
   "utf8"
 );
 const layout = readFileSync(join(here, "layout.tsx"), "utf8");
+const chatSidebar = readFileSync(
+  join(here, "..", "components", "chat", "ChatSidebar.tsx"),
+  "utf8"
+);
+const threadItem = readFileSync(
+  join(here, "..", "components", "chat", "ThreadListItem.tsx"),
+  "utf8"
+);
+const sidebarFooter = readFileSync(
+  join(here, "..", "components", "chat", "SidebarFooter.tsx"),
+  "utf8"
+);
 const catalog = readFileSync(
   join(here, "..", "components", "GptCatalog.tsx"),
   "utf8"
@@ -51,7 +59,10 @@ const adminPage = readFileSync(join(here, "admin", "page.tsx"), "utf8");
 
 describe("prototype-compat: chat y chrome", () => {
   it("las hojas propias cargan después del dump", () => {
-    expect(layout).toMatch(/prototype-compat\.css[\s\S]*sidebar\.css[\s\S]*composer\.css[\s\S]*home\.css[\s\S]*gpt-intro\.css[\s\S]*messages\.css/);
+    expect(layout).toMatch(
+      /prototype-compat\.css[\s\S]*composer\.css[\s\S]*home\.css[\s\S]*gpt-intro\.css[\s\S]*messages\.css/
+    );
+    expect(layout).not.toMatch(/sidebar\.css/);
     expect(composerCss).toMatch(/#composer \.send\s*\{[^}]*background:\s*#dedee3/);
   });
 
@@ -209,75 +220,63 @@ describe("prototype-compat: chat y chrome", () => {
     expect(css).toMatch(/\.settings-dialog\s*\{[^}]*margin:\s*auto/);
   });
 
-  it("fija el tamaño de la foto de Google en .avatar img", () => {
-    expect(sidebarCss).toMatch(/\.profile \.avatar img\s*\{[^}]*width:\s*30px/);
+  it("fija el tamaño de la foto de Google en el footer con Tailwind", () => {
+    expect(sidebarFooter).toMatch(/h-\[30px\] w-\[30px\]/);
+    expect(sidebarFooter).toMatch(/rounded-full object-cover/);
   });
 
   it("el wordmark del sidebar es 94×25 con contraste, no 128", () => {
-    const sidebar = readFileSync(
-      join(here, "..", "components", "chat", "ChatSidebar.tsx"),
-      "utf8"
-    );
-    expect(sidebar).toMatch(/width=\{94\}/);
-    expect(sidebar).toMatch(/height=\{25\}/);
-    expect(sidebar).toMatch(/w-\[94px\]/);
-    expect(sidebar).toMatch(/h-\[25px\]/);
-    expect(sidebar).not.toMatch(/width=\{128\}/);
-    expect(sidebarCss).toMatch(/\.app \.sidebar \.brand img\s*\{[^}]*width:\s*94px/);
-    expect(sidebarCss).toMatch(/\.app \.sidebar \.brand img\s*\{[^}]*top:\s*10px/);
-    expect(sidebarCss).toMatch(/\.app \.sidebar \.brand img\s*\{[^}]*left:\s*8px/);
-    expect(sidebarCss).toMatch(/\.app \.sidebar \.brand img\s*\{[^}]*filter:\s*none/);
+    expect(chatSidebar).toMatch(/width=\{94\}/);
+    expect(chatSidebar).toMatch(/height=\{25\}/);
+    expect(chatSidebar).toMatch(/w-\[94px\]/);
+    expect(chatSidebar).toMatch(/h-\[25px\]/);
+    expect(chatSidebar).toMatch(/top-2\.5 left-2/);
+    expect(chatSidebar).toMatch(/\[filter:none\]/);
+    expect(chatSidebar).not.toMatch(/width=\{128\}/);
+    expect(chatSidebar).not.toMatch(/className="sidebar"/);
+    expect(chatSidebar).not.toMatch(/className="brand"/);
   });
 
   it("el footer usa foto 30px si hay avatar; si no, iniciales", () => {
-    const footer = readFileSync(
-      join(here, "..", "components", "chat", "SidebarFooter.tsx"),
-      "utf8"
-    );
-    expect(footer).toMatch(/avatar-fallback/);
-    expect(footer).toMatch(/initialsOf\(fullName, email\)/);
-    expect(footer).toMatch(/showAvatar \?/);
-    expect(footer).toMatch(/width=\{30\}/);
-    expect(footer).toMatch(/height=\{30\}/);
-    expect(footer).toMatch(/h-\[30px\] w-\[30px\]/);
+    expect(sidebarFooter).toMatch(/initialsOf\(fullName, email\)/);
+    expect(sidebarFooter).toMatch(/showAvatar \?/);
+    expect(sidebarFooter).toMatch(/width=\{30\}/);
+    expect(sidebarFooter).toMatch(/height=\{30\}/);
+    expect(sidebarFooter).toMatch(/h-\[30px\] w-\[30px\]/);
+    expect(sidebarFooter).not.toMatch(/className="profile"/);
   });
 
-  it("Nuevo chat recupera borde visible pese al reset de button", () => {
-    expect(sidebarCss).toMatch(/\.app \.sidebar button\.new/);
-    expect(sidebarCss).toMatch(/border:\s*1px solid #ffffff17/);
+  it("Nuevo chat recupera borde visible con Tailwind, no clase .new del dump", () => {
+    expect(chatSidebar).toMatch(/border-white\/\[0\.09\]/);
+    expect(chatSidebar).toMatch(/Nuevo chat/);
+    expect(chatSidebar).not.toMatch(/className="new tool"/);
   });
 
   it("CHATS usa line-clamp-2, no nowrap agresivo", () => {
-    expect(sidebarCss).toMatch(/\.history-item \.chat-name\s*\{[^}]*-webkit-line-clamp:\s*2/);
-    expect(sidebarCss).toMatch(/\.history-item \.chat-name\s*\{[^}]*white-space:\s*normal/);
-    expect(sidebarCss).not.toMatch(
-      /\.history-item \.chat-name\s*\{[^}]*white-space:\s*nowrap/
-    );
+    expect(threadItem).toMatch(/line-clamp-2/);
+    expect(threadItem).toMatch(/whitespace-normal/);
+    expect(threadItem).not.toMatch(/chat-name min-w-0 truncate/);
   });
 
-  it("el chevron de colapsar queda visible en el brandrow", () => {
-    const sidebar = readFileSync(
-      join(here, "..", "components", "chat", "ChatSidebar.tsx"),
-      "utf8"
-    );
-    expect(sidebar).toMatch(/‹/);
-    expect(sidebar).toMatch(/className="side-scroll"/);
-    expect(sidebarCss).toMatch(/\.app \.sidebar \.brandrow \.collapse\s*\{[^}]*position:\s*relative/);
-    expect(sidebarCss).toMatch(/\.app \.sidebar \.brandrow \.collapse\s*\{[^}]*top:\s*10px/);
-    expect(sidebarCss).toMatch(/\.app \.sidebar \.brandrow \.collapse\s*\{[^}]*color:\s*#666978/);
-    expect(sidebarCss).toMatch(/\.app \.sidebar \.brandrow \.collapse\s*\{[^}]*font-size:\s*22px/);
-    expect(sidebarCss).toMatch(/\.app \.sidebar \.brandrow \.collapse\s*\{[^}]*-webkit-text-fill-color:\s*#666978/);
-    expect(sidebarCss).toMatch(/\.app \.sidebar \.brandrow \.collapse\s*\{[^}]*opacity:\s*1/);
-    expect(sidebarCss).toMatch(/\.app \.sidebar \.side-scroll\s*\{[^}]*scrollbar-width:\s*none/);
-    expect(sidebarCss).not.toMatch(/\.app \.sidebar \.brand\s*\{[^}]*overflow:\s*hidden/);
-    expect(sidebarCss).toMatch(/\.app \.sidebar #navigation \.nav\s*\{[^}]*padding:\s*12px 10px/);
-    expect(sidebarCss).toMatch(/\.app \.sidebar \.history \.history-item\s*\{[^}]*padding:\s*12px 10px/);
-    expect(sidebarCss).toMatch(/\.app \.sidebar \.label\s*\{[^}]*letter-spacing:\s*1\.3px !important/);
-    expect(sidebarCss).toMatch(/\.app\.collapsed \.main \.topbar \.mobile-menu\s*\{[^}]*visibility:\s*visible/);
-    expect(sidebarCss).toMatch(/\.app\.collapsed \.main \.topbar \.mobile-menu\s*\{[^}]*pointer-events:\s*auto/);
-    expect(sidebarCss).toMatch(/\.app\.collapsed \.main > \.topbar\s*\{[^}]*z-index:\s*50/);
-    expect(sidebarCss).toMatch(/\.app \.sidebar\s*\{[^}]*transition:[\s\S]*?width 0\.32s cubic-bezier\(0\.4, 0, 0\.2, 1\)/);
-    expect(sidebarCss).toMatch(/\.app \.sidebar \.brandrow\s*\{[^}]*margin:\s*0 0 36px/);
+  it("el chevron de colapsar queda visible con Tailwind en el brandrow", () => {
+    expect(chatSidebar).toMatch(/‹/);
+    expect(chatSidebar).toMatch(/text-\[#666978\]/);
+    expect(chatSidebar).toMatch(/text-\[22px\]/);
+    expect(chatSidebar).toMatch(/\[-webkit-text-fill-color:#666978\]/);
+    expect(chatSidebar).toMatch(/\[scrollbar-width:none\]/);
+    expect(chatSidebar).toMatch(/px-2\.5 py-3/);
+    expect(chatSidebar).toMatch(/!tracking-\[1\.3px\]/);
+    expect(chatSidebar).toMatch(/duration-\[320ms\].*ease-\[cubic-bezier\(0\.4,0,0\.2,1\)\]/);
+    expect(chatSidebar).toMatch(/mb-9/);
+    expect(chatSidebar).not.toMatch(/className="side-scroll"/);
+    expect(chatSidebar).not.toMatch(/className="collapse"/);
+    expect(layout).not.toMatch(/sidebar\.css/);
+  });
+
+  it("expandir desde el borde usa z-index y pointer-events en UnifiedChat", () => {
+    expect(chat).toMatch(/sidebarCollapsed && "relative z-50/);
+    expect(chat).toMatch(/pointer-events-auto/);
+    expect(chat).toMatch(/toggleSidebarCollapsed\(\)/);
   });
 
   it("el menú de cuenta se porta a body como Martin; la música es el segundo panel", () => {

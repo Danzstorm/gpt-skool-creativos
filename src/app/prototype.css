@@ -192,7 +192,7 @@ svg{stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}.tool .symbol sv
 .nav.active{position:relative;background:linear-gradient(135deg,#ffbd160d 0%,#ff682f10 22%,#ff165e12 46%,#ee0de410 73%,#7753ff14 100%);box-shadow:none}
 .nav.active:after{content:"";position:absolute;right:0;top:7px;bottom:7px;width:1px;border-radius:2px;pointer-events:none;background:linear-gradient(180deg,#ffbd16 0%,#ff682f 22%,#ff165e 46%,#ee0de4 73%,#7753ff 100%);box-shadow:0 0 7px #ee0de430}
 
-/* sidebar padding owned by sidebar.css */
+/* sidebar padding/look: Tailwind en ChatSidebar (ya no .sidebar del dump) */
 
 .nav.active{color:#fff;background:linear-gradient(to right,#080808b3 0%,#08080866 25%,#08080826 55%,transparent 100%),linear-gradient(160deg,#ffbd1626 0%,#ff682f29 22%,#ff165e2b 46%,#ee0de426 73%,#7753ff30 100%)}
 

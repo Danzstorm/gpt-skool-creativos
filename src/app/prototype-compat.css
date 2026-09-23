@@ -132,8 +132,8 @@ body {
   -webkit-text-fill-color: currentColor !important;
 }
 
-/* Sidebar chrome (padding, brand, nav, history, footer, resizer) vive en
-   src/components/chat/sidebar.css — no re-parchear aquí. */
+/* Sidebar chrome (padding, brand, nav, history, footer) vive en Tailwind
+   dentro de ChatSidebar / ThreadListItem / SidebarFooter — no re-parchear aquí. */
 
 /* Fallback del canvas de energía. El prototipo ya pone 200% / -50% en
    cada slot; el inline de pixeles lo pisaba y el orbe tapaba títulos. */

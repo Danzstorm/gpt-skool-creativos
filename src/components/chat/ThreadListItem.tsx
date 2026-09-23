@@ -88,8 +88,10 @@ function ThreadListItem({
         if (draggedId && draggedId !== thread.id) onDropOnThread(draggedId, thread.id);
       }}
       className={cn(
-        "nav history-item group relative flex items-center",
-        isActive && "active selected chat-selected",
+        // Sin `.nav` / `.history-item`: medidas en Tailwind (12×10 como Martin).
+        "group relative flex w-full cursor-grab items-center gap-3 rounded-[10px] border border-transparent px-2.5 py-3 text-left text-[13px] text-[#ababab] active:cursor-grabbing",
+        "hover:bg-white/[0.03]",
+        isActive && "chat-selected bg-[#222225] text-[#eeeef2]",
         pinned && "chat-pinned",
         dropTarget && "drop-target"
       )}
@@ -113,7 +115,7 @@ function ThreadListItem({
         </svg>
       </span>
       <span
-        className="chat-name min-w-0 line-clamp-2 whitespace-normal leading-snug"
+        className="chat-name relative min-w-0 line-clamp-2 overflow-hidden text-ellipsis whitespace-normal leading-[1.35] [overflow-wrap:anywhere]"
         title={isRenaming ? undefined : "Doble clic para cambiar el nombre"}
       >
         {isRenaming ? (
@@ -135,7 +137,7 @@ function ThreadListItem({
                 if (e.key === "Escape") onCancelRename();
               }}
               onBlur={() => onSubmitRename(thread.id)}
-              className="folder-rename"
+              className="folder-rename absolute left-0 top-0 h-5 w-full"
               aria-label="Nuevo nombre del chat"
             />
           </>

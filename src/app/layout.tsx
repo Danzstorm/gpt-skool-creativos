@@ -6,7 +6,6 @@ import "./globals.css";
 import "./prototype.css";
 import "./prototype-compat.css";
 /* Hojas propias DESPUÉS del dump + compat (cascada). */
-import "../components/chat/sidebar.css";
 import "../components/chat/composer.css";
 import "../components/chat/home.css";
 import "../components/chat/gpt-intro.css";

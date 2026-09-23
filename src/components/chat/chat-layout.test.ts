@@ -8,7 +8,6 @@ const unified = readFileSync(join(here, "..", "UnifiedChat.tsx"), "utf8");
 const composer = readFileSync(join(here, "Composer.tsx"), "utf8");
 const bubble = readFileSync(join(here, "MessageBubble.tsx"), "utf8");
 const sidebar = readFileSync(join(here, "ChatSidebar.tsx"), "utf8");
-const sidebarCss = readFileSync(join(here, "sidebar.css"), "utf8");
 const composerCss = readFileSync(join(here, "composer.css"), "utf8");
 const threads = readFileSync(join(here, "ThreadListItem.tsx"), "utf8");
 const globals = readFileSync(join(here, "..", "..", "app", "globals.css"), "utf8");
@@ -58,25 +57,27 @@ describe("layout del chat: producto, no plantilla CSS", () => {
   it("el buscador no pinta el badge Ctrl K; el atajo sigue en el keydown", () => {
     expect(sidebar).not.toMatch(/<kbd>/);
     expect(sidebar).toMatch(/e\.key\.toLowerCase\(\) !== "k"/);
-    expect(threads).toMatch(/chat-name min-w-0 line-clamp-2 whitespace-normal/);
+    expect(threads).toMatch(/chat-name relative min-w-0 line-clamp-2/);
+    expect(threads).toMatch(/whitespace-normal/);
     expect(threads).not.toMatch(/chat-name min-w-0 truncate/);
   });
 
-  it("el chevron de colapsar está en el brandrow", () => {
-    expect(sidebar).toMatch(/className="collapse"/);
-    expect(sidebar).toMatch(/collapse-chevron/);
+  it("el chevron de colapsar está en el encabezado con Tailwind", () => {
+    expect(sidebar).toMatch(/‹/);
     expect(sidebar).toMatch(/Contraer panel/);
-    expect(sidebar).toMatch(/className="side-scroll"/);
-    expect(sidebar).not.toMatch(/flex-1 overflow-y-auto/);
+    expect(sidebar).toMatch(/text-\[#666978\]/);
+    expect(sidebar).toMatch(/\[scrollbar-width:none\]/);
+    expect(sidebar).not.toMatch(/className="collapse"/);
+    expect(sidebar).not.toMatch(/className="side-scroll"/);
   });
 
   it("expandir en desktop togglea collapsed como Martin, no openSidebar", () => {
     expect(unified).toMatch(/window\.innerWidth <= 650/);
     expect(unified).toMatch(/toggleSidebarCollapsed\(\)/);
-    expect(unified).toMatch(/className="mobile-menu"/);
+    expect(unified).toMatch(/className=\{cn\(\s*"mobile-menu"/);
     // El handler de desktop no debe caer en openSidebar cuando ya hay panel.
     const menuHandler = unified.match(
-      /className="mobile-menu"[\s\S]*?onClick=\{\(\) => \{([\s\S]*?)\}\}/
+      /className=\{cn\(\s*"mobile-menu"[\s\S]*?onClick=\{\(\) => \{([\s\S]*?)\}\}/
     )?.[1];
     expect(menuHandler).toBeTruthy();
     expect(menuHandler).toMatch(/toggleSidebarCollapsed\(\)/);
@@ -84,18 +85,20 @@ describe("layout del chat: producto, no plantilla CSS", () => {
     expect(menuHandler).toMatch(/closeSidebar\(\)/);
   });
 
-  it("el look del sidebar vive en sidebar.css, no en parches de compat", () => {
-    expect(layout).toMatch(/components\/chat\/sidebar\.css/);
-    expect(layout).toMatch(/prototype-compat\.css[\s\S]*sidebar\.css/);
+  it("el look del sidebar vive en Tailwind del componente, no en sidebar.css", () => {
+    expect(layout).not.toMatch(/sidebar\.css/);
     expect(layout).toMatch(/components\/chat\/composer\.css/);
-    expect(layout).toMatch(/sidebar\.css[\s\S]*composer\.css/);
-    expect(sidebarCss).toMatch(/\.app \.sidebar \.brand img\s*\{[^}]*width:\s*94px/);
-    expect(sidebarCss).toMatch(/\.app \.sidebar \.brandrow \.collapse\s*\{[^}]*top:\s*10px/);
-    expect(sidebarCss).toMatch(/\.app \.sidebar \.brandrow \.collapse\s*\{[^}]*font-size:\s*22px/);
-    expect(sidebarCss).toMatch(/\.app \.sidebar \.side-scroll\s*\{[^}]*scrollbar-width:\s*none/);
-    expect(sidebarCss).toMatch(/\.app \.sidebar #navigation \.nav\s*\{[^}]*padding:\s*12px 10px/);
-    expect(sidebarCss).toMatch(/\.app \.sidebar \.history \.history-item\s*\{[^}]*padding:\s*12px 10px/);
-    expect(sidebarCss).toMatch(/\.app \.sidebar \.label\s*\{[^}]*letter-spacing:\s*1\.3px !important/);
-    expect(sidebarCss).toMatch(/\.app \.sidebar\s*\{[^}]*padding:\s*25px 20px 25px/);
+    expect(sidebar).toMatch(/chat-sidebar/);
+    expect(sidebar).toMatch(/w-\[94px\]/);
+    expect(sidebar).toMatch(/h-\[25px\]/);
+    expect(sidebar).toMatch(/top-2\.5/);
+    expect(sidebar).toMatch(/text-\[22px\]/);
+    expect(sidebar).toMatch(/px-2\.5 py-3/);
+    expect(sidebar).toMatch(/!tracking-\[1\.3px\]/);
+    expect(sidebar).toMatch(/py-\[25px\]/);
+    expect(sidebar).toMatch(/px-5/);
+    expect(threads).toMatch(/gap-3.*px-2\.5 py-3|px-2\.5 py-3.*gap-3/);
+    expect(unified).toMatch(/pointer-events-auto/);
+    expect(unified).toMatch(/z-50/);
   });
 });

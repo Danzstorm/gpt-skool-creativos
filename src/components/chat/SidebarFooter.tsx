@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useDismissable } from "@/hooks/useDismissable";
-import { humanDisplayName } from "@/lib/utils";
+import { cn, humanDisplayName } from "@/lib/utils";
 import {
   TEXT_SIZE_DEFAULT,
   TEXT_SIZE_KEY,
@@ -100,7 +100,7 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
   const showAvatar = !!avatarUrl && !avatarFailed;
 
   return (
-    <div ref={rootRef} style={{ marginTop: "auto", position: "relative" }}>
+    <div ref={rootRef} className="relative mt-auto">
       {open &&
         createPortal(
         <div ref={menuRef} className="account-menu account-open">
@@ -176,12 +176,22 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
         ref={profileRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="profile"
+        className={cn(
+          "relative mt-auto flex w-full min-w-0 cursor-pointer items-center gap-[11px] border-0 border-t border-white/[0.04] bg-transparent pt-[22px] text-left",
+          "focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#999]"
+        )}
         aria-label="Cuenta"
         aria-expanded={open}
       >
-        <span className="avatar h-[30px] w-[30px] min-h-[30px] min-w-[30px]" aria-hidden>
-          <span className="avatar-fallback">{initialsOf(fullName, email)}</span>
+        <span
+          className={cn(
+            "grid h-[30px] w-[30px] min-h-[30px] min-w-[30px] shrink-0 place-items-center overflow-hidden rounded-full",
+            "border border-[#b892ff30] bg-[linear-gradient(140deg,#563743,#28233f)] text-[11px] leading-none text-[#eeeef2]",
+            "[&>*]:col-start-1 [&>*]:row-start-1"
+          )}
+          aria-hidden
+        >
+          <span className="z-0 grid h-full w-full place-items-center">{initialsOf(fullName, email)}</span>
           {showAvatar ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -191,13 +201,15 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
               height={30}
               referrerPolicy="no-referrer"
               onError={() => setAvatarFailed(true)}
-              className="h-[30px] w-[30px] rounded-full object-cover"
+              className="relative z-[1] block h-[30px] w-[30px] max-w-none rounded-full object-cover"
             />
           ) : null}
         </span>
-        <div>
-          <strong>{displayName}</strong>
-          <span>Espacio creativo</span>
+        <div className="grid min-w-0 flex-1 gap-0.5">
+          <strong className="mb-1 block overflow-hidden text-ellipsis whitespace-nowrap text-[12px] font-normal text-[#eeeef2]">
+            {displayName}
+          </strong>
+          <span className="text-[11px] text-[#8e909c]">Espacio creativo</span>
         </div>
       </button>
     </div>

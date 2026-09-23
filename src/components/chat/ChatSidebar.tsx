@@ -13,6 +13,14 @@ import SidebarFooter from "./SidebarFooter";
 
 // El atajo ⌘K / Ctrl K sigue vivo; el prototipo no pinta el badge.
 
+const SIDEBAR_PAD_X = 40; // px-5 × 2 — ancho interior sin padding
+
+const labelClass =
+  "mx-2.5 mb-3 mt-[31px] text-[11px] font-normal uppercase !tracking-[1.3px] text-[#858585]";
+
+const navRowClass =
+  "flex w-full items-center gap-3 rounded-[7px] px-2.5 py-3 text-left text-[13px] text-[#ababab] isolation-isolate hover:bg-white/[0.035] hover:text-white [&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:shrink-0 [&_svg]:stroke-[1.4]";
+
 function ProjectHeading({
   project,
   threadCount,
@@ -83,7 +91,10 @@ function ProjectHeading({
       )}
       <Folder size={12} className="flex-shrink-0 text-zinc-500" />
 
-      <span className="folder-title" title={isRenaming ? undefined : "Doble clic para cambiar el nombre"}>
+      <span
+        className="folder-title relative"
+        title={isRenaming ? undefined : "Doble clic para cambiar el nombre"}
+      >
         {isRenaming ? (
           <>
             <span aria-hidden style={{ visibility: "hidden" }}>
@@ -103,7 +114,7 @@ function ProjectHeading({
                 if (e.key === "Escape") onCancelRename();
               }}
               onBlur={onSubmitRename}
-              className="folder-rename"
+              className="folder-rename absolute left-0 top-0 h-5 w-full"
               aria-label="Nombre de la carpeta"
             />
           </>
@@ -297,6 +308,7 @@ function ChatSidebar({
   const asideRef = useRef<HTMLElement>(null);
 
   const searchRef = useRef<HTMLInputElement>(null);
+  const innerWidth = Math.max(sidebarWidth - SIDEBAR_PAD_X, 0);
 
   // ⌘K / Ctrl K enfoca el buscador; si el panel está contraído lo abre antes.
   // El input ya existe en el DOM (aside de ancho 0), pero se espera un frame
@@ -376,29 +388,60 @@ function ChatSidebar({
       <aside
         ref={asideRef}
         className={cn(
-          "sidebar z-30",
-          "md:flex md:relative md:translate-x-0",
-          resizing ? "md:transition-none" : undefined,
-          "fixed top-0 bottom-0 left-0 flex",
+          // Sin clase `.sidebar`: el dump no debe pintar este panel.
+          "chat-sidebar relative z-30 box-border flex h-full shrink-0 overflow-hidden",
+          "border-r border-white/[0.03]",
+          "fixed inset-y-0 left-0 md:relative md:inset-auto md:translate-x-0",
+          "transition-[width,padding] duration-[320ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
+          "motion-reduce:transition-none",
+          "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
+          resizing && "!transition-none",
+          collapsed
+            ? "pointer-events-none border-r-0 px-0 py-[25px]"
+            : "px-5 py-[25px]",
           sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         )}
-        style={{ "--sidebar-user-width": `${sidebarWidth}px` } as React.CSSProperties}
+        style={
+          {
+            width: collapsed ? 0 : sidebarWidth,
+            "--sidebar-user-width": `${sidebarWidth}px`,
+          } as React.CSSProperties
+        }
       >
-        <div className="flex h-full w-full min-w-0 flex-shrink-0 flex-col">
-          <div className="brandrow">
-            <a className="brand" href="https://www.skool.com/creativos" aria-label={`${communityName} en Skool`}>
+        <div
+          className={cn(
+            "flex h-full min-w-0 shrink-0 flex-col",
+            "transition-transform duration-[320ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
+            "motion-reduce:transition-none",
+            resizing && "!transition-none",
+            collapsed && "-translate-x-full"
+          )}
+          style={{ width: innerWidth, minWidth: innerWidth }}
+        >
+          <div className="relative z-[2] mb-9 flex w-full shrink-0 items-center justify-between gap-2 overflow-visible">
+            <a
+              className="block w-[94px] max-w-[94px] shrink-0 overflow-visible leading-none text-inherit no-underline"
+              href="https://www.skool.com/creativos"
+              aria-label={`${communityName} en Skool`}
+            >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/logo.svg"
                 width={94}
                 height={25}
                 alt={communityName}
-                className="block h-[25px] w-[94px]"
+                className="relative top-2.5 left-2 block h-[25px] w-[94px] object-fill opacity-100 [filter:none]"
               />
             </a>
             <button
               type="button"
-              className="collapse"
+              className={cn(
+                "relative top-2.5 z-[5] grid h-[30px] w-[30px] min-w-[30px] max-w-[30px] shrink-0 place-items-center",
+                "cursor-pointer border-0 bg-transparent p-0",
+                "text-[22px] font-normal leading-none text-[#666978]",
+                "[-webkit-text-fill-color:#666978] opacity-100",
+                "hover:text-[#c8c8d0] hover:[-webkit-text-fill-color:#c8c8d0]"
+              )}
               onClick={(event) => {
                 const rect = event.currentTarget.getBoundingClientRect();
                 document.documentElement.style.setProperty("--panel-toggle-top", `${Math.round(rect.top)}px`);
@@ -407,17 +450,30 @@ function ChatSidebar({
               aria-label="Contraer panel"
               title="Contraer panel"
             >
-              <span className="collapse-chevron" aria-hidden>
+              <span
+                className="block text-[22px] leading-none text-inherit [-webkit-text-fill-color:inherit] opacity-100"
+                aria-hidden
+              >
                 ‹
               </span>
             </button>
           </div>
 
-          <button type="button" className="new tool" id="new" onClick={onNewChat}>
+          <button
+            type="button"
+            id="new"
+            onClick={onNewChat}
+            className={cn(
+              "mb-[15px] flex w-full items-center gap-[13px] rounded-xl border border-white/[0.09]",
+              "bg-[linear-gradient(120deg,#ffffff06,transparent)]",
+              "px-3.5 py-[13px] shadow-[inset_0_1px_0_#ffffff06]",
+              "hover:border-white/[0.16] hover:bg-white/[0.035] hover:shadow-[0_0_18px_#f04e7110]"
+            )}
+          >
             <HaloRim id="new-chat" />
             ＋ <span>Nuevo chat</span>
           </button>
-          <label className="side-search">
+          <label className="flex items-center gap-2.5 rounded-[7px] border border-white/[0.05] bg-white/[0.01] p-2.5 text-[#777b88]">
             <ProtoIcon name="search" />
             <input
               ref={searchRef}
@@ -426,43 +482,49 @@ function ChatSidebar({
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Buscar..."
               aria-label="Buscar herramientas"
+              className="min-w-0 w-full border-0 bg-transparent text-[13px] text-[#eeeef2] outline-none"
             />
           </label>
 
-          <div className="label">GPTs</div>
-          <nav id="navigation">
-              {recentGpts.map((g) => {
-                const isActive = activeGptId === g.id;
-                return (
+          <div className={labelClass}>GPTs</div>
+          <nav aria-label="GPTs recientes">
+            {recentGpts.map((g) => {
+              const isActive = activeGptId === g.id;
+              return (
                 <button
                   key={g.id}
                   type="button"
                   onClick={() => onSelectGpt(g.id)}
-                  className={cn("nav", isActive && "active")}
+                  className={cn(navRowClass, isActive && "text-white")}
                   aria-current={isActive ? "page" : undefined}
                 >
                   <GptGlyph gpt={g} size="xs" variant="nav" />
                   {g.name}
                 </button>
-                );
-              })}
-              <button
-                type="button"
-                id="allNav"
-                onClick={onOpenAllGpts}
-                className={cn("nav", !activeGptId && "active")}
-                aria-current={!activeGptId ? "page" : undefined}
-              >
-                <ProtoIcon name="grid" />
-                Todos los GPTs
-              </button>
+              );
+            })}
+            <button
+              type="button"
+              id="allNav"
+              onClick={onOpenAllGpts}
+              className={cn(navRowClass, !activeGptId && "text-white")}
+              aria-current={!activeGptId ? "page" : undefined}
+            >
+              <ProtoIcon name="grid" />
+              Todos los GPTs
+            </button>
           </nav>
 
-          <div className="side-scroll">
+          <div
+            className={cn(
+              "min-h-0 flex-1 overflow-x-hidden overflow-y-auto",
+              "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+            )}
+          >
             {groups.length > 0 && (
               <>
-                <div className="label">Proyectos</div>
-                <div className="space-y-0.5 mb-3">
+                <div className={labelClass}>Proyectos</div>
+                <div className="mb-3 space-y-0.5">
                   {groups.map(({ project, threads, forceOpen }) => {
                     const isOpen = forceOpen || openProjectIds.includes(project.id);
                     const isRenamingProject = renamingProjectId === project.id;
@@ -500,7 +562,7 @@ function ChatSidebar({
                         />
 
                         {isOpen && threads.length > 0 && (
-                          <div className="space-y-0.5 pl-3 mt-0.5">{threads.map(renderThread)}</div>
+                          <div className="mt-0.5 space-y-0.5 pl-3">{threads.map(renderThread)}</div>
                         )}
                       </div>
                     );
@@ -514,14 +576,11 @@ function ChatSidebar({
                 carpeta, se lee como que los chats se perdieron. Vacía y con
                 su texto, además, es el lugar donde soltar para sacarlos. */}
             {(loose.length > 0 || groups.length > 0) && (
-              // Martin: label CHATS vive DENTRO de .history. El border-top de
-              // `.history{border-top:1px solid var(--line)}` queda ARRIBA del
-              // label (separador GPTS→CHATS), no debajo como si el label fuera
-              // hermano previo.
+              // Label CHATS dentro del bloque con border-top (separador GPTS→CHATS).
               <div
                 className={cn(
-                  "history space-y-0.5 rounded-lg",
-                  dropLoose && "ring-1 ring-brand/50 bg-brand/10"
+                  "mt-[25px] space-y-0.5 rounded-lg border-t border-white/[0.05]",
+                  dropLoose && "bg-brand/10 ring-1 ring-brand/50"
                 )}
                 onDragOver={(e) => {
                   if (!e.dataTransfer.types.includes(THREAD_DND_TYPE)) return;
@@ -540,7 +599,7 @@ function ChatSidebar({
                   if (threadId) onMoveToProject(threadId, null);
                 }}
               >
-                <div className="label">Chats</div>
+                <div className={labelClass}>Chats</div>
                 {looseSorted.map(renderThread)}
                 {loose.length === 0 && (
                   <p className="px-2.5 py-2 text-[12px] text-zinc-600">
@@ -559,7 +618,7 @@ function ChatSidebar({
           />
         </div>
         <div
-          className="sidebar-resizer"
+          className="sidebar-resizer absolute top-0 right-0 z-[4] h-full w-1.5 cursor-col-resize max-md:hidden"
           role="separator"
           aria-orientation="vertical"
           aria-label="Ancho del panel"

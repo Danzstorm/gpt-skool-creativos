@@ -460,10 +460,26 @@ export default function UnifiedChat({
         onDragLeave={onDragLeave}
         onDrop={onDrop}
       >
-        <div className="topbar">
+        <div
+          className={cn(
+            "topbar",
+            // Expandir: el topbar queda height:0 bajo home/chat; subimos stacking
+            // y devolvemos pointer-events al control del borde.
+            sidebarCollapsed && "relative z-50 overflow-visible pointer-events-none"
+          )}
+        >
           <button
             type="button"
-            className="mobile-menu"
+            className={cn(
+              "mobile-menu",
+              sidebarCollapsed &&
+                "pointer-events-auto !visible absolute left-5 z-[1] grid h-[30px] w-[30px] place-items-center bg-transparent p-1 text-[#9a9aa4] [-webkit-text-fill-color:#9a9aa4] transition-none"
+            )}
+            style={
+              sidebarCollapsed
+                ? { top: "var(--panel-toggle-top, 32px)" }
+                : undefined
+            }
             onClick={() => {
               // Martin runtime.js: ≤650 → mobile-open; desktop → toggle collapsed.
               // Antes: si no estaba collapsed llamaba openSidebar() y en desktop
