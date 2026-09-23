@@ -2,6 +2,7 @@
    No tocar el lava ya alineado: h1 sólido + :after con el mismo tracking. */
 
 /* GPT vacío: #chatIntro hermano del composer; centra intro + dock. */
+@layer legacy {
 #chatView:has(#chatIntro:not([hidden])) {
   justify-content: center;
 }
@@ -99,3 +100,5 @@
   font-family: inherit;
   -webkit-text-fill-color: transparent !important;
 }
+}
+

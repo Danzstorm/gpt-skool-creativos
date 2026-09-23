@@ -1,3 +1,8 @@
+/* Orden de capas. `legacy` guarda todo el CSS propio y de la plantilla que
+   antes iba sin capa. Va al final para no cambiar nada visual: gana a las
+   utilities igual que antes. Cada etapa del desmontaje saca reglas de aqui;
+   cuando quede vacia se borra la capa y la plantilla. */
+@layer theme, base, components, utilities, legacy;
 @import "tailwindcss";
 
 /* ============================================================
@@ -6,6 +11,7 @@
    oficial (ámbar→rojo→magenta→violeta) vive DENTRO del orb y en
    acentos contenidos — no como muro arcoíris ni como esfera negra.
    ============================================================ */
+@layer legacy {
 :root {
   --background: #060606;
   --foreground: #EDEDEF;
@@ -46,6 +52,8 @@
   --energy-4: #cf41ef;
   --energy-5: #7e67ff;
 }
+}
+
 
 @theme inline {
   --color-background: var(--background);
@@ -91,6 +99,7 @@
   --color-violet-950: #2A0642;
 }
 
+@layer legacy {
 body {
   background: var(--background);
   color: var(--foreground);
@@ -147,6 +156,8 @@ body {
   background: var(--color-zinc-700);
   background-clip: padding-box;
 }
+}
+
 
 /* Anillo de foco accesible y sobrio en controles.
    Va en @layer base a propósito: sin capa, esta regla queda "unlayered" y el
@@ -164,6 +175,7 @@ body {
 }
 
 /* Transición base suave para interacción (respeta reduce-motion) */
+@layer legacy {
 @media (prefers-reduced-motion: no-preference) {
   a,
   button {
@@ -172,6 +184,8 @@ body {
     transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
   }
 }
+}
+
 
 /* ============================================================
    Vida: auroras que respiran, entrada escalonada, texto con brillo.
@@ -258,6 +272,7 @@ body {
    Orb: gota de vidrio líquido. Volumen de color Creativos adentro.
    Wordmark CREATIVOS en blanco (md/xl). Motion = agua, no disco.
    ============================================================ */
+@layer legacy {
 .orb-halo {
   position: absolute;
   inset: -14%;
@@ -1548,3 +1563,5 @@ body {
     transition: none;
   }
 }
+}
+

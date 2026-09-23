@@ -2,6 +2,7 @@
    Streaming, thinking y sent-images se conservan del dump; esta hoja fija
    el look de producto que antes vivía en parches de compat. */
 
+@layer legacy {
 .chat .messages {
   display: flex;
   flex-direction: column;
@@ -179,3 +180,5 @@
     padding: 12px 18px;
   }
 }
+}
+

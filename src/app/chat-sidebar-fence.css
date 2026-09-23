@@ -4,6 +4,7 @@
 
 /* Ancho de Martin: 230px. Si el usuario guardó un arrastre más angosto,
    el panel no puede quedar por debajo. */
+@layer legacy {
 .app:not(.collapsed) .chat-sidebar {
   min-width: 230px;
 }
@@ -209,3 +210,5 @@
   min-width: 0;
   margin: 0;
 }
+}
+

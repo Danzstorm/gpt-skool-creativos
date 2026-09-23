@@ -4,6 +4,7 @@
    Los resets globales de button/svg se acotaron al chrome para que las
    utilities de admin, dialogs y CTAs vuelvan a ganar. */
 
+@layer legacy {
 :root {
   --font-sans: var(--font-inter), Inter, Arial, Helvetica, sans-serif;
   --font-display: var(--font-jakarta), "Plus Jakarta Sans", sans-serif;
@@ -477,3 +478,5 @@ a.ax-primary:hover {
   overflow-x: hidden;
   overflow-y: auto;
 }
+}
+

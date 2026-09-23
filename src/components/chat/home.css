@@ -2,6 +2,7 @@
    Se carga DESPUÉS del dump + compat. No toca #chatIntro ni mensajes. */
 
 /* El prototipo dibuja un orbe CSS en `.intro:before`; acá va EnergyCanvas. */
+@layer legacy {
 #homeView .intro:before,
 .workspace .intro:before {
   content: none;
@@ -253,3 +254,5 @@
     top: 16px;
   }
 }
+}
+
