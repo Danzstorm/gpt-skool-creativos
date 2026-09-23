@@ -88,8 +88,8 @@ function ThreadListItem({
         if (draggedId && draggedId !== thread.id) onDropOnThread(draggedId, thread.id);
       }}
       className={cn(
-        // Sin `.nav` / `.history-item`: medidas en Tailwind (12×10 como Martin).
-        "group relative flex w-full cursor-grab items-center gap-3 rounded-[10px] border border-transparent px-2.5 py-3 text-left text-[13px] text-[#ababab] active:cursor-grabbing",
+        // Sin `.nav` / `.history-item`: medidas Martin history (padding 9 vertical en chats).
+        "group relative flex w-full cursor-grab items-center gap-3 rounded-[10px] border border-transparent px-2.5 py-[9px] text-left text-[13px] text-[#ababab] active:cursor-grabbing",
         "hover:bg-white/[0.03]",
         isActive && "chat-selected bg-[#222225] text-[#eeeef2]",
         pinned && "chat-pinned",

@@ -465,7 +465,7 @@ export default function UnifiedChat({
             "topbar",
             // Expandir: el topbar queda height:0 bajo home/chat; subimos stacking
             // y devolvemos pointer-events al control del borde.
-            sidebarCollapsed && "relative z-50 overflow-visible pointer-events-none"
+            sidebarCollapsed && "relative z-50 !h-0 !min-h-0 overflow-visible pointer-events-none"
           )}
         >
           <button
@@ -473,11 +473,11 @@ export default function UnifiedChat({
             className={cn(
               "mobile-menu",
               sidebarCollapsed &&
-                "pointer-events-auto !visible absolute left-5 z-[1] grid h-[30px] w-[30px] place-items-center bg-transparent p-1 text-[#9a9aa4] [-webkit-text-fill-color:#9a9aa4] transition-none"
+                "!visible !flex absolute left-5 z-[60] h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg border-0 bg-transparent p-[7px] text-[#9a9aa4] [-webkit-text-fill-color:#9a9aa4] pointer-events-auto transition-none [&_svg]:h-4 [&_svg]:w-4 [&_svg]:shrink-0"
             )}
             style={
               sidebarCollapsed
-                ? { top: "var(--panel-toggle-top, 32px)" }
+                ? { top: "var(--panel-toggle-top, 42px)", display: "flex" }
                 : undefined
             }
             onClick={() => {
@@ -493,7 +493,7 @@ export default function UnifiedChat({
             }}
             aria-label={sidebarCollapsed ? "Expandir panel" : "Abrir panel"}
           >
-            <ProtoIcon name="menu" />
+            <ProtoIcon name="menu" className="h-4 w-4 shrink-0" />
           </button>
           {hasChatMessages && (
             <div id="breadcrumb" className="crumb">

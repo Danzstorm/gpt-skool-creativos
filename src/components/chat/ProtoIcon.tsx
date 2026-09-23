@@ -1,4 +1,5 @@
 import type { GptCraft } from "@/lib/gpt-visual";
+import { cn } from "@/lib/utils";
 
 /** Trazos SVG del prototipo (`paths` + `icon()` en runtime.js). No Lucide. */
 export const PROTO_ICON_PATHS = {
@@ -57,7 +58,7 @@ export default function ProtoIcon({ name, className }: Props) {
     <svg
       viewBox="0 0 24 24"
       aria-hidden
-      className={className}
+      className={cn("h-[18px] w-[18px] shrink-0", className)}
       dangerouslySetInnerHTML={{ __html: paths }}
     />
   );

@@ -264,10 +264,11 @@ describe("prototype-compat: chat y chrome", () => {
     expect(chatSidebar).toMatch(/text-\[22px\]/);
     expect(chatSidebar).toMatch(/\[-webkit-text-fill-color:#666978\]/);
     expect(chatSidebar).toMatch(/\[scrollbar-width:none\]/);
-    expect(chatSidebar).toMatch(/px-2\.5 py-3/);
+    expect(chatSidebar).toMatch(/px-2\.5 py-\[12px\]/);
     expect(chatSidebar).toMatch(/!tracking-\[1\.3px\]/);
     expect(chatSidebar).toMatch(/duration-\[320ms\].*ease-\[cubic-bezier\(0\.4,0,0\.2,1\)\]/);
     expect(chatSidebar).toMatch(/mb-9/);
+    expect(chatSidebar).toMatch(/ffbd1626/);
     expect(chatSidebar).not.toMatch(/className="side-scroll"/);
     expect(chatSidebar).not.toMatch(/className="collapse"/);
     expect(layout).not.toMatch(/sidebar\.css/);
@@ -277,6 +278,8 @@ describe("prototype-compat: chat y chrome", () => {
     expect(chat).toMatch(/sidebarCollapsed && "relative z-50/);
     expect(chat).toMatch(/pointer-events-auto/);
     expect(chat).toMatch(/toggleSidebarCollapsed\(\)/);
+    expect(chat).toMatch(/--panel-toggle-top, 42px/);
+    expect(chat).toMatch(/z-\[60\]/);
   });
 
   it("el menú de cuenta se porta a body como Martin; la música es el segundo panel", () => {

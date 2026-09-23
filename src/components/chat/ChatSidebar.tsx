@@ -18,8 +18,12 @@ const SIDEBAR_PAD_X = 40; // px-5 × 2 — ancho interior sin padding
 const labelClass =
   "mx-2.5 mb-3 mt-[31px] text-[11px] font-normal uppercase !tracking-[1.3px] text-[#858585]";
 
+// Martin .nav: gap 12, padding 12×10, 13px, radius 7. Activo = degradado espectro.
 const navRowClass =
-  "flex w-full items-center gap-3 rounded-[7px] px-2.5 py-3 text-left text-[13px] text-[#ababab] isolation-isolate hover:bg-white/[0.035] hover:text-white [&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:shrink-0 [&_svg]:stroke-[1.4]";
+  "relative flex w-full items-center gap-3 rounded-[7px] px-2.5 py-[12px] text-left text-[13px] text-[#ababab] isolation-isolate transition-[background,color] duration-[180ms] hover:bg-white/[0.035] hover:text-white [&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:shrink-0 [&_svg]:stroke-[1.4]";
+
+const navActiveClass =
+  "text-white bg-[linear-gradient(to_right,#080808b3_0%,#08080866_25%,#08080826_55%,transparent_100%),linear-gradient(160deg,#ffbd1626_0%,#ff682f29_22%,#ff165e2b_46%,#ee0de426_73%,#7753ff30_100%)]";
 
 function ProjectHeading({
   project,
@@ -389,8 +393,8 @@ function ChatSidebar({
         ref={asideRef}
         className={cn(
           // Sin clase `.sidebar`: el dump no debe pintar este panel.
-          "chat-sidebar relative z-30 box-border flex h-full shrink-0 overflow-hidden",
-          "border-r border-white/[0.03]",
+          "chat-sidebar relative z-30 box-border flex h-full min-h-0 shrink-0 flex-col overflow-hidden",
+          "border-r border-white/[0.03] bg-[#111113]",
           "fixed inset-y-0 left-0 md:relative md:inset-auto md:translate-x-0",
           "transition-[width,padding] duration-[320ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
           "motion-reduce:transition-none",
@@ -410,7 +414,7 @@ function ChatSidebar({
       >
         <div
           className={cn(
-            "flex h-full min-w-0 shrink-0 flex-col",
+            "flex h-full min-h-0 min-w-0 shrink-0 flex-col overflow-hidden",
             "transition-transform duration-[320ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
             "motion-reduce:transition-none",
             resizing && "!transition-none",
@@ -418,6 +422,7 @@ function ChatSidebar({
           )}
           style={{ width: innerWidth, minWidth: innerWidth }}
         >
+          {/* brandrow: logo 94×25 + collapse 30×30 #666978 · mb 36px (Martin) */}
           <div className="relative z-[2] mb-9 flex w-full shrink-0 items-center justify-between gap-2 overflow-visible">
             <a
               className="block w-[94px] max-w-[94px] shrink-0 overflow-visible leading-none text-inherit no-underline"
@@ -437,7 +442,7 @@ function ChatSidebar({
               type="button"
               className={cn(
                 "relative top-2.5 z-[5] grid h-[30px] w-[30px] min-w-[30px] max-w-[30px] shrink-0 place-items-center",
-                "cursor-pointer border-0 bg-transparent p-0",
+                "cursor-pointer border-0 bg-transparent p-[5px]",
                 "text-[22px] font-normal leading-none text-[#666978]",
                 "[-webkit-text-fill-color:#666978] opacity-100",
                 "hover:text-[#c8c8d0] hover:[-webkit-text-fill-color:#c8c8d0]"
@@ -459,21 +464,24 @@ function ChatSidebar({
             </button>
           </div>
 
+          {/* #new: relative + HaloRim absolute (no .tool del dump) */}
           <button
             type="button"
             id="new"
             onClick={onNewChat}
             className={cn(
-              "mb-[15px] flex w-full items-center gap-[13px] rounded-xl border border-white/[0.09]",
-              "bg-[linear-gradient(120deg,#ffffff06,transparent)]",
+              "relative mb-[15px] flex w-full shrink-0 items-center gap-[13px] overflow-hidden rounded-xl",
+              "border border-white/[0.09] bg-[linear-gradient(120deg,#ffffff06,transparent)]",
               "px-3.5 py-[13px] shadow-[inset_0_1px_0_#ffffff06]",
               "hover:border-white/[0.16] hover:bg-white/[0.035] hover:shadow-[0_0_18px_#f04e7110]"
             )}
           >
             <HaloRim id="new-chat" />
-            ＋ <span>Nuevo chat</span>
+            <span className="relative z-[1] flex items-center gap-[13px]">
+              ＋ <span>Nuevo chat</span>
+            </span>
           </button>
-          <label className="flex items-center gap-2.5 rounded-[7px] border border-white/[0.05] bg-white/[0.01] p-2.5 text-[#777b88]">
+          <label className="relative z-[1] mb-0 flex shrink-0 items-center gap-2.5 rounded-[7px] border border-white/[0.05] bg-white/[0.01] p-2.5 text-[#777b88] [&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:shrink-0">
             <ProtoIcon name="search" />
             <input
               ref={searchRef}
@@ -487,7 +495,7 @@ function ChatSidebar({
           </label>
 
           <div className={labelClass}>GPTs</div>
-          <nav aria-label="GPTs recientes">
+          <nav aria-label="GPTs recientes" className="shrink-0">
             {recentGpts.map((g) => {
               const isActive = activeGptId === g.id;
               return (
@@ -495,11 +503,11 @@ function ChatSidebar({
                   key={g.id}
                   type="button"
                   onClick={() => onSelectGpt(g.id)}
-                  className={cn(navRowClass, isActive && "text-white")}
+                  className={cn(navRowClass, isActive && navActiveClass)}
                   aria-current={isActive ? "page" : undefined}
                 >
                   <GptGlyph gpt={g} size="xs" variant="nav" />
-                  {g.name}
+                  <span className="min-w-0 truncate">{g.name}</span>
                 </button>
               );
             })}
@@ -507,11 +515,11 @@ function ChatSidebar({
               type="button"
               id="allNav"
               onClick={onOpenAllGpts}
-              className={cn(navRowClass, !activeGptId && "text-white")}
+              className={cn(navRowClass, !activeGptId && navActiveClass)}
               aria-current={!activeGptId ? "page" : undefined}
             >
               <ProtoIcon name="grid" />
-              Todos los GPTs
+              <span className="min-w-0 truncate">Todos los GPTs</span>
             </button>
           </nav>
 

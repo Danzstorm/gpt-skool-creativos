@@ -177,7 +177,7 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "relative mt-auto flex w-full min-w-0 cursor-pointer items-center gap-[11px] border-0 border-t border-white/[0.04] bg-transparent pt-[22px] text-left",
+          "relative mt-auto flex w-full min-w-0 shrink-0 cursor-pointer items-center gap-[11px] border-0 border-t border-white/[0.04] bg-transparent pt-[22px] text-left",
           "focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#999]"
         )}
         aria-label="Cuenta"
@@ -205,11 +205,13 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
             />
           ) : null}
         </span>
-        <div className="grid min-w-0 flex-1 gap-0.5">
+        <div className="grid min-w-0 flex-1 gap-0.5 overflow-hidden">
           <strong className="mb-1 block overflow-hidden text-ellipsis whitespace-nowrap text-[12px] font-normal text-[#eeeef2]">
             {displayName}
           </strong>
-          <span className="text-[11px] text-[#8e909c]">Espacio creativo</span>
+          <span className="overflow-hidden text-ellipsis whitespace-nowrap text-[11px] text-[#8e909c]">
+            Espacio creativo
+          </span>
         </div>
       </button>
     </div>

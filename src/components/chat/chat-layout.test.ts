@@ -93,12 +93,15 @@ describe("layout del chat: producto, no plantilla CSS", () => {
     expect(sidebar).toMatch(/h-\[25px\]/);
     expect(sidebar).toMatch(/top-2\.5/);
     expect(sidebar).toMatch(/text-\[22px\]/);
-    expect(sidebar).toMatch(/px-2\.5 py-3/);
+    expect(sidebar).toMatch(/px-2\.5 py-\[12px\]/);
     expect(sidebar).toMatch(/!tracking-\[1\.3px\]/);
     expect(sidebar).toMatch(/py-\[25px\]/);
     expect(sidebar).toMatch(/px-5/);
-    expect(threads).toMatch(/gap-3.*px-2\.5 py-3|px-2\.5 py-3.*gap-3/);
+    expect(sidebar).toMatch(/navActiveClass|ffbd1626/);
+    expect(sidebar).toMatch(/relative mb-\[15px\].*overflow-hidden/);
+    expect(threads).toMatch(/gap-3.*px-2\.5 py-\[9px\]|px-2\.5 py-\[9px\].*gap-3/);
     expect(unified).toMatch(/pointer-events-auto/);
     expect(unified).toMatch(/z-50/);
+    expect(unified).toMatch(/!visible !flex|display:\s*"flex"/);
   });
 });
