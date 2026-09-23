@@ -384,7 +384,7 @@ function ChatSidebar({
         )}
         style={{ "--sidebar-user-width": `${sidebarWidth}px` } as React.CSSProperties}
       >
-        <div className="h-full flex flex-col flex-shrink-0">
+        <div className="flex h-full w-full min-w-0 flex-shrink-0 flex-col">
           <div className="brandrow">
             <a className="brand" href="https://www.skool.com/creativos" aria-label={`${communityName} en Skool`}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -393,7 +393,7 @@ function ChatSidebar({
                 width={94}
                 height={25}
                 alt={communityName}
-                className="h-[25px] w-[94px] object-contain object-left brightness-[1.55] contrast-125"
+                className="block h-[25px] w-[94px]"
               />
             </a>
             <button

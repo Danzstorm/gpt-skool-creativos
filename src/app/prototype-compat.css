@@ -523,6 +523,8 @@ body {
 .app .sidebar {
   position: relative;
   height: 100%;
+  box-sizing: border-box;
+  padding: 25px 20px 25px;
 }
 
 /* Scrollbar oculto, desplazamiento vivo (CHECKLIST). */
@@ -960,15 +962,31 @@ a.ax-primary:hover {
   background: #0008;
 }
 
-/* Wordmark del sidebar: el prototipo lo deja en 94×25. No agrandar;
-   el SVG es fino, así que solo subimos brillo/contraste. */
+/* Wordmark: 94×25, bajado 10px y corrido 8px como Martin.
+   El SVG ya trae su filtro a blanco; un brightness extra lo adelgaza. */
+.app .sidebar .brandrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin: 0 0 36px;
+  overflow: visible;
+}
+.app .sidebar .brand {
+  display: block;
+  flex: 0 0 auto;
+  line-height: 0;
+}
 .app .sidebar .brand img {
+  position: relative;
+  display: block;
   width: 94px;
   height: 25px;
-  top: 0;
-  left: 0;
+  top: 10px;
+  left: 8px;
   opacity: 1;
-  filter: brightness(1.55) contrast(1.25);
+  filter: none;
+  object-fit: fill;
 }
 
 /* El reset `.app .sidebar button { border:0 }` gana a `.new` (especificidad).
@@ -981,7 +999,17 @@ a.ax-primary:hover {
   box-shadow: inset 0 1px 0 #ffffff06;
   border-radius: 12px;
   min-height: 0;
+  margin-bottom: 15px;
+  gap: 13px;
   padding: 13px 14px;
+}
+.app .sidebar .side-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+  padding: 10px;
+  border-radius: 7px;
 }
 .app .sidebar button.new:hover,
 .app .sidebar #new:hover {
@@ -992,13 +1020,18 @@ a.ax-primary:hover {
 
 /* Chevron colapsar: visible (gris muted) y alineado con el wordmark. */
 .app .sidebar .brandrow .collapse {
-  top: 0;
-  color: #8a8b96;
+  position: relative;
+  top: 10px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 30px;
+  margin-left: auto;
+  color: #666978;
   font-size: 22px;
   line-height: 1;
   width: 30px;
   height: 30px;
-  flex-shrink: 0;
+  z-index: 2;
 }
 .app .sidebar .brandrow .collapse:hover {
   color: #c8c8d0;

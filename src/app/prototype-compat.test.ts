@@ -198,7 +198,9 @@ describe("prototype-compat: chat y chrome", () => {
     expect(sidebar).toMatch(/h-\[25px\]/);
     expect(sidebar).not.toMatch(/width=\{128\}/);
     expect(css).toMatch(/\.app \.sidebar \.brand img\s*\{[^}]*width:\s*94px/);
-    expect(css).toMatch(/\.app \.sidebar \.brand img\s*\{[^}]*filter:\s*brightness\(1\.55\)/);
+    expect(css).toMatch(/\.app \.sidebar \.brand img\s*\{[^}]*top:\s*10px/);
+    expect(css).toMatch(/\.app \.sidebar \.brand img\s*\{[^}]*left:\s*8px/);
+    expect(css).toMatch(/\.app \.sidebar \.brand img\s*\{[^}]*filter:\s*none/);
   });
 
   it("el footer usa foto 30px si hay avatar; si no, iniciales", () => {
@@ -228,7 +230,9 @@ describe("prototype-compat: chat y chrome", () => {
   });
 
   it("el chevron de colapsar queda visible en el brandrow", () => {
-    expect(css).toMatch(/\.app \.sidebar \.brandrow \.collapse\s*\{[^}]*color:\s*#8a8b96/);
+    expect(css).toMatch(/\.app \.sidebar \.brandrow \.collapse\s*\{[^}]*color:\s*#666978/);
+    expect(css).toMatch(/\.app \.sidebar \.brandrow \.collapse\s*\{[^}]*top:\s*10px/);
+    expect(css).toMatch(/\.app \.sidebar \.brandrow\s*\{[^}]*margin:\s*0 0 36px/);
   });
 
   it("el menú de cuenta se porta a body como Martin; la música es el segundo panel", () => {
