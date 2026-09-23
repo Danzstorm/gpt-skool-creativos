@@ -8,10 +8,11 @@ export const OPEN_PROJECTS_KEY = "chat_open_projects";
 export const SIDEBAR_WIDTH_KEY = "chat_sidebar_width";
 
 export const SIDEBAR_WIDTH_DEFAULT = 230;
-const SIDEBAR_WIDTH_MIN = 190;
+/* Antes 190: el panel se veía más delgado que el de Martin (230). */
+const SIDEBAR_WIDTH_MIN = 230;
 const SIDEBAR_WIDTH_MAX = 420;
 
-/** Ancho mínimo 190px, máximo min(420px, 45% del viewport) — igual que el prototipo. */
+/** Ancho mínimo 230px (Martin), máximo min(420px, 45% del viewport). */
 export function clampSidebarWidth(width: number, viewportWidth: number): number {
   return Math.max(SIDEBAR_WIDTH_MIN, Math.min(Math.min(SIDEBAR_WIDTH_MAX, viewportWidth * 0.45), width));
 }

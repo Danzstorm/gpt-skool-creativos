@@ -417,7 +417,7 @@ function ChatSidebar({
           )}
         >
           {/* brandrow Martin: logo + ‹ hermanos en la misma fila (nunca dentro de #new) */}
-          <div className="chat-sidebar-brand flex min-h-[30px] w-full shrink-0 items-center justify-between gap-2 overflow-visible">
+          <div className="chat-sidebar-brand flex min-h-[45px] w-full shrink-0 items-start justify-between gap-2 overflow-visible">
             <a
               className="block w-[94px] max-w-[94px] shrink-0 overflow-visible leading-none text-inherit no-underline"
               href="https://www.skool.com/creativos"
@@ -429,13 +429,13 @@ function ChatSidebar({
                 width={94}
                 height={25}
                 alt={communityName}
-                className="relative block h-[25px] w-[94px] object-fill opacity-100 [filter:none]"
+                className="relative top-2.5 left-2 block h-[25px] w-[94px] object-fill opacity-100 [filter:none]"
               />
             </a>
             <button
               type="button"
               className={cn(
-                "grid h-[30px] w-[30px] min-w-[30px] max-w-[30px] shrink-0 place-items-center",
+                "relative top-2.5 ml-auto grid h-[30px] w-[30px] min-w-[30px] max-w-[30px] shrink-0 place-items-center self-start",
                 "cursor-pointer border-0 bg-transparent p-[5px]",
                 "text-[22px] font-normal leading-none text-[#666978]",
                 "[-webkit-text-fill-color:#666978] opacity-100",

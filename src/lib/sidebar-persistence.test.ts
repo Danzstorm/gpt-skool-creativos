@@ -60,8 +60,8 @@ describe("ensureOpenProjectId", () => {
 });
 
 describe("clampSidebarWidth", () => {
-  it("respeta 190–min(420, 45vw) como el prototipo", () => {
-    expect(clampSidebarWidth(100, 1400)).toBe(190);
+  it("respeta 230–min(420, 45vw) como Martin", () => {
+    expect(clampSidebarWidth(100, 1400)).toBe(230);
     expect(clampSidebarWidth(500, 1400)).toBe(420);
     expect(clampSidebarWidth(300, 600)).toBe(270);
   });
