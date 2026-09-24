@@ -15,12 +15,7 @@ body {
   font-family: var(--font-sans);
 }
 
-.intro h1,
-.gpt-title-row h1,
-.access-main h1,
-.ax-header h1,
-.ax-gate-copy h1,
-.ax-brand {
+.gpt-title-row h1,.access-main h1,.ax-header h1,.ax-gate-copy h1,.ax-brand {
   font-family: var(--font-display);
 }
 

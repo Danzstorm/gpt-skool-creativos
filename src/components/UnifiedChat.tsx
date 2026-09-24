@@ -519,40 +519,18 @@ export default function UnifiedChat({
 
         {!activeGpt && (
           <div id="homeView" className="workspace">
-            <div className="intro">
-              <div className="brand-energy gpt-home-energy" aria-hidden>
+            <div className="intro relative mb-[35px] h-auto max-h-none shrink-0 overflow-visible pt-[6px] text-center min-[651px]:mb-[58px]">
+              {/* Important sizes override the shared legacy .brand-energy rule until the GPT intro is migrated. */}
+              <div className="brand-energy gpt-home-energy !relative !mt-[-12px] !mb-[16px] !mx-auto !h-[82px] !w-[82px] !overflow-visible" aria-hidden>
                 <EnergyCanvas size={82} speed={0.0009} />
               </div>
               <h1
-                style={{
-                  fontSize: 37,
-                  lineHeight: 1.2,
-                  fontWeight: 300,
-                  /* Fill sólido: tracking del proto (-1.3px) sin colapsar espacios. */
-                  letterSpacing: "-1.3px",
-                  margin: "0 0 15px",
-                  color: "#f1f1f1",
-                  WebkitTextFillColor: "#f1f1f1",
-                  background: "none",
-                  backgroundClip: "border-box",
-                  WebkitBackgroundClip: "border-box",
-                }}
+                className="relative m-0 mb-[15px] bg-none text-[37px] leading-[1.2] font-[300] tracking-[-1.3px] text-[#f1f1f1] [font-family:'Plus_Jakarta_Sans',sans-serif] [-webkit-text-fill-color:#f1f1f1] [background-clip:border-box] [-webkit-background-clip:border-box] min-[651px]:top-[16px]"
               >
                 {firstName ? `Bienvenido de nuevo, ${firstName}.` : "Bienvenido de nuevo."}
               </h1>
               <p
-                style={{
-                  fontFamily: "var(--font-display), 'Plus Jakarta Sans', sans-serif",
-                  fontSize: 13,
-                  fontWeight: 400,
-                  letterSpacing: 0,
-                  wordSpacing: "normal",
-                  lineHeight: 1.6,
-                  margin: 0,
-                  color: "#999",
-                  WebkitTextFillColor: "#999",
-                  background: "none",
-                }}
+                className="relative m-0 bg-none text-[13px] leading-[1.6] font-normal tracking-normal text-[#999] [font-family:var(--font-display),'Plus_Jakarta_Sans',sans-serif] [word-spacing:normal] [-webkit-text-fill-color:#999] max-[650px]:mx-auto max-[650px]:max-w-[260px] min-[651px]:top-[16px]"
               >
                 Elige tu asistente creativo para empezar a crear.
               </p>

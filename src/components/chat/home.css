@@ -1,13 +1,7 @@
-/* Home / catálogo — fuente de verdad visual (intro, orbe, filters, cards).
+/* Home / catálogo — fuente de verdad visual (filters, cards).
    Se carga DESPUÉS del dump + compat. No toca #chatIntro ni mensajes. */
 
-/* El prototipo dibuja un orbe CSS en `.intro:before`; acá va EnergyCanvas. */
 @layer legacy {
-#homeView .intro:before,
-.workspace .intro:before {
-  content: none;
-  display: none;
-}
 
 /* Un solo scrollport en home: `.main`. */
 .main:has(#homeView) {
@@ -24,9 +18,7 @@
   padding-bottom: 96px;
 }
 
-.workspace .intro,
-.workspace .tools,
-.workspace .grid {
+.workspace .tools,.workspace .grid {
   flex-shrink: 0;
   height: auto;
   max-height: none;
@@ -62,46 +54,6 @@
   }
 }
 
-.workspace .intro {
-  padding-top: 6px;
-  margin-bottom: 43px;
-  text-align: center;
-}
-
-/* Orbe home: 82px como EnergyCanvas size={82}. */
-#homeView .intro .brand-energy,
-#homeView .intro .gpt-home-energy,
-.workspace .intro .brand-energy,
-.workspace .intro .gpt-home-energy {
-  position: relative;
-  overflow: visible;
-  width: 82px;
-  height: 82px;
-  margin: -12px auto 16px;
-}
-
-#homeView .intro > h1 {
-  color: #f1f1f1;
-  -webkit-text-fill-color: #f1f1f1;
-  background: none;
-  background-clip: border-box;
-  -webkit-background-clip: border-box;
-  font-weight: 300;
-  letter-spacing: -1.3px;
-  margin: 0 0 15px;
-}
-
-#homeView .intro > p {
-  font-family: var(--font-display, "Plus Jakarta Sans", sans-serif);
-  font-weight: 400;
-  letter-spacing: 0;
-  word-spacing: normal;
-  line-height: 1.6;
-  color: #999;
-  -webkit-text-fill-color: #999;
-  background: none;
-  margin: 0;
-}
 
 .workspace .tools-toolbar {
   display: flex;
@@ -215,9 +167,6 @@
 }
 
 @media (max-width: 650px) {
-  .workspace .intro {
-    margin-bottom: 35px;
-  }
 
   .app #homeView .filters {
     gap: 0;
@@ -242,16 +191,6 @@
   #homeView.workspace {
     padding-top: 76px;
     padding-bottom: 76px;
-  }
-
-  #homeView .intro {
-    margin-bottom: 38px;
-  }
-
-  #homeView .intro h1,
-  #homeView .intro > p {
-    position: relative;
-    top: 16px;
   }
 }
 }

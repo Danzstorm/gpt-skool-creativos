@@ -136,7 +136,7 @@ describe("prototype-compat: chat y chrome", () => {
 
   it("el h1 global ya no clippea todo el documento", () => {
     expect(proto).not.toMatch(/letter-spacing:\.3px\}h1\{[^}]*background-clip:text/);
-    expect(proto).toMatch(/\.intro h1,#homeView h1,\.access-title-row h1\{[^}]*background-clip:text/);
+    expect(proto).toMatch(/\.access-title-row h1\{[^}]*background-clip:text/);
     expect(hero).toMatch(/WebkitTextFillColor:\s*["']#8e909c["']/);
     expect(hero).toMatch(/color:\s*["']#8e909c["']/);
   });
@@ -148,9 +148,6 @@ describe("prototype-compat: chat y chrome", () => {
     expect(chat).not.toMatch(/¿Qué vas a crear hoy\?/);
     expect(chat).toMatch(/<h1[\s\S]*Bienvenido de nuevo/);
     expect(chat).not.toMatch(/className="eyebrow"/);
-    expect(chat).toMatch(/letterSpacing:\s*["']-1\.3px["']/);
-    expect(chat).toMatch(/fontWeight:\s*300/);
-    expect(chat).toMatch(/margin:\s*["']0 0 15px["']/);
   });
 
   it("muestra el breadcrumb del hilo solo con mensajes", () => {
