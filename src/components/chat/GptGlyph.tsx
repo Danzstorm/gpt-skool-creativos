@@ -1,10 +1,17 @@
 import Image from "next/image";
 import type { Gpt } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { getGptVisual } from "@/lib/gpt-visual";
-import ProtoIcon, { protoIconForCraft } from "./ProtoIcon";
+import { foldGptText, getGptVisual } from "@/lib/gpt-visual";
+import ProtoIcon, { protoIconForCraft, type ProtoIconName } from "./ProtoIcon";
 
 type GlyphSize = "xs" | "sm" | "lg" | "xl" | "hero";
+
+const PROTOTYPE_ICON_BY_GPT: Record<string, ProtoIconName> = {
+  "iphone look": "phone",
+  "kling director": "play",
+  "luxury prompt": "diamond",
+  "ugc models": "users",
+};
 
 interface Props {
   gpt?: Pick<Gpt, "name" | "icon_url" | "category"> & { description?: string | null };
@@ -18,7 +25,7 @@ interface Props {
 
 export default function GptGlyph({ gpt, size = "sm", className, sizePx, variant = "mark" }: Props) {
   const { craft } = getGptVisual(gpt?.category, gpt?.name, gpt?.description);
-  const iconName = protoIconForCraft(craft);
+  const iconName = PROTOTYPE_ICON_BY_GPT[foldGptText(gpt?.name ?? "").trim()] ?? protoIconForCraft(craft);
   const imageSizes = sizePx || { xs: "20px", sm: "24px", lg: "32px", xl: "48px", hero: "132px" }[size];
 
   // Nav del sidebar = trazo fino del prototipo (ProtoIcon). Las fotos
