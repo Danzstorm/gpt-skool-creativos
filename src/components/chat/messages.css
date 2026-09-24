@@ -10,8 +10,8 @@
   min-height: 0;
   overflow-y: auto;
   gap: 26px;
-  padding-top: 28px;
-  padding-bottom: 16px;
+  padding-top: 16px;
+  padding-bottom: 24px;
 }
 
 .chat .messages > .message,
@@ -55,7 +55,7 @@
   justify-content: space-between;
   padding: 12px 20px;
   border-bottom: 1px solid #ffffff0b;
-  background: linear-gradient(110deg, #ffffff03, transparent);
+  background: linear-gradient(110deg, #ffffff03, transparent 65%, #ee0de405);
 }
 
 .prompt-body {
