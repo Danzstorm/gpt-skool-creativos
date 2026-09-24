@@ -29,9 +29,8 @@ import {
 import { useChatUploads } from "@/hooks/useChatUploads";
 import { useChatSidebar } from "@/hooks/useChatSidebar";
 import { useChatStream } from "@/hooks/useChatStream";
-import { useRecentGpts } from "@/hooks/useRecentGpts";
 import { useThreadWorkspace } from "@/hooks/useThreadWorkspace";
-import { pickRecentGpts } from "@/lib/gpt-recents";
+import { pickSidebarGpts } from "@/lib/gpt-recents";
 
 /** Cartel del proyecto donde va a nacer el chat que todavía no se creó. */
 function ProjectDestination({ name }: { name: string }) {
@@ -125,8 +124,6 @@ export default function UnifiedChat({
     onSearchChange,
     clearSearch,
   } = useChatSidebar();
-
-  const { recentIds, touchRecent } = useRecentGpts();
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -258,20 +255,18 @@ export default function UnifiedChat({
 
   const selectGpt = useCallback(
     (gptId: string) => {
-      touchRecent(gptId);
       selectGptWorkspace(gptId);
       clearMessages();
     },
-    [selectGptWorkspace, clearMessages, touchRecent]
+    [selectGptWorkspace, clearMessages]
   );
 
   const selectThread = useCallback(
     (t: ThreadSummary) => {
       if (!selectThreadWorkspace(t, isLoadingHistory)) return;
-      touchRecent(t.gpt_id);
       void loadHistory(t.id);
     },
-    [selectThreadWorkspace, isLoadingHistory, loadHistory, touchRecent]
+    [selectThreadWorkspace, isLoadingHistory, loadHistory]
   );
 
   const openAllGpts = useCallback(() => {
@@ -400,8 +395,8 @@ export default function UnifiedChat({
     [threadList, hiddenThreadIds, hiddenProjectIds]
   );
   const recentGpts = useMemo(
-    () => pickRecentGpts(gpts, recentIds, visibleThreads, activeGptId),
-    [gpts, recentIds, visibleThreads, activeGptId]
+    () => pickSidebarGpts(gpts, activeGptId),
+    [gpts, activeGptId]
   );
 
   return (

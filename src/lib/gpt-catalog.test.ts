@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { activeGptsForChat } from "./gpt-catalog";
-import { SIDEBAR_RECENT_GPT_LIMIT } from "./gpt-recents";
+import { SIDEBAR_GPT_LIMIT } from "./gpt-recents";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const src = (...parts: string[]) => readFileSync(join(here, "..", ...parts), "utf8");
@@ -55,13 +55,13 @@ describe("chat home vs sidebar", () => {
     expect(catalog).not.toMatch(/capCatalogList|HERO_GPT_PREVIEW_LIMIT|slice\(\s*0\s*,\s*9\s*\)/);
   });
 
-  it("home recibe la lista completa de activos; el sidebar solo recientes", () => {
+  it("home recibe la lista completa de activos; el sidebar 5 fijos + activo", () => {
     expect(page).toMatch(/gpts_public/);
     expect(page).toMatch(/is_active/);
     expect(page).toMatch(/sort_order/);
     expect(page).toMatch(/activeGptsForChat/);
     expect(chat).toMatch(/<GptCatalog gpts=\{gpts\}/);
-    expect(chat).toMatch(/pickRecentGpts\(gpts, recentIds, visibleThreads, activeGptId\)/);
+    expect(chat).toMatch(/pickSidebarGpts\(gpts, activeGptId\)/);
     expect(chat).toMatch(/recentGpts=\{recentGpts\}/);
     expect(sidebar).toMatch(/recentGpts\.map/);
     expect(sidebar).not.toMatch(/indices\s*=\s*\[0,\s*1,\s*2,\s*3,\s*4\]/);
@@ -69,8 +69,7 @@ describe("chat home vs sidebar", () => {
   });
 
   it("Todos los GPTs abre el home completo, no un subset", () => {
-    expect(SIDEBAR_RECENT_GPT_LIMIT).toBe(5);
-    expect(src("lib", "gpt-recents.ts")).toMatch(/SIDEBAR_RECENT_GPT_LIMIT = 5/);
+    expect(SIDEBAR_GPT_LIMIT).toBe(5);
     expect(sidebar).toMatch(/id="allNav"/);
     expect(sidebar).toMatch(/onClick=\{onOpenAllGpts\}/);
     expect(sidebar).toMatch(/Todos los GPTs/);
