@@ -14,7 +14,7 @@ import {
   parseTextSize,
 } from "@/lib/text-size";
 import { positionAccountMenuBox, stopAmbientMusic } from "@/lib/ambient-music";
-import MusicMenu from "./MusicMenu";
+import MusicMenu, { accountIconClass, accountRowClass } from "./MusicMenu";
 
 interface Props {
   fullName: string | null;
@@ -109,19 +109,23 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
   const settingsDialog = (
     <dialog
       ref={settingsRef}
-      className="settings-dialog"
+      className="settings-dialog fixed inset-0 m-auto h-fit max-h-[85dvh] w-[min(420px,90vw)] overflow-auto rounded-[18px] border border-[#ffffff20] bg-[#141416] p-[26px] text-[#eee] backdrop:bg-[#0008]"
       onClose={() => setSettingsOpen(false)}
       onClick={(e) => {
         if (e.target === e.currentTarget) setSettingsOpen(false);
       }}
     >
-      <h2>Configuración</h2>
-      <div className="type-settings">
-        <label>
+      {/* `!mb-5`: legacy h2{margin:0}. */}
+      <h2 className="!mb-5">Configuración</h2>
+      <div>
+        <label className="my-[18px] flex items-center justify-between gap-2.5 text-[13px]">
           <span>Tamaño de letra</span>
-          <output id="textSizeValue">{textSize}%</output>
+          <output id="textSizeValue" className="text-[#aaa] tabular-nums">
+            {textSize}%
+          </output>
         </label>
         <input
+          className="w-full accent-[#b6b6bd]"
           id="textSize"
           type="range"
           min={TEXT_SIZE_MIN}
@@ -131,11 +135,16 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
           onChange={(e) => changeTextSize(Number(e.target.value))}
           aria-label="Tamaño de letra"
         />
-        <div className="type-range-labels">
+        <div className="mt-1.5 flex justify-between text-[10px] text-[#777780]">
           <span>Más pequeña</span>
           <span>Más grande</span>
         </div>
-        <button id="resetTextSize" type="button" onClick={() => changeTextSize(TEXT_SIZE_DEFAULT)}>
+        <button
+          id="resetTextSize"
+          type="button"
+          onClick={() => changeTextSize(TEXT_SIZE_DEFAULT)}
+          className="mt-5 w-full rounded-lg border border-[#ffffff20] px-2.5 py-2 !text-[11px] !text-[#aaa]"
+        >
           Restablecer
         </button>
       </div>
@@ -146,13 +155,22 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
     // Pie anclado abajo (Martin .profile { margin-top: auto }). Solo el botón
     // de cuenta vive en el flujo: menú y settings van a body para no partir
     // el flex avatar+nombre.
-    <div ref={rootRef} className="chat-sidebar-footer relative mt-auto w-full shrink-0">
+    <div ref={rootRef} className="chat-sidebar-footer relative z-[1] mt-auto w-full shrink-0">
       {open &&
         createPortal(
-          <div ref={menuRef} className="account-menu account-open">
+          // Ancho y posición: positionAccountMenuBox. overflow visible: el
+          // submenú de música cuelga a la derecha.
+          <div
+            ref={menuRef}
+            className="account-menu fixed z-[80] rounded-[14px] border border-[#ffffff16] bg-[#111113] p-2 [box-shadow:0_16px_50px_#0006]"
+          >
             {isAdmin && (
-              <Link href="/admin" onClick={() => setOpen(false)}>
-                <svg viewBox="0 0 24 24" aria-hidden>
+              <Link
+                href="/admin"
+                onClick={() => setOpen(false)}
+                className={cn(accountRowClass, "min-h-11 p-3 text-[13px] no-underline")}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden className={cn(accountIconClass, "!stroke-[1.4]")}>
                   <path d="M12 3 4.5 6.5v4.2c0 5 3.2 8.8 7.5 10.3 4.3-1.5 7.5-5.3 7.5-10.3V6.5Z" />
                 </svg>
                 Admin
@@ -165,16 +183,22 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
                 setOpen(false);
                 setSettingsOpen(true);
               }}
+              className={cn(accountRowClass, "min-h-11 [border:0] px-3 py-[11px] !leading-5")}
             >
-              <svg viewBox="0 0 24 24" aria-hidden>
+              <svg
+                viewBox="0 0 24 24"
+                aria-hidden
+                className={cn(accountIconClass, "block basis-[18px] !stroke-[1.5] text-[#a4a4ae]")}
+              >
                 <circle cx="12" cy="12" r="3" />
                 <path d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.4-6.4-1.4 1.4M8 16.9 6.6 18.3m10.8 0L16 16.9M8 7.1 6.6 5.7" />
               </svg>
               Configuración
             </button>
             <form action="/api/auth/signout" method="POST" onSubmit={() => stopAmbientMusic()}>
-              <button type="submit">
-                <svg viewBox="0 0 24 24" aria-hidden>
+              {/* Fuera de text-size (.account-menu>button): 13px fijo. */}
+              <button type="submit" className={cn(accountRowClass, "[border:0] p-3 !text-[13px]")}>
+                <svg viewBox="0 0 24 24" aria-hidden className={cn(accountIconClass, "!stroke-[1.4]")}>
                   <path d="M10 6H6.5A1.5 1.5 0 0 0 5 7.5v9A1.5 1.5 0 0 0 6.5 18H10M15 8l4 4-4 4M10 12h9" />
                 </svg>
                 Salir
@@ -191,8 +215,8 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "flex w-full min-w-0 shrink-0 cursor-pointer flex-row items-center gap-[11px]",
-          "border-0 border-t border-white/[0.04] bg-transparent pt-[22px] text-left",
+          "flex w-full min-w-0 shrink-0 cursor-pointer flex-row items-center justify-start gap-[11px]",
+          "[border-width:1px_0_0] [border-style:solid_none_none] border-t-[#ffffff0a] bg-transparent pt-[22px] text-left",
           "focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#999]"
         )}
         aria-label="Cuenta"
@@ -200,7 +224,7 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
       >
         <span
           className={cn(
-            "grid h-[30px] w-[30px] min-h-[30px] min-w-[30px] shrink-0 place-items-center overflow-hidden rounded-full",
+            "relative grid h-[30px] w-[30px] min-h-[30px] min-w-[30px] flex-[0_0_30px] place-items-center overflow-hidden rounded-[50%]",
             "border border-[#b892ff30] bg-[linear-gradient(140deg,#563743,#28233f)] text-[11px] leading-none text-[#eeeef2]",
             "[&>*]:col-start-1 [&>*]:row-start-1"
           )}
@@ -216,11 +240,12 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
               height={30}
               referrerPolicy="no-referrer"
               onError={() => setAvatarFailed(true)}
-              className="relative z-[1] block h-[30px] w-[30px] max-w-none rounded-full object-cover"
+              className="relative z-[1] block h-[30px] w-[30px] max-w-none rounded-[50%] object-cover"
             />
           ) : null}
         </span>
-        <div className="grid min-w-0 flex-1 gap-0.5 overflow-hidden">
+        {/* `!flex`: la clase .grid del catálogo (legacy) también pega aquí. */}
+        <div className="grid !flex min-w-0 flex-[1_1_auto] flex-col items-start gap-0.5 overflow-hidden">
           <strong className="mb-1 block overflow-hidden text-ellipsis whitespace-nowrap text-[12px] font-normal text-[#eeeef2]">
             {displayName}
           </strong>

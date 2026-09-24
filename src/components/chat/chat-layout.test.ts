@@ -76,7 +76,7 @@ describe("layout del chat: producto, no plantilla CSS", () => {
   });
 
   it("GPTS y CHATS scrollean juntos; el pie queda fuera con mt-auto", () => {
-    expect(sidebar).toMatch(/min-h-0 flex-1 overflow-x-hidden overflow-y-auto[\s\S]*GPTs[\s\S]*Chats/);
+    expect(sidebar).toMatch(/min-h-0 flex-\[1_1_auto\] overflow-x-hidden overflow-y-auto[\s\S]*GPTs[\s\S]*Chats/);
     expect(sidebar).toMatch(/Chats[\s\S]*SidebarFooter/);
   });
 
@@ -95,7 +95,8 @@ describe("layout del chat: producto, no plantilla CSS", () => {
   });
 
   it("el look del sidebar vive en Tailwind del componente, no en sidebar.css", () => {
-    expect(layout).toMatch(/chat-sidebar-fence\.css/);
+    expect(layout).not.toMatch(/chat-sidebar-fence\.css/);
+    expect(layout).toMatch(/components\/chat\/sidebar-menus\.css/);
     expect(layout).not.toMatch(/chat\/sidebar\.css/);
     expect(layout).toMatch(/components\/chat\/composer\.css/);
     expect(sidebar).toMatch(/chat-sidebar/);
@@ -105,9 +106,8 @@ describe("layout del chat: producto, no plantilla CSS", () => {
     expect(sidebar).toMatch(/text-\[22px\]/);
     expect(sidebar).toMatch(/px-2\.5 py-\[12px\]/);
     expect(sidebar).toMatch(/!tracking-\[1\.3px\]/);
-    expect(layout).toMatch(/chat-sidebar-fence\.css/);
     expect(sidebar).toMatch(/navActiveClass|ffbd1626/);
-    expect(sidebar).toMatch(/relative mb-\[15px\].*overflow-hidden/);
+    expect(sidebar).toMatch(/relative z-0 mb-\[15px\].*overflow-hidden/);
     expect(threads).toMatch(/gap-3.*px-2\.5 py-\[9px\]|px-2\.5 py-\[9px\].*gap-3/);
     expect(unified).toMatch(/pointer-events-auto/);
     expect(unified).toMatch(/z-50/);

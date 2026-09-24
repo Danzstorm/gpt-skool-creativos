@@ -8,6 +8,11 @@ import OverflowMenu from "./OverflowMenu";
 // si lo que viene es un chat o los archivos que el composer también acepta.
 export const THREAD_DND_TYPE = "application/x-thread-id";
 
+/** Input de renombrar (chat y carpeta). "!": legacy aún trae
+ *  button,input{font:inherit}, ::selection y :focus-visible{outline}. */
+export const renameInputClass =
+  "absolute top-0 left-0 m-0 box-border block h-5 w-full rounded-[5px] border border-[#ffffff25] bg-[#202024] px-1 py-0 align-top !leading-[18px] text-[#eee] caret-white selection:!bg-[rgba(255,65,101,.28)] focus:![outline:none] focus:![outline-offset:0] focus:border-[#ffffff38] focus:[box-shadow:inset_0_0_0_1px_#ffffff08]";
+
 interface Props {
   thread: ThreadSummary;
   isActive: boolean;
@@ -109,7 +114,13 @@ function ThreadListItem({
         beginRename();
       }}
     >
-      <span className="chat-pin" aria-hidden>
+      <span
+        className={cn(
+          "chat-pin pointer-events-none absolute top-1/2 left-2.5 -mt-[7px] h-3.5 w-3.5 text-[#a6a6af]",
+          pinned ? "block" : "hidden"
+        )}
+        aria-hidden
+      >
         <svg viewBox="0 0 24 24">
           <path d="M8 3h8l-1 6 3 3v3H6v-3l3-3-1-6Zm4 12v6" />
         </svg>
@@ -137,7 +148,7 @@ function ThreadListItem({
                 if (e.key === "Escape") onCancelRename();
               }}
               onBlur={() => onSubmitRename(thread.id)}
-              className="folder-rename absolute left-0 top-0 h-5 w-full"
+              className={renameInputClass}
               aria-label="Nuevo nombre del chat"
             />
           </>
@@ -150,7 +161,12 @@ function ThreadListItem({
         <button
           ref={moreRef}
           type="button"
-          className="chat-more"
+          // Oculto salvo abierto o en táctil (Martin). `[display:grid]`, no
+          // `grid`: la clase .grid del catálogo sigue en legacy.
+          className={cn(
+            "chat-more absolute top-1/2 right-2 [display:grid] h-5 w-5 cursor-pointer place-items-center rounded-[5px] opacity-0 [transform:translateY(-50%)]",
+            "!text-[#92929c] hover:bg-[#ffffff09] hover:!text-[#eee] aria-expanded:opacity-100 [@media(hover:none)]:opacity-100"
+          )}
           aria-label={`Opciones de ${thread.title}`}
           aria-expanded={menuOpen}
           onClick={(e) => {
@@ -170,7 +186,7 @@ function ThreadListItem({
         open={menuOpen}
         onClose={closeMenu}
         triggerRef={moreRef}
-        className="folder-options chat-options"
+        className="chat-options"
       >
         {onTogglePin && (
           <button

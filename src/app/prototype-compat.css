@@ -119,29 +119,6 @@ body {
   color: #d0d1d8;
 }
 
-/* Sidebar labels/nav: text-size y resets globales aprietan tracking. */
-.label,
-.new,
-.nav,
-.chat-name,
-.history-item,
-.folder-heading,
-.profile strong,
-.profile span:last-child {
-  letter-spacing: 0 !important;
-  word-spacing: 0.06em !important;
-  -webkit-text-fill-color: currentColor !important;
-}
-
-/* Sidebar chrome (padding, brand, nav, history, footer) vive en Tailwind
-   dentro de ChatSidebar / ThreadListItem / SidebarFooter — no re-parchear aquí. */
-
-/* El layout de .chat-sidebar vive en chat-sidebar-fence.css (carga al final).
-   No re-aislar aquí: top:10px en el ‹ lo bajaba encima de Nuevo chat. */
-dialog.settings-dialog:not([open]) {
-  display: none;
-}
-
 /* Fallback del canvas de energía. El prototipo ya pone 200% / -50% en
    cada slot; el inline de pixeles lo pisaba y el orbe tapaba títulos. */
 .energy-canvas {
@@ -375,23 +352,6 @@ a.ax-primary:hover {
   color: #eeeef2;
 }
 
-.account-menu>a {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 12px;
-  min-height: 44px;
-  border-radius: 8px;
-  text-align: left;
-  color: #c4c4cc;
-  font-size: 13px;
-  text-decoration: none;
-}
-.account-menu>a:hover {
-  background: #ffffff08;
-  color: #fff;
-}
 .ax-shell {
   min-height: 100%;
   height: 100%;
@@ -440,20 +400,6 @@ a.ax-primary:hover {
   border-color: #af7a4033;
 }
 
-/* Tailwind v4 pone margin:0 a todo, incluido `dialog`. Sin `margin: auto`
-   el modal de Configuración queda pegado arriba a la izquierda. */
-.settings-dialog {
-  position: fixed;
-  inset: 0;
-  margin: auto;
-  width: min(420px, 90vw);
-  height: fit-content;
-  max-height: 85dvh;
-}
-.settings-dialog::backdrop {
-  background: #0008;
-}
-
 /* Orbe de energía: overflow visible para que el halo no muera.
    Tamaños: home.css (82) / gpt-intro.css (58). */
 .brand-energy,
@@ -462,21 +408,4 @@ a.ax-primary:hover {
   position: relative;
   overflow: visible;
 }
-
-/* Martin cuelga .account-menu en body (fixed). El segundo panel
-   `.music-options` es hijo absoluto a la derecha; overflow visible
-   para que no lo recorte el sidebar. En ~390px el JS clampa. */
-.account-menu {
-  overflow: visible;
 }
-.account-menu .music-options[hidden] {
-  display: none;
-}
-.account-menu .music-options {
-  max-width: calc(100vw - 16px);
-  max-height: min(360px, calc(100dvh - 16px));
-  overflow-x: hidden;
-  overflow-y: auto;
-}
-}
-

@@ -1,0 +1,37 @@
+/* Lo que el sidebar no puede expresar en utilities: keyframes, thumb del
+   slider de volumen y el cursor global mientras se arrastra el ancho. */
+@layer components {
+  body.resizing-sidebar {
+    cursor: col-resize;
+    user-select: none;
+  }
+
+  @keyframes music-open {
+    from { opacity: 0; transform: translateX(-5px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  @keyframes equalizer {
+    from { transform: scaleY(0.35); }
+    to { transform: scaleY(1); }
+  }
+
+  .music-volume input::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 9px;
+    height: 9px;
+    border: 0;
+    border-radius: 50%;
+    background: #dedee4;
+    box-shadow: none;
+  }
+
+  .music-volume input::-moz-range-thumb {
+    width: 9px;
+    height: 9px;
+    border: 0;
+    border-radius: 50%;
+    background: #dedee4;
+    box-shadow: none;
+  }
+}

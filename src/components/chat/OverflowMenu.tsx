@@ -2,6 +2,17 @@
 
 import { useLayoutEffect, useRef, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
+import { cn } from "@/lib/utils";
+
+// Panel y filas del menú. font-size de las filas: text-size.ts
+// (.folder-options button). `!`: button{color:inherit}, svg{stroke-width} y
+// :focus-visible{outline} de legacy.
+const menuClass = cn(
+  "folder-options fixed z-[120] w-[170px] rounded-[9px] border border-[#ffffff15] bg-[#161619] p-[5px] [box-shadow:0_8px_25px_#0005]",
+  "[&>button]:flex [&>button]:w-full [&>button]:items-center [&>button]:justify-start [&>button]:gap-[9px] [&>button]:rounded-[6px] [&>button]:p-[9px] [&>button]:whitespace-nowrap [&>button]:!text-[#92929c]",
+  "[&>button:hover]:bg-[#ffffff09] [&>button:hover]:!text-[#eee] [&>button:focus]:![outline:none] [&>button:focus-visible]:[box-shadow:inset_0_0_0_1px_#ffffff25]",
+  "[&_svg]:h-[15px] [&_svg]:w-[15px] [&_svg]:shrink-0 [&_svg]:fill-none [&_svg]:stroke-current [&_svg]:!stroke-[1.4]"
+);
 
 /**
  * Menú de tres puntos anclado al trigger y montado en `document.body`.
@@ -12,7 +23,7 @@ export default function OverflowMenu({
   open,
   onClose,
   triggerRef,
-  className = "folder-options",
+  className,
   children,
 }: {
   open: boolean;
@@ -64,7 +75,7 @@ export default function OverflowMenu({
   if (!open || typeof document === "undefined") return null;
 
   return createPortal(
-    <span ref={menuRef} className={className} role="menu">
+    <span ref={menuRef} className={cn(menuClass, className)} role="menu">
       {children}
     </span>,
     document.body

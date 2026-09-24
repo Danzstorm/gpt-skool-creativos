@@ -9,7 +9,7 @@ import "../components/chat/composer.css";
 import "../components/chat/home.css";
 import "../components/chat/gpt-intro.css";
 import "../components/chat/messages.css";
-import "./chat-sidebar-fence.css";
+import "../components/chat/sidebar-menus.css";
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],

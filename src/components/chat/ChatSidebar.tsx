@@ -8,7 +8,7 @@ import GptGlyph from "./GptGlyph";
 import HaloRim from "./HaloRim";
 import OverflowMenu from "./OverflowMenu";
 import ProtoIcon from "./ProtoIcon";
-import ThreadListItem, { THREAD_DND_TYPE } from "./ThreadListItem";
+import ThreadListItem, { THREAD_DND_TYPE, renameInputClass } from "./ThreadListItem";
 import SidebarFooter from "./SidebarFooter";
 
 // El atajo ⌘K / Ctrl K sigue vivo; el prototipo no pinta el badge.
@@ -21,7 +21,7 @@ const navRowClass =
   "relative flex w-full items-center gap-3 rounded-[7px] px-2.5 py-[12px] text-left text-[13px] text-[#ababab] isolation-isolate transition-[background,color] duration-[180ms] hover:bg-white/[0.035] hover:text-white [&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:shrink-0 [&_svg]:stroke-[1.4]";
 
 const navActiveClass =
-  "text-white bg-[linear-gradient(to_right,#080808b3_0%,#08080866_25%,#08080826_55%,transparent_100%),linear-gradient(160deg,#ffbd1626_0%,#ff682f29_22%,#ff165e2b_46%,#ee0de426_73%,#7753ff30_100%)]";
+  "!text-white bg-[linear-gradient(to_right,#080808b3_0%,#08080866_25%,#08080826_55%,transparent_100%),linear-gradient(160deg,#ffbd1626_0%,#ff682f29_22%,#ff165e2b_46%,#ee0de426_73%,#7753ff30_100%)]";
 
 function ProjectHeading({
   project,
@@ -70,7 +70,19 @@ function ProjectHeading({
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
-      className={cn("folder-heading group flex items-center gap-1.5", dropActive && "drop-target")}
+      className={cn(
+        // font-size, letter-spacing y word-spacing: text-size.ts (.folder-heading).
+        "folder-heading group relative flex min-h-[38px] w-full cursor-pointer items-center gap-2 rounded-[9px] px-2.5 py-[11px] text-left text-[13px] leading-5 text-[#b9b9c2] [overflow-wrap:anywhere]",
+        dropActive
+          ? [
+              "border-transparent text-[#f4edf2] [box-shadow:inset_0_1px_0_#ffffff08,0_0_15px_#d63ab00b] [transition:background_.2s,color_.2s,box-shadow_.2s]",
+              "[background:linear-gradient(135deg,#ffb52518_0%,#ff64361b_22%,#f725701c_48%,#d619df18_72%,#6559ef1c_100%),#111113]",
+              "after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:p-px",
+              "after:[background:linear-gradient(135deg,#ffbd1699_0%,#ff682faa_22%,#ff165eaa_46%,#ee0de4aa_73%,#7753ffaa_100%)]",
+              "after:[mask-image:linear-gradient(#fff_0_0),linear-gradient(#fff_0_0)] after:[mask-origin:content-box,border-box] after:[mask-clip:content-box,border-box] after:[mask-position:0_0] after:[mask-composite:exclude]",
+            ]
+          : "hover:bg-[#ffffff06]"
+      )}
       onClick={(e) => {
         if (isRenaming || (e.target as HTMLElement).closest("input,.folder-more,.folder-options")) return;
         if (e.detail >= 2) return;
@@ -94,7 +106,7 @@ function ProjectHeading({
       <Folder size={12} className="flex-shrink-0 text-zinc-500" />
 
       <span
-        className="folder-title relative"
+        className="relative block min-h-5 min-w-0 flex-1 overflow-hidden pr-[22px] leading-[1.5] text-ellipsis whitespace-nowrap"
         title={isRenaming ? undefined : "Doble clic para cambiar el nombre"}
       >
         {isRenaming ? (
@@ -116,7 +128,7 @@ function ProjectHeading({
                 if (e.key === "Escape") onCancelRename();
               }}
               onBlur={onSubmitRename}
-              className="folder-rename absolute left-0 top-0 h-5 w-full"
+              className={renameInputClass}
               aria-label="Nombre de la carpeta"
             />
           </>
@@ -125,15 +137,16 @@ function ProjectHeading({
         )}
       </span>
       {!isRenaming && (
-        <span className="folder-count max-md:hidden">{threadCount || ""}</span>
+        <span className="ml-auto text-[11px] text-[#72727e] max-md:hidden">{threadCount || ""}</span>
       )}
 
       {!isRenaming && (
-        <span className="folder-actions">
+        // Visible con hover/foco de la fila, menú abierto o en táctil.
+        <span className="absolute top-1/2 right-2 flex h-5 shrink-0 gap-[3px] opacity-0 [transform:translateY(-50%)] [transition:opacity_.16s_ease] group-focus-within:opacity-100 group-hover:opacity-100 has-[[aria-expanded=true]]:opacity-100 [@media(hover:none)]:opacity-100">
           <button
             ref={moreRef}
             type="button"
-            className="folder-more"
+            className="folder-more [display:grid] h-5 w-5 place-items-center rounded-[6px] p-0.5 !text-[#92929c] hover:bg-[#ffffff09] hover:!text-[#eee] focus:![outline:none] focus-visible:[box-shadow:inset_0_0_0_1px_#ffffff25]"
             aria-label={`Opciones de ${project.name}`}
             aria-expanded={menuOpen}
             onClick={(e) => {
@@ -383,16 +396,27 @@ function ChatSidebar({
   return (
     <>
       {sidebarOpen && (
-        <button type="button" className="menuveil" aria-label="Cerrar menú" onClick={onCloseSidebar} />
+        <button
+          type="button"
+          className="menuveil hidden max-[650px]:fixed max-[650px]:inset-0 max-[650px]:z-[9] max-[650px]:block max-[650px]:bg-[#0009]"
+          aria-label="Cerrar menú"
+          onClick={onCloseSidebar}
+        />
       )}
 
       <aside
         ref={asideRef}
         className={cn(
-          // Sin clase `.sidebar`: el dump no debe pintar este panel.
+          // Sin clase `.sidebar`: el dump no debe pintar este panel. Siempre
+          // relative (también en móvil), como lo dejaba la cerca.
           "chat-sidebar relative z-30 box-border flex h-full min-h-0 shrink-0 flex-col overflow-hidden",
           "border-r border-white/[0.03] bg-[#111113]",
-          "fixed inset-y-0 left-0 md:relative md:inset-auto md:translate-x-0",
+          "inset-y-0 left-0 md:inset-auto md:translate-x-0",
+          // Íconos del panel (no el rim del halo). `!`: legacy aún trae
+          // svg{stroke-width} y .app svg.lucide{width:unset}.
+          "[&_svg:not(.rim-svg)]:!h-[18px] [&_svg:not(.rim-svg)]:!w-[18px] [&_svg:not(.rim-svg)]:flex-[0_0_18px]",
+          "[&_svg:not(.rim-svg)]:fill-none [&_svg:not(.rim-svg)]:stroke-current [&_svg:not(.rim-svg)]:!stroke-[1.4]",
+          !collapsed && "min-w-[230px]",
           "transition-[width,padding] duration-[320ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
           "motion-reduce:transition-none",
           "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
@@ -409,7 +433,7 @@ function ChatSidebar({
       >
         <div
           className={cn(
-            "chat-sidebar-column flex min-h-0 min-w-0 flex-col",
+            "chat-sidebar-column absolute inset-0 box-border flex min-h-0 min-w-0 flex-col px-5 py-[25px]",
             "transition-transform duration-[320ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
             "motion-reduce:transition-none",
             resizing && "!transition-none",
@@ -417,9 +441,9 @@ function ChatSidebar({
           )}
         >
           {/* brandrow Martin: logo + ‹ hermanos en la misma fila (nunca dentro de #new) */}
-          <div className="chat-sidebar-brand flex min-h-[45px] w-full shrink-0 items-start justify-between gap-2 overflow-visible">
+          <div className="chat-sidebar-brand relative z-[2] mb-9 flex min-h-[45px] w-full shrink-0 items-start justify-between gap-2 overflow-visible">
             <a
-              className="block w-[94px] max-w-[94px] shrink-0 overflow-visible leading-none text-inherit no-underline"
+              className="block w-[94px] max-w-[94px] flex-[0_0_94px] overflow-visible leading-[0] text-inherit no-underline"
               href="https://www.skool.com/creativos"
               aria-label={`${communityName} en Skool`}
             >
@@ -435,11 +459,12 @@ function ChatSidebar({
             <button
               type="button"
               className={cn(
-                "relative top-2.5 ml-auto grid h-[30px] w-[30px] min-w-[30px] max-w-[30px] shrink-0 place-items-center self-start",
-                "cursor-pointer border-0 bg-transparent p-[5px]",
-                "text-[22px] font-normal leading-none text-[#666978]",
-                "[-webkit-text-fill-color:#666978] opacity-100",
-                "hover:text-[#c8c8d0] hover:[-webkit-text-fill-color:#c8c8d0]"
+                // `!`: .grid (catálogo) y button{color;font:inherit} de legacy
+                // también tocan este botón. Sin hover de color, como hasta ahora.
+                "relative top-2.5 !z-[2] ml-auto grid h-[30px] w-[30px] min-w-[30px] max-w-[30px] flex-[0_0_30px] place-items-center self-start",
+                "cursor-pointer [border:0] bg-transparent p-[5px]",
+                "!text-[22px] font-normal !leading-none !text-[#666978]",
+                "[-webkit-text-fill-color:#666978] opacity-100"
               )}
               onClick={(event) => {
                 const rect = event.currentTarget.getBoundingClientRect();
@@ -464,7 +489,7 @@ function ChatSidebar({
             id="new"
             onClick={onNewChat}
             className={cn(
-              "relative mb-[15px] flex w-full shrink-0 items-center gap-[13px] overflow-hidden rounded-xl",
+              "relative z-0 mb-[15px] flex min-h-0 w-full shrink-0 items-center justify-start gap-[13px] overflow-hidden rounded-xl",
               "border border-white/[0.09] bg-[linear-gradient(120deg,#ffffff06,transparent)]",
               "px-3.5 py-[13px] shadow-[inset_0_1px_0_#ffffff06]",
               "hover:border-white/[0.16] hover:bg-white/[0.035] hover:shadow-[0_0_18px_#f04e7110]"
@@ -491,7 +516,7 @@ function ChatSidebar({
           {/* Lista que scrollea: GPTS + Proyectos + CHATS. Pie queda fuera con mt-auto. */}
           <div
             className={cn(
-              "chat-sidebar-scroll min-h-0 flex-1 overflow-x-hidden overflow-y-auto",
+              "chat-sidebar-scroll mt-2 min-h-0 flex-[1_1_auto] overflow-x-hidden overflow-y-auto",
               "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
             )}
           >
@@ -615,7 +640,11 @@ function ChatSidebar({
           />
         </div>
         <div
-          className="sidebar-resizer absolute top-0 right-0 z-[4] h-full w-1.5 cursor-col-resize max-md:hidden"
+          className={cn(
+            "sidebar-resizer absolute top-0 -right-1 bottom-0 z-20 h-full w-2 cursor-col-resize touch-none max-md:hidden",
+            "after:absolute after:top-0 after:bottom-0 after:left-[3px] after:w-px after:bg-[#ffffff00] after:content-['']",
+            "after:[transition:background_.2s] hover:after:bg-[#ffffff30] [body.resizing-sidebar_&]:after:bg-[#ffffff30]"
+          )}
           role="separator"
           aria-orientation="vertical"
           aria-label="Ancho del panel"

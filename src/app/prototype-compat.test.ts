@@ -6,7 +6,10 @@ import { describe, expect, it } from "vitest";
 const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "prototype-compat.css"), "utf8");
 const compat = css;
-const fence = readFileSync(join(here, "chat-sidebar-fence.css"), "utf8");
+const sidebarMenus = readFileSync(
+  join(here, "..", "components", "chat", "sidebar-menus.css"),
+  "utf8"
+);
 const proto = readFileSync(join(here, "prototype.css"), "utf8");
 const composerCss = readFileSync(
   join(here, "..", "components", "chat", "composer.css"),
@@ -158,7 +161,8 @@ describe("prototype-compat: chat y chrome", () => {
 
   it("el reset button/svg del prototipo ya no es global: Next usa Tailwind", () => {
     expect(proto).not.toMatch(/focus-visible\{[^}]+\}button\{background:none;border:0\}svg\{width:19px/);
-    expect(proto).toMatch(/\.app \.sidebar button/);
+    expect(proto).toMatch(/\.app \.composer button/);
+    expect(proto).not.toMatch(/\.app \.sidebar button/);
   });
 
   it("el nav admin va en .ax-navigation y los CTA usan .ax-primary fuera de .ax-tw", () => {
@@ -219,12 +223,12 @@ describe("prototype-compat: chat y chrome", () => {
   });
 
   it("centra Configuración con margin auto (Tailwind v4 pone margin:0 al dialog)", () => {
-    expect(css).toMatch(/\.settings-dialog\s*\{[^}]*margin:\s*auto/);
+    expect(sidebarFooter).toMatch(/settings-dialog fixed inset-0 m-auto/);
   });
 
   it("fija el tamaño de la foto de Google en el footer con Tailwind", () => {
     expect(sidebarFooter).toMatch(/h-\[30px\] w-\[30px\]/);
-    expect(sidebarFooter).toMatch(/rounded-full object-cover/);
+    expect(sidebarFooter).toMatch(/rounded-\[50%\] object-cover/);
   });
 
   it("el wordmark del sidebar es 94×25 con contraste, no 128", () => {
@@ -270,10 +274,10 @@ describe("prototype-compat: chat y chrome", () => {
     expect(chatSidebar).toMatch(/!tracking-\[1\.3px\]/);
     expect(chatSidebar).toMatch(/duration-\[320ms\].*ease-\[cubic-bezier\(0\.4,0,0\.2,1\)\]/);
     expect(chatSidebar).toMatch(/chat-sidebar-column/);
-    expect(layout).toMatch(/chat-sidebar-fence\.css/);
-    expect(compat).not.toMatch(/chat-sidebar-brand > button\[aria-label="Contraer panel"\]\s*\{[^}]*top:\s*10px/);
-    expect(fence).toMatch(/\.chat-sidebar-brand > button\[aria-label="Contraer panel"\]\s*\{[^}]*top:\s*10px/);
-    expect(fence).toMatch(/\.app:not\(\.collapsed\) \.chat-sidebar\s*\{[^}]*min-width:\s*230px/);
+    expect(layout).not.toMatch(/chat-sidebar-fence\.css/);
+    expect(compat).not.toMatch(/chat-sidebar-brand/);
+    expect(chatSidebar).toMatch(/relative top-2\.5 !z-\[2\]/);
+    expect(chatSidebar).toMatch(/!collapsed && "min-w-\[230px\]"/);
     expect(chatSidebar).toMatch(/ffbd1626/);
     expect(chatSidebar).not.toMatch(/className="side-scroll"/);
     expect(chatSidebar).not.toMatch(/className="collapse"/);
@@ -284,24 +288,22 @@ describe("prototype-compat: chat y chrome", () => {
     expect(collapseAt).toBeGreaterThan(-1);
     expect(newAt).toBeGreaterThan(collapseAt);
     // GPTS + CHATS viven en la misma lista con scroll; el pie queda fuera
-    expect(chatSidebar).toMatch(/min-h-0 flex-1 overflow-x-hidden overflow-y-auto[\s\S]*GPTs[\s\S]*Chats[\s\S]*SidebarFooter/);
+    expect(chatSidebar).toMatch(/min-h-0 flex-\[1_1_auto\] overflow-x-hidden overflow-y-auto[\s\S]*GPTs[\s\S]*Chats[\s\S]*SidebarFooter/);
   });
 
   it("el pie ancla avatar+nombre en una sola fila; settings no parte el flex", () => {
     expect(sidebarFooter).toMatch(/chat-sidebar-footer/);
     expect(sidebarFooter).toMatch(/mt-auto w-full shrink-0/);
-    expect(sidebarFooter).toMatch(/flex-row items-center gap-\[11px\]/);
+    expect(sidebarFooter).toMatch(/flex-row items-center justify-start gap-\[11px\]/);
     expect(sidebarFooter).toMatch(/showAvatar \?/);
     expect(sidebarFooter).toMatch(/createPortal\(settingsDialog/);
   });
 
   it("el dump no pisa el panel Next: #new acotado y cerca del chat-sidebar", () => {
-    expect(proto).toMatch(/\.sidebar #new\{/);
-    expect(proto.replace(/\.sidebar #new\{/g, "")).not.toMatch(/#new\{/);
-    expect(fence).toMatch(/\.chat-sidebar svg:not\(\.rim-svg\)/);
-    expect(fence).toMatch(/\.chat-sidebar-brand/);
-    expect(fence).toMatch(/\.chat-sidebar-footer > button/);
-    expect(css).toMatch(/dialog\.settings-dialog:not\(\[open\]\)/);
+    expect(proto).not.toMatch(/#new\{/);
+    expect(proto).not.toMatch(/\.sidebar[\s>{:,.]/);
+    expect(chatSidebar).toMatch(/\[&_svg:not\(\.rim-svg\)\]/);
+    expect(sidebarMenus).not.toMatch(/settings-dialog|account-menu|folder-/);
     expect(chatSidebar).toMatch(/chat-sidebar-brand/);
     const protoIcon = readFileSync(
       join(here, "..", "components", "chat", "ProtoIcon.tsx"),
@@ -331,15 +333,16 @@ describe("prototype-compat: chat y chrome", () => {
     expect(footer).toMatch(/positionAccountMenuBox/);
     expect(footer).toMatch(/document\.body/);
     expect(music).toMatch(/id="musicToggle"/);
-    expect(music).toMatch(/className="music-options"/);
-    expect(music).toMatch(/className="music-equalizer"/);
-    expect(music).toMatch(/className="music-volume"/);
+    expect(music).toMatch(/"music-options /);
+    expect(music).toMatch(/className="music-equalizer /);
+    expect(music).toMatch(/className="music-volume /);
     expect(music).toMatch(/data-music=\{index\}/);
     expect(music).toMatch(/musicPanelPlacement/);
     expect(music).toMatch(/mergeMusicTracks/);
     expect(music).not.toMatch(/createPortal/);
     expect(music).not.toMatch(/music-flyout/);
-    expect(css).toMatch(/\.account-menu \.music-options\[hidden\]/);
+    expect(sidebarMenus).toMatch(/\.music-volume input::-webkit-slider-thumb/);
+    expect(sidebarMenus).toMatch(/@keyframes equalizer/);
   });
 });
 

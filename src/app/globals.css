@@ -628,27 +628,6 @@ body {
   z-index: 0;
 }
 
-/* Sidebar: zinc + soplo de marca junto al lockup. Fondo exacto del cliente
-   (#111113), un escalón más claro que el shell (#060606) para separar panel
-   de contenido sin usar un borde duro. */
-.chat-sidebar {
-  background:
-    radial-gradient(
-      ellipse 90% 28% at 16% -6%,
-      color-mix(in srgb, var(--accent) 11%, transparent),
-      transparent 70%
-    ),
-    var(--sidebar-bg);
-}
-
-/* Chat/hilo seleccionado: gris plano, sin borde ni sombra — a propósito
-   distinto del wash rojo de `.nav-active` que usan los GPTs del nav. */
-.chat-selected {
-  background: var(--chat-selected-bg);
-  border-color: transparent;
-  box-shadow: none;
-}
-
 /* Composer: shell exacto del cliente (radio 22px, borde #ffffff16, sombra
    difusa hacia abajo). Reemplaza a `.frost` + `rounded-3xl` para no heredar
    el blur/backdrop-filter de esa clase, que el prototipo no usa acá. */
@@ -1311,16 +1290,6 @@ body {
     background: linear-gradient(135deg, #ff3265, #a43de5);
     animation: copy-color 1.5s cubic-bezier(0.4, 0, 0.2, 1);
     pointer-events: none;
-  }
-}
-
-/* Ecualizador de 3 barras junto a "Música" cuando hay una pista sonando. */
-@keyframes music-eq {
-  from {
-    transform: scaleY(0.3);
-  }
-  to {
-    transform: scaleY(1);
   }
 }
 
