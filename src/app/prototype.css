@@ -97,27 +97,8 @@ svg{stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 @keyframes clean-filament-flow{0%,100%{transform:translate(-.2px,.12px) scale(var(--size)) rotate(-1deg)}50%{transform:translate(.2px,-.12px) scale(var(--size)) rotate(1deg)}}
 #chatView:has(#chatIntro:not([hidden])){justify-content:center}
 #chatView:has(#chatIntro:not([hidden])) #chatIntro{margin:0;padding:0 0 30px;transform:none;flex-shrink:0}
-#chatIntro .gpt-title-row h1:after{content:attr(data-title);position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 150px 100px at var(--title-x,50%) var(--title-y,50%),#ffbd16 0%,#ff165e 35%,#ed0cda 65%,#7753ff 100%);background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 0 8px #ed0cda55);opacity:0;transition:opacity .45s ease-in-out}
-#chatIntro .gpt-title-row:hover h1:after{opacity:1}
-
-#chatIntro .gpt-title-row h1:after{background-image:linear-gradient(110deg,#ffbd16 0%,#ff682f 22%,#ff165e 46%,#ed0cda 73%,#7753ff 100%);-webkit-mask-image:radial-gradient(ellipse 290px 140px at var(--title-x,50%) var(--title-y,50%),#000 0%,#000d 35%,transparent 100%);mask-image:radial-gradient(ellipse 290px 140px at var(--title-x,50%) var(--title-y,50%),#000 0%,#000d 35%,transparent 100%)}
-
-#chatIntro .gpt-title-row h1:after{-webkit-mask-image:none;mask-image:none;background-image:radial-gradient(ellipse 160px 100px at var(--title-x,50%) var(--title-y,50%),#ffffff12,transparent 85%),linear-gradient(110deg,#ffbd16 0%,#ff682f 22%,#ff165e 46%,#ed0cda 73%,#7753ff 100%)}
-
-#chatIntro .gpt-title-row h1:after{background-image:linear-gradient(110deg,#ffbd16 0%,#ff682f 18%,#ff165e 38%,#ed0cda 60%,#7753ff 80%,#ed0cda 100%);background-size:155% 100%;background-position:var(--flow-x,40%) 50%;filter:drop-shadow(0 0 5px #ed0cda30);transition:opacity .45s ease-in-out,background-position .65s ease-out,filter .4s ease-out}
-#chatIntro .gpt-title-row.is-moving h1:after{filter:drop-shadow(0 0 10px #ed0cda75) drop-shadow(0 0 18px #ff165e30)}
-
-#chatIntro .gpt-title-row h1:after,#chatIntro .gpt-title-row.is-moving h1:after{filter:none;background-image:radial-gradient(ellipse at center,#ffb62e 0%,#ff7835 25%,transparent 65%),radial-gradient(ellipse at center,#fa165e 0%,#f8208d 30%,transparent 68%),radial-gradient(ellipse at center,#ac3df2 0%,#754cf1 25%,transparent 68%),linear-gradient(110deg,#ff6948,#ed168f 52%,#8850e7);background-size:85% 220%,100% 230%,90% 240%,100% 100%;background-repeat:no-repeat;animation:title-lava 4.5s ease-in-out infinite alternate;animation-play-state:paused;transition:opacity .45s ease-in-out}
-#chatIntro .gpt-title-row:hover h1:after{animation-play-state:running}
 @keyframes title-lava{0%{background-position:-70% 10%,55% 90%,150% 0%,0 0}35%{background-position:0% 70%,110% 0%,75% 80%,0 0}70%{background-position:65% 0%,-25% 60%,30% 0%,0 0}100%{background-position:130% 80%,35% 0%,-65% 70%,0 0}}
-@media(prefers-reduced-motion:reduce){#chatIntro .gpt-title-row h1:after{animation:none}}
-
-#chatIntro .gpt-title-row.color-awake h1:after{opacity:var(--color-presence,1);animation-play-state:running}
-
-#chatIntro .gpt-title-row h1:after{transition:opacity .18s linear}
 @keyframes send-release{0%{transform:scale(.9)}100%{transform:scale(1)}}
-
-#chatIntro .gpt-title-row h1:after{animation-play-state:running}
 
 @keyframes title-lava{0%{background-position:calc(-70% + var(--lava-drift,0px)) 10%,calc(55% + var(--lava-drift,0px)) 90%,calc(150% + var(--lava-drift,0px)) 0%,0 0}35%{background-position:calc(0% + var(--lava-drift,0px)) 70%,calc(110% + var(--lava-drift,0px)) 0%,calc(75% + var(--lava-drift,0px)) 80%,0 0}70%{background-position:calc(65% + var(--lava-drift,0px)) 0%,calc(-25% + var(--lava-drift,0px)) 60%,calc(30% + var(--lava-drift,0px)) 0%,0 0}100%{background-position:calc(130% + var(--lava-drift,0px)) 80%,calc(35% + var(--lava-drift,0px)) 0%,calc(-65% + var(--lava-drift,0px)) 70%,0 0}}
 }

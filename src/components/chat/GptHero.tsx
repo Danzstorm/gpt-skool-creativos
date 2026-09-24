@@ -133,7 +133,24 @@ export default function GptHero({ gpt, onStarter, children }: Props) {
         </div>
         <h1
           data-title={displayed.name}
-          className="relative !bg-none !font-light !leading-[1.2] !text-[#eeeef2] !tracking-[-.5px] ![word-spacing:normal] ![-webkit-text-fill-color:#eeeef2] ![overflow-wrap:break-word] ![font-family:'Plus_Jakarta_Sans',sans-serif] [transition:filter_.3s_ease] after:!font-light after:!tracking-[-.5px] after:![word-spacing:normal] after:![font-family:inherit] after:![-webkit-text-fill-color:transparent]"
+          className={[
+            "relative !bg-none !font-light !leading-[1.2] !text-[#eeeef2]",
+            "!tracking-[-.5px] ![word-spacing:normal] ![-webkit-text-fill-color:#eeeef2]",
+            "![overflow-wrap:break-word] ![font-family:'Plus_Jakarta_Sans',sans-serif]",
+            "[transition:filter_.3s_ease]",
+            "after:!absolute after:!inset-0 after:!pointer-events-none",
+            "after:![content:attr(data-title)] after:!font-light after:!tracking-[-.5px]",
+            "after:![word-spacing:normal] after:![font-family:inherit]",
+            "after:![-webkit-text-fill-color:transparent] after:![background-clip:text]",
+            "after:![-webkit-background-clip:text] after:![filter:none]",
+            "after:![background-image:radial-gradient(ellipse_at_center,#ffb62e_0%,#ff7835_25%,transparent_65%),radial-gradient(ellipse_at_center,#fa165e_0%,#f8208d_30%,transparent_68%),radial-gradient(ellipse_at_center,#ac3df2_0%,#754cf1_25%,transparent_68%),linear-gradient(110deg,#ff6948,#ed168f_52%,#8850e7)]",
+            "after:![background-size:85%_220%,100%_230%,90%_240%,100%_100%]",
+            "after:![background-repeat:no-repeat] after:![opacity:0]",
+            "after:![animation:title-lava_4.5s_ease-in-out_infinite_alternate]",
+            "after:![animation-play-state:running] after:![transition:opacity_.18s_linear]",
+            "[.color-awake_&]:after:![opacity:var(--color-presence,1)]",
+            "motion-reduce:after:![animation:none]",
+          ].join(" ")}
         >
           {displayed.name}
         </h1>
