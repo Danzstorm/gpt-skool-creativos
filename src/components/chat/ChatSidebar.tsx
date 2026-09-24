@@ -17,8 +17,9 @@ const labelClass =
   "mx-2.5 mb-3 mt-[31px] text-[11px] font-normal uppercase !tracking-[1.3px] text-[#858585]";
 
 // Martin .nav: gap 12, padding 12×10, 13px, radius 7. Activo = degradado espectro.
+// `!` en tamaño/color: button{color;font:inherit} de legacy los pisaba.
 const navRowClass =
-  "relative flex w-full items-center gap-3 rounded-[7px] px-2.5 py-[12px] text-left text-[13px] text-[#ababab] isolation-isolate transition-[background,color] duration-[180ms] hover:bg-white/[0.035] hover:text-white [&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:shrink-0 [&_svg]:stroke-[1.4]";
+  "relative flex w-full items-center gap-3 rounded-[7px] px-2.5 py-[12px] text-left !text-[13px] !text-[#ababab] isolation-isolate transition-[background,color] duration-[180ms] hover:bg-white/[0.035] [&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:shrink-0 [&_svg]:stroke-[1.4]";
 
 const navActiveClass =
   "!text-white bg-[linear-gradient(to_right,#080808b3_0%,#08080866_25%,#08080826_55%,transparent_100%),linear-gradient(160deg,#ffbd1626_0%,#ff682f29_22%,#ff165e2b_46%,#ee0de426_73%,#7753ff30_100%)]";
@@ -440,7 +441,9 @@ function ChatSidebar({
             collapsed && "-translate-x-full"
           )}
         >
-          {/* brandrow Martin: logo + ‹ hermanos en la misma fila (nunca dentro de #new) */}
+          {/* brandrow Martin: logo + ‹ hermanos en la misma fila (nunca dentro de #new).
+              Su logo va en una línea de 33px y queda ~13px más abajo: el top del
+              logo y del ‹ lo compensan sin mover #new. */}
           <div className="chat-sidebar-brand relative z-[2] mb-9 flex min-h-[45px] w-full shrink-0 items-start justify-between gap-2 overflow-visible">
             <a
               className="block w-[94px] max-w-[94px] flex-[0_0_94px] overflow-visible leading-[0] text-inherit no-underline"
@@ -453,15 +456,16 @@ function ChatSidebar({
                 width={94}
                 height={25}
                 alt={communityName}
-                className="relative top-2.5 left-2 block h-[25px] w-[94px] object-fill opacity-100 [filter:none]"
+                className="relative top-[23px] left-2 block h-[25px] w-[94px] object-fill opacity-100 [filter:none]"
               />
             </a>
             <button
               type="button"
               className={cn(
-                // `!`: .grid (catálogo) y button{color;font:inherit} de legacy
-                // también tocan este botón. Sin hover de color, como hasta ahora.
-                "relative top-2.5 !z-[2] ml-auto grid h-[30px] w-[30px] min-w-[30px] max-w-[30px] flex-[0_0_30px] place-items-center self-start",
+                // `!`: button{color;font:inherit} de legacy también toca este
+                // botón. Flex y no grid: la .grid del catálogo (legacy) le metía
+                // filas de 142px y bajaba el ‹ hasta "Nuevo chat".
+                "relative top-5 z-[2] ml-auto flex h-[30px] w-[30px] min-w-[30px] max-w-[30px] flex-[0_0_30px] items-center justify-center self-start",
                 "cursor-pointer [border:0] bg-transparent p-[5px]",
                 "!text-[22px] font-normal !leading-none !text-[#666978]",
                 "[-webkit-text-fill-color:#666978] opacity-100"
@@ -509,7 +513,7 @@ function ChatSidebar({
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Buscar..."
               aria-label="Buscar herramientas"
-              className="min-w-0 w-full border-0 bg-transparent text-[13px] text-[#eeeef2] outline-none"
+              className="min-w-0 w-full border-0 bg-transparent !text-[13px] text-[#eeeef2] outline-none"
             />
           </label>
 

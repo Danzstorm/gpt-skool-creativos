@@ -224,13 +224,14 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
       >
         <span
           className={cn(
-            "relative grid h-[30px] w-[30px] min-h-[30px] min-w-[30px] flex-[0_0_30px] place-items-center overflow-hidden rounded-[50%]",
-            "border border-[#b892ff30] bg-[linear-gradient(140deg,#563743,#28233f)] text-[11px] leading-none text-[#eeeef2]",
-            "[&>*]:col-start-1 [&>*]:row-start-1"
+            // Flex y no grid: la .grid del catálogo (legacy) sacaba la foto del círculo.
+            "relative flex h-[30px] w-[30px] min-h-[30px] min-w-[30px] flex-[0_0_30px] items-center justify-center overflow-hidden rounded-[50%]",
+            "border border-[#d46a802e] bg-[linear-gradient(140deg,#783d47,#43262d)] text-[11px] leading-none text-[#eeeef2]",
+            "shadow-[inset_0_1px_1px_#ffffff20,0_0_16px_#f05a7410]"
           )}
           aria-hidden
         >
-          <span className="z-0 grid h-full w-full place-items-center">{initialsOf(fullName, email)}</span>
+          <span className="z-0">{initialsOf(fullName, email)}</span>
           {showAvatar ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -240,12 +241,11 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
               height={30}
               referrerPolicy="no-referrer"
               onError={() => setAvatarFailed(true)}
-              className="relative z-[1] block h-[30px] w-[30px] max-w-none rounded-[50%] object-cover"
+              className="absolute inset-0 z-[1] block h-full w-full max-w-none rounded-[50%] object-cover"
             />
           ) : null}
         </span>
-        {/* `!flex`: la clase .grid del catálogo (legacy) también pega aquí. */}
-        <div className="grid !flex min-w-0 flex-[1_1_auto] flex-col items-start gap-0.5 overflow-hidden">
+        <div className="flex min-w-0 flex-[1_1_auto] flex-col items-start gap-0.5 overflow-hidden">
           <strong className="mb-1 block overflow-hidden text-ellipsis whitespace-nowrap text-[12px] font-normal text-[#eeeef2]">
             {displayName}
           </strong>

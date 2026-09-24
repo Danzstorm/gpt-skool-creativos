@@ -236,7 +236,7 @@ describe("prototype-compat: chat y chrome", () => {
     expect(chatSidebar).toMatch(/height=\{25\}/);
     expect(chatSidebar).toMatch(/w-\[94px\]/);
     expect(chatSidebar).toMatch(/h-\[25px\]/);
-    expect(chatSidebar).toMatch(/top-2\.5 left-2/);
+    expect(chatSidebar).toMatch(/top-\[23px\] left-2/);
     expect(chatSidebar).toMatch(/\[filter:none\]/);
     expect(chatSidebar).not.toMatch(/width=\{128\}/);
     expect(chatSidebar).not.toMatch(/className="sidebar"/);
@@ -276,7 +276,7 @@ describe("prototype-compat: chat y chrome", () => {
     expect(chatSidebar).toMatch(/chat-sidebar-column/);
     expect(layout).not.toMatch(/chat-sidebar-fence\.css/);
     expect(compat).not.toMatch(/chat-sidebar-brand/);
-    expect(chatSidebar).toMatch(/relative top-2\.5 !z-\[2\]/);
+    expect(chatSidebar).toMatch(/relative top-5 z-\[2\] ml-auto flex/);
     expect(chatSidebar).toMatch(/!collapsed && "min-w-\[230px\]"/);
     expect(chatSidebar).toMatch(/ffbd1626/);
     expect(chatSidebar).not.toMatch(/className="side-scroll"/);
