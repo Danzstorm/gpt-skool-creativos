@@ -103,7 +103,7 @@ describe("layout del chat: producto, no plantilla CSS", () => {
     expect(sidebar).toMatch(/w-\[94px\]/);
     expect(sidebar).toMatch(/h-\[25px\]/);
     expect(sidebar).toMatch(/chat-sidebar-column/);
-    expect(sidebar).toMatch(/text-\[22px\]/);
+    expect(sidebar).toMatch(/text-\[14px\]/);
     expect(sidebar).toMatch(/px-2\.5 py-\[12px\]/);
     expect(sidebar).toMatch(/!tracking-\[1\.3px\]/);
     expect(sidebar).toMatch(/navActiveClass|ffbd1626/);

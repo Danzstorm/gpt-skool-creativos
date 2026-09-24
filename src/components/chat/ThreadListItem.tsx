@@ -93,8 +93,9 @@ function ThreadListItem({
         if (draggedId && draggedId !== thread.id) onDropOnThread(draggedId, thread.id);
       }}
       className={cn(
-        // Sin `.nav` / `.history-item`: medidas Martin history (padding 9 vertical en chats).
-        "group relative flex w-full cursor-grab items-center gap-3 rounded-[10px] border border-transparent px-2.5 py-[9px] text-left text-[13px] text-[#ababab] active:cursor-grabbing",
+        // `nav history-item`: text-size.ts le da el tamaño de Martin (13px + 0.75,
+        // escala de Configuración). Padding 9 vertical como sus chats.
+        "nav history-item group relative flex w-full cursor-grab items-center gap-3 rounded-[10px] border border-transparent px-2.5 py-[9px] text-left text-[13px] text-[#ababab] active:cursor-grabbing",
         "hover:bg-white/[0.03]",
         isActive && "chat-selected bg-[#222225] text-[#eeeef2]",
         pinned && "chat-pinned",
@@ -126,7 +127,7 @@ function ThreadListItem({
         </svg>
       </span>
       <span
-        className="chat-name relative min-w-0 line-clamp-2 overflow-hidden text-ellipsis whitespace-normal leading-[1.35] [overflow-wrap:anywhere]"
+        className="chat-name relative min-w-0 line-clamp-2 overflow-hidden text-ellipsis whitespace-normal [overflow-wrap:anywhere]"
         title={isRenaming ? undefined : "Doble clic para cambiar el nombre"}
       >
         {isRenaming ? (

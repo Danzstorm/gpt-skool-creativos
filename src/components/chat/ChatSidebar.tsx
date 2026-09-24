@@ -14,12 +14,13 @@ import SidebarFooter from "./SidebarFooter";
 // El atajo ⌘K / Ctrl K sigue vivo; el prototipo no pinta el badge.
 
 const labelClass =
-  "mx-2.5 mb-3 mt-[31px] text-[11px] font-normal uppercase !tracking-[1.3px] text-[#858585]";
+  "label mx-2.5 mb-3 mt-[31px] text-[11px] font-normal uppercase !tracking-[1.3px] text-[#858585]";
 
 // Martin .nav: gap 12, padding 12×10, 13px, radius 7. Activo = degradado espectro.
-// `!` en tamaño/color: button{color;font:inherit} de legacy los pisaba.
+// `!` en color: button{color:inherit} de legacy lo pisaba. El tamaño lo pone
+// text-size.ts vía la clase `nav` (13px + 0.75, escala de Configuración).
 const navRowClass =
-  "relative flex w-full items-center gap-3 rounded-[7px] px-2.5 py-[12px] text-left !text-[13px] !text-[#ababab] isolation-isolate transition-[background,color] duration-[180ms] hover:bg-white/[0.035] [&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:shrink-0 [&_svg]:stroke-[1.4]";
+  "nav relative flex w-full items-center gap-3 rounded-[7px] px-2.5 py-[12px] text-left text-[13px] !text-[#ababab] isolation-isolate transition-[background,color] duration-[180ms] hover:bg-white/[0.035] [&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:shrink-0 [&_svg]:stroke-[1.4]";
 
 const navActiveClass =
   "!text-white bg-[linear-gradient(to_right,#080808b3_0%,#08080866_25%,#08080826_55%,transparent_100%),linear-gradient(160deg,#ffbd1626_0%,#ff682f29_22%,#ff165e2b_46%,#ee0de426_73%,#7753ff30_100%)]";
@@ -434,7 +435,7 @@ function ChatSidebar({
       >
         <div
           className={cn(
-            "chat-sidebar-column absolute inset-0 box-border flex min-h-0 min-w-0 flex-col px-5 py-[25px]",
+            "chat-sidebar-column absolute inset-0 box-border flex min-h-0 min-w-0 flex-col px-5 pt-7 pb-5",
             "transition-transform duration-[320ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
             "motion-reduce:transition-none",
             resizing && "!transition-none",
@@ -442,9 +443,8 @@ function ChatSidebar({
           )}
         >
           {/* brandrow Martin: logo + ‹ hermanos en la misma fila (nunca dentro de #new).
-              Su logo va en una línea de 33px y queda ~13px más abajo: el top del
-              logo y del ‹ lo compensan sin mover #new. */}
-          <div className="chat-sidebar-brand relative z-[2] mb-9 flex min-h-[45px] w-full shrink-0 items-start justify-between gap-2 overflow-visible">
+              Medidas del prototipo publicado en reposo: logo y=46, ‹ y=43, #new y=104. */}
+          <div className="chat-sidebar-brand relative z-[2] mb-9 flex min-h-10 w-full shrink-0 items-start justify-between gap-2 overflow-visible">
             <a
               className="block w-[94px] max-w-[94px] flex-[0_0_94px] overflow-visible leading-[0] text-inherit no-underline"
               href="https://www.skool.com/creativos"
@@ -456,7 +456,7 @@ function ChatSidebar({
                 width={94}
                 height={25}
                 alt={communityName}
-                className="relative top-[23px] left-2 block h-[25px] w-[94px] object-fill opacity-100 [filter:none]"
+                className="relative top-[18px] left-2 block h-[25px] w-[94px] object-fill opacity-100 [filter:none]"
               />
             </a>
             <button
@@ -465,9 +465,9 @@ function ChatSidebar({
                 // `!`: button{color;font:inherit} de legacy también toca este
                 // botón. Flex y no grid: la .grid del catálogo (legacy) le metía
                 // filas de 142px y bajaba el ‹ hasta "Nuevo chat".
-                "relative top-5 z-[2] ml-auto flex h-[30px] w-[30px] min-w-[30px] max-w-[30px] flex-[0_0_30px] items-center justify-center self-start",
+                "relative top-[15px] z-[2] ml-auto flex h-[30px] w-[30px] min-w-[30px] max-w-[30px] flex-[0_0_30px] items-center justify-center self-start",
                 "cursor-pointer [border:0] bg-transparent p-[5px]",
-                "!text-[22px] font-normal !leading-none !text-[#666978]",
+                "!text-[14px] font-normal !leading-none !text-[#666978]",
                 "[-webkit-text-fill-color:#666978] opacity-100"
               )}
               onClick={(event) => {
@@ -479,7 +479,7 @@ function ChatSidebar({
               title="Contraer panel"
             >
               <span
-                className="block text-[22px] leading-none text-inherit [-webkit-text-fill-color:inherit] opacity-100"
+                className="block text-[14px] leading-none text-inherit [-webkit-text-fill-color:inherit] opacity-100"
                 aria-hidden
               >
                 ‹
@@ -504,7 +504,7 @@ function ChatSidebar({
               ＋ <span>Nuevo chat</span>
             </span>
           </button>
-          <label className="relative z-[1] mb-0 flex shrink-0 items-center gap-2.5 rounded-[7px] border border-white/[0.05] bg-white/[0.01] p-2.5 text-[#777b88] [&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:shrink-0">
+          <label className="side-search relative z-[1] mb-0 flex min-h-[44px] shrink-0 items-center gap-2.5 rounded-[7px] border border-white/[0.05] bg-white/[0.01] p-2.5 text-[#777b88] [&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:shrink-0">
             <ProtoIcon name="search" />
             <input
               ref={searchRef}
@@ -513,14 +513,14 @@ function ChatSidebar({
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Buscar..."
               aria-label="Buscar herramientas"
-              className="min-w-0 w-full border-0 bg-transparent !text-[13px] text-[#eeeef2] outline-none"
+              className="min-w-0 w-full border-0 bg-transparent text-[#eeeef2] outline-none"
             />
           </label>
 
           {/* Lista que scrollea: GPTS + Proyectos + CHATS. Pie queda fuera con mt-auto. */}
           <div
             className={cn(
-              "chat-sidebar-scroll mt-2 min-h-0 flex-[1_1_auto] overflow-x-hidden overflow-y-auto",
+              "chat-sidebar-scroll min-h-0 flex-[1_1_auto] overflow-x-hidden overflow-y-auto",
               "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
             )}
           >

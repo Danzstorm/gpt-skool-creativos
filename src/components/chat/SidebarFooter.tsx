@@ -215,7 +215,7 @@ function SidebarFooter({ fullName, email, avatarUrl, isAdmin }: Props) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "flex w-full min-w-0 shrink-0 cursor-pointer flex-row items-center justify-start gap-[11px]",
+          "profile flex w-full min-w-0 shrink-0 cursor-pointer flex-row items-center justify-start gap-[11px]",
           "[border-width:1px_0_0] [border-style:solid_none_none] border-t-[#ffffff0a] bg-transparent pt-[22px] text-left",
           "focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#999]"
         )}
