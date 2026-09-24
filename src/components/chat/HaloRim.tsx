@@ -8,6 +8,7 @@ const SPECTRUM = [
 
 interface Props {
   id: string;
+  card?: boolean;
 }
 
 /**
@@ -15,11 +16,20 @@ interface Props {
  * Absolute siempre: fuera de `.tool` del dump los spans entraban al flujo
  * y aplastaban el sidebar (caja vacía bajo el logo).
  */
-export default function HaloRim({ id }: Props) {
+export default function HaloRim({ id, card = false }: Props) {
+  const cardMask = card
+    ? "[mask-image:radial-gradient(circle_var(--edge-radius,125px)_at_var(--mx)_var(--my),#000_0%,#000e_18%,#0008_43%,#0002_72%,transparent_100%)]"
+    : "";
+  const cardHaloOpacity = card
+    ? "!opacity-0 group-hover:!opacity-[calc(var(--edge-strength,0.55)*0.8)] group-focus-visible:!opacity-[calc(var(--edge-strength,0.55)*0.8)]"
+    : "";
+  const cardRimOpacity = card
+    ? "!opacity-0 group-hover:!opacity-[var(--edge-strength,0.55)] group-focus-visible:!opacity-[var(--edge-strength,0.55)]"
+    : "";
   return (
     <>
       <span
-        className="edge-wrap halo pointer-events-none absolute z-0 rounded-[inherit]"
+        className={`edge-wrap halo pointer-events-none absolute z-0 rounded-[inherit] ${cardMask} ${cardHaloOpacity} ${card ? "transition-none" : ""}`}
         style={{
           inset: "-16px",
           opacity: "calc(var(--edge-strength, 0) * 0.8)",
@@ -27,9 +37,9 @@ export default function HaloRim({ id }: Props) {
         }}
         aria-hidden
       >
-        <span className="edge-glow absolute inset-[15px] rounded-[12px]">
+        <span className={`edge-glow absolute inset-[15px] rounded-[12px] ${card ? "[transition:opacity_.16s_ease]" : ""}`}>
           <svg
-            className="rim-svg absolute inset-0 block h-full w-full overflow-visible fill-none stroke-none"
+            className={`rim-svg absolute inset-0 block h-full w-full overflow-visible fill-none stroke-none ${card ? "shrink-0 !stroke-[1.4px]" : ""}`}
             aria-hidden
           >
             <defs>
@@ -57,16 +67,16 @@ export default function HaloRim({ id }: Props) {
         </span>
       </span>
       <span
-        className="edge-wrap pointer-events-none absolute z-[2] rounded-[inherit]"
+        className={`edge-wrap pointer-events-none absolute z-[2] rounded-[inherit] ${cardMask} ${cardRimOpacity} ${card ? "transition-none" : ""}`}
         style={{
           inset: "-16px",
           opacity: "var(--edge-strength, 0)",
         }}
         aria-hidden
       >
-        <span className="edge-glow absolute inset-[15px] rounded-[12px]">
+        <span className={`edge-glow absolute inset-[15px] rounded-[12px] ${card ? "[transition:opacity_.16s_ease]" : ""}`}>
           <svg
-            className="rim-svg absolute inset-0 block h-full w-full overflow-visible fill-none stroke-none"
+            className={`rim-svg absolute inset-0 block h-full w-full overflow-visible fill-none stroke-none ${card ? "shrink-0 !stroke-[1.4px]" : ""}`}
             aria-hidden
           >
             <defs>

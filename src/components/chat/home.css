@@ -1,4 +1,4 @@
-/* Home / catálogo — estilos de tarjetas y scroll.
+/* Home / catálogo — scroll y espaciado general.
    Se carga DESPUÉS del dump + compat. No toca #chatIntro ni mensajes. */
 
 @layer legacy {
@@ -16,20 +16,6 @@
   height: auto;
   overflow: visible;
   padding-bottom: 96px;
-}
-
-#homeView .tool .edge-wrap {
-  opacity: 0;
-}
-
-#homeView .tool:hover .edge-wrap:not(.halo),
-#homeView .tool:focus-visible .edge-wrap:not(.halo) {
-  opacity: var(--edge-strength, 0.55);
-}
-
-#homeView .tool:hover .edge-wrap.halo,
-#homeView .tool:focus-visible .edge-wrap.halo {
-  opacity: calc(var(--edge-strength, 0.55) * 0.7);
 }
 
 @media (min-width: 651px) {
