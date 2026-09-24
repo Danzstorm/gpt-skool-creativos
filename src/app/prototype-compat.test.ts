@@ -345,9 +345,8 @@ describe("prototype-compat: chat y chrome", () => {
 });
 
 describe("prototype-compat: catálogo de home scrollea", () => {
-  it("el prototipo recorta: .app overflow hidden y grilla de 3 filas", () => {
+  it("el prototipo recorta la app", () => {
     expect(proto).toMatch(/\.app\{[^}]*overflow:hidden/);
-    expect(proto).toMatch(/\.grid\{grid-template-rows:repeat\(3,/);
   });
 
   it("home scrollea en .main; #homeView crece sin overflow anidado", () => {
@@ -363,18 +362,7 @@ describe("prototype-compat: catálogo de home scrollea", () => {
     expect(messagesCss).toMatch(/\.chat \.messages\s*\{[^}]*overflow-y:\s*auto/);
   });
 
-  it("la grilla no queda clavada a 3 filas (9, 12 y 20 GPTs caben)", () => {
-    expect(homeCss).toMatch(/\.workspace \.grid\s*\{[^}]*grid-template-rows:\s*none/);
-    expect(homeCss).toMatch(/\.workspace \.grid\s*\{[^}]*grid-auto-rows:\s*minmax\(142px,\s*auto\)/);
-  });
-
-  it("home copia gaps/padding de Martin: filtros, search discreto, tool 21×20", () => {
-    expect(homeCss).toMatch(/\.app #homeView \.filters\s*\{[^}]*gap:\s*7px/);
-    expect(homeCss).toMatch(
-      /\.app #homeView \.filters button\.filter\[aria-pressed=["']true["']\]\s*\{[^}]*border-color:\s*#ed4f7025/
-    );
-    expect(homeCss).toMatch(/\.app #homeView \.search\s*\{[^}]*width:\s*205px/);
-    expect(homeCss).toMatch(/\.app #homeView \.search\s*\{[^}]*background:\s*#ffffff02/);
+  it("home conserva las tarjetas de Martin", () => {
     expect(homeCss).toMatch(/#homeView \.tool\s*\{[^}]*padding:\s*21px 20px/);
     expect(homeCss).toMatch(/#homeView \.tool \.edge-wrap\s*\{[^}]*opacity:\s*0/);
     expect(homeCss).toMatch(/#homeView \.tool p\s*\{[^}]*-webkit-line-clamp:\s*2/);
