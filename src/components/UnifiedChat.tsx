@@ -372,8 +372,6 @@ export default function UnifiedChat({
   const showComposer = !!activeGpt;
   const showGptIntro = Boolean(activeGpt && messages.length === 0 && !isLoadingHistory);
   const hasChatMessages = messages.length > 0;
-  const chatTitle =
-    threadList.find((thread) => thread.id === activeThreadId)?.title || activeGpt?.name || "";
   const selectedAccent = activeGpt
     ? getGptVisual(activeGpt.category, activeGpt.name, activeGpt.description).accentHex
     : null;
@@ -489,11 +487,6 @@ export default function UnifiedChat({
           >
             <ProtoIcon name="menu" className="h-4 w-4 shrink-0" />
           </button>
-          {hasChatMessages && (
-            <div id="breadcrumb" className="hidden">
-              <span>{chatTitle}</span>
-            </div>
-          )}
         </div>
 
         {isDragging && showComposer && (

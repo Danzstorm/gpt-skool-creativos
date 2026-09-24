@@ -137,10 +137,9 @@ describe("prototype-compat: chat y chrome", () => {
     expect(chat).not.toMatch(/className="eyebrow"/);
   });
 
-  it("muestra el breadcrumb del hilo solo con mensajes", () => {
-    expect(chat).toMatch(/id="breadcrumb"/);
-    expect(chat).toMatch(/hasChatMessages && \(/);
-    expect(css).toMatch(/\.main:has\(#chatView\.chat-has-messages\) #breadcrumb/);
+  it("no muestra breadcrumb en el hilo (Martin: topbar de altura 0)", () => {
+    expect(chat).not.toMatch(/id="breadcrumb"/);
+    expect(css).not.toMatch(/#breadcrumb/);
   });
 
   it("el reset button/svg del prototipo ya no es global: Next usa Tailwind", () => {

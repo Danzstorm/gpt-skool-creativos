@@ -97,20 +97,6 @@ body {
   flex-direction: column;
 }
 
-/* Con mensajes: topbar + breadcrumb visibles. */
-.main:has(#chatView.chat-has-messages) .topbar {
-  height: 72px;
-  min-height: 72px;
-  padding: 0 38px;
-  border-bottom: 1px solid var(--line, #ffffff0c);
-  background: transparent;
-}
-.main:has(#chatView.chat-has-messages) #breadcrumb {
-  display: flex;
-  margin-left: auto;
-  color: #d0d1d8;
-}
-
 /* Fallback del canvas de energía. El prototipo ya pone 200% / -50% en
    cada slot; el inline de pixeles lo pisaba y el orbe tapaba títulos. */
 .energy-canvas {
