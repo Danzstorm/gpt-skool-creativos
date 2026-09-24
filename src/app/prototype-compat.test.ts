@@ -80,7 +80,7 @@ describe("prototype-compat: chat y chrome", () => {
     expect(chat).toMatch(/!showGptIntro && \(/);
     expect(chat).toMatch(/showGptIntro && "justify-center"/);
     expect(chat).not.toMatch(/hidden=\{showGptIntro\}/);
-    expect(chat).toMatch(/hasChatMessages && "chat-has-messages"/);
+    expect(chat).toMatch(/hasChatMessages && "chat-has-messages/);
   });
 
   it("el hilo no pinta skeletons pulse; el primer mensaje se acerca al composer", () => {
@@ -300,7 +300,7 @@ describe("prototype-compat: chat y chrome", () => {
     expect(chat).toMatch(/sidebarCollapsed && "relative z-50/);
     expect(chat).toMatch(/pointer-events-auto/);
     expect(chat).toMatch(/toggleSidebarCollapsed\(\)/);
-    expect(chat).toMatch(/--panel-toggle-top, 42px/);
+    expect(chat).toMatch(/--panel-toggle-top,42px/);
     expect(chat).toMatch(/z-\[60\]/);
   });
 

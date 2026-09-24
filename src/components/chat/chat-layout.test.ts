@@ -83,10 +83,11 @@ describe("layout del chat: producto, no plantilla CSS", () => {
   it("expandir en desktop togglea collapsed como Martin, no openSidebar", () => {
     expect(unified).toMatch(/window\.innerWidth <= 650/);
     expect(unified).toMatch(/toggleSidebarCollapsed\(\)/);
-    expect(unified).toMatch(/className=\{cn\(\s*"mobile-menu"/);
+    // Botón del borde: único con max-[650px]:flex (antes clase .mobile-menu).
+    expect(unified).toMatch(/max-\[650px\]:flex/);
     // El handler de desktop no debe caer en openSidebar cuando ya hay panel.
     const menuHandler = unified.match(
-      /className=\{cn\(\s*"mobile-menu"[\s\S]*?onClick=\{\(\) => \{([\s\S]*?)\}\}/
+      /max-\[650px\]:flex[\s\S]*?onClick=\{\(\) => \{([\s\S]*?)\}\}/
     )?.[1];
     expect(menuHandler).toBeTruthy();
     expect(menuHandler).toMatch(/toggleSidebarCollapsed\(\)/);
