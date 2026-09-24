@@ -199,6 +199,8 @@ svg{stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}.tool .symbol sv
 #chatView{width:100%;max-width:940px;min-height:0;flex:1;padding:22px 38px 0;overflow-y:auto;position:relative;scroll-padding-bottom:140px}
 #chatView .back{align-self:flex-start;flex-shrink:0}
 #messages{padding-bottom:30px}
+.attachments{display:flex;gap:9px;padding:10px;background:#111113;border:1px solid #ffffff10;border-radius:14px;margin-bottom:8px}
+.attachment{position:relative;width:64px;height:64px}.attachment img{width:100%;height:100%;object-fit:cover;border-radius:9px}.attachment button{position:absolute;right:-5px;top:-5px;background:#29292d;border-radius:50%;width:21px;height:21px;padding:0}
 .sent-images{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px}.sent-images img{max-width:180px;max-height:160px;object-fit:cover;border-radius:10px}
 @media(max-width:650px){#chatView{padding:16px 16px 0}}
 
@@ -494,6 +496,10 @@ body.light-mode .prompt-header{border-color:#00000010}
 
 .message.user .sent-images{display:flex;flex-wrap:wrap;gap:9px;margin:0 0 10px}
 .message.user .sent-images img,.message.user .sent-images video{display:block;width:64px;height:64px;min-width:64px;max-width:64px;max-height:64px;aspect-ratio:1;object-fit:cover;border-radius:12px}
+
+.audio-preview{position:relative;inset:auto;width:64px;height:64px;border-radius:12px;background:#202024;display:grid;place-items:center;padding:0;color:#b6b6bd}
+.audio-preview-wave{display:flex;align-items:center;gap:2px;height:32px}.audio-preview-wave i{display:block;width:2px;background:currentColor;border-radius:2px;transform-origin:center}
+.audio-preview .audio-preview-wave i{animation:audio-pulse 1.8s cubic-bezier(.45,0,.55,1) infinite;will-change:transform}
 @keyframes audio-pulse{0%,100%{transform:scaleY(.65)}50%{transform:scaleY(1)}}
 .app[hidden],.access-home[hidden]{display:none!important}
 .access-home{min-height:100dvh;background:radial-gradient(ellipse at 50% 37%,#ae267008,transparent 48%),#060606;color:#eeeef2;font-family:'Plus Jakarta Sans',sans-serif;display:flex;flex-direction:column;padding:30px 48px}
@@ -510,6 +516,7 @@ body.light-mode .prompt-header{border-color:#00000010}
 .access-footer{font-size:9px;letter-spacing:1.5px;color:#55555d}.access-footer span{letter-spacing:0}
 .at-access .mobile-menu{visibility:hidden}
 @media(max-width:600px){.access-home{padding:24px}.access-footer span{display:none}.access-main h1{letter-spacing:-1.2px}}
+@media(prefers-reduced-motion:reduce){.audio-preview .audio-preview-wave i{animation:none}}
 .access-main .access-card{background:transparent;border:0;box-shadow:none;padding:0;width:min(100%,310px)}
 .access-main .access-description{margin:16px 0 32px}
 
