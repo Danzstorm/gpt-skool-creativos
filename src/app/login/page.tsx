@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useSyncExternalStore, use } from "react";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import EnergyCanvas from "@/components/ui/EnergyCanvas";
 import AccessMotion from "@/components/ui/AccessMotion";
@@ -115,7 +114,7 @@ export default function LoginPage({
           <div className="brand-energy relative !m-0 !h-[72px] !w-[72px] shrink-0 max-[600px]:!h-[54px] max-[600px]:!w-[54px]">
             <EnergyCanvas size={82} speed={0.0025} />
           </div>
-          <h1 className="m-0 bg-[linear-gradient(110deg,#fff_20%,#eee9f5_48%,#ab94c7_85%)] bg-clip-text font-['Plus_Jakarta_Sans',sans-serif] text-[clamp(36px,4.5vw,56px)] leading-[1.18] font-normal tracking-[-1.7px] text-[#f2edf8] [-webkit-text-fill-color:transparent] [text-shadow:0_0_12px_#ffffff50,0_0_30px_#ffffff29,0_0_58px_#ffffff14] max-[600px]:tracking-[-1.2px]">Creativos AI</h1>
+          <h1 className="m-0 font-['Plus_Jakarta_Sans',sans-serif] text-[clamp(36px,4.5vw,56px)] leading-[1.18] font-normal tracking-[-1.7px] text-[#f1f1f1] [text-shadow:0_0_12px_#ffffff50,0_0_30px_#ffffff29,0_0_58px_#ffffff14] max-[600px]:tracking-[-1.2px]">Creativos AI</h1>
         </div>
         <p className="access-description mx-auto mt-[10px] mb-[26px] max-w-[520px] leading-[1.65] [overflow-wrap:anywhere] text-[#92929c] max-[600px]:mb-6 max-[600px]:max-w-[310px]">
           Plataforma exclusiva para miembros de{" "}
@@ -166,10 +165,6 @@ export default function LoginPage({
           <p className={HINT}>Accede con el mismo correo que usas en Skool</p>
         </div>
       </main>
-      <footer className="flex items-center justify-between text-[9px] tracking-[1.5px] text-[#55555d]">
-        <span className="tracking-normal max-[600px]:hidden">Acceso solo para miembros. No hay registro abierto.</span>
-        <Link href="/">Creativos AI</Link>
-      </footer>
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 z-[-1] bg-[length:120px_120px] opacity-[.085] mix-blend-soft-light"
