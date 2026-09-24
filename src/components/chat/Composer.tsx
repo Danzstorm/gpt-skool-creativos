@@ -420,7 +420,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             anchor={tokenPreview.rect}
           />
         )}
-      <div className="composer-row flex min-h-16 items-center gap-2.5 overflow-visible rounded-[22px] !border !border-white/[0.09] !bg-[#111113] px-3 py-3 shadow-[0_8px_30px_#0004]">
+      <div className="composer-row flex min-h-[60px] items-center gap-2.5 overflow-visible rounded-[22px] !border !border-white/[0.09] !bg-[#111113] px-3 py-3 shadow-[0_8px_30px_#0004]">
         <input
           ref={fileInputRef}
           type="file"

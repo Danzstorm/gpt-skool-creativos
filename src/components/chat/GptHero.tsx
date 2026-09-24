@@ -147,7 +147,8 @@ export default function GptHero({ gpt, onStarter, children }: Props) {
       </div>
       {description && (
         <p
-          className="gpt-intro-copy"
+          // my-[1em]: Martin conserva el margen por defecto del <p>.
+          className="gpt-intro-copy my-[1em]"
           style={{
             color: "#8e909c",
             WebkitTextFillColor: "#8e909c",

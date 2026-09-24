@@ -633,7 +633,13 @@ export default function UnifiedChat({
             )}
 
             {showComposer && (
-              <div className="chat-dock relative z-[1] w-full shrink-0 overflow-visible !border-0 !bg-transparent !p-0 !shadow-none">
+              <div
+                className={cn(
+                  "chat-dock relative z-[1] w-full shrink-0 overflow-visible !border-0 !bg-transparent !shadow-none",
+                  // Martin: con la intro visible el composer lleva 50px debajo.
+                  showGptIntro ? "!px-0 !pt-0 !pb-[50px]" : "!p-0"
+                )}
+              >
                 {uploadError && (
                   <div className="mx-auto mb-2 w-full max-w-3xl">
                     <div className="flex items-start gap-3 rounded-xl border border-red-800/50 bg-red-950/40 px-4 py-2.5 text-sm text-red-300">
