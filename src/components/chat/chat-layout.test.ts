@@ -44,7 +44,7 @@ describe("layout del chat: producto, no plantilla CSS", () => {
   });
 
   it("el form del composer no arrastra fondo de placa", () => {
-    expect(composer).toMatch(/className=\{cn\(\s*"composer w-full !m-0 !border-0 !bg-transparent/);
+    expect(composer).toMatch(/className=\{cn\(\s*"composer relative z-\[4\] w-full shrink-0 !m-0 !border-0 !bg-transparent/);
     expect(composer).toMatch(/composer-shell overflow-visible !border-0 !bg-transparent/);
   });
 

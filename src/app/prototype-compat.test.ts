@@ -161,7 +161,8 @@ describe("prototype-compat: chat y chrome", () => {
 
   it("el reset button/svg del prototipo ya no es global: Next usa Tailwind", () => {
     expect(proto).not.toMatch(/focus-visible\{[^}]+\}button\{background:none;border:0\}svg\{width:19px/);
-    expect(proto).toMatch(/\.app \.composer button/);
+    // El composer ya no depende de la plantilla (parte 1b del desmontaje).
+    expect(proto).not.toMatch(/#composer|\.composer\b/);
     expect(proto).not.toMatch(/\.app \.sidebar button/);
   });
 

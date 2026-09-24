@@ -297,7 +297,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   return (
     <form
       className={cn(
-        "composer w-full !m-0 !border-0 !bg-transparent !shadow-none",
+        "composer relative z-[4] w-full shrink-0 !m-0 !border-0 !bg-transparent !shadow-none",
         hideDisclaimer ? "!p-0" : "!px-0 !pt-2 !pb-[max(0.5rem,env(safe-area-inset-bottom))]"
       )}
       id="composer"
@@ -420,7 +420,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             anchor={tokenPreview.rect}
           />
         )}
-      <div className="composer-row flex min-h-[60px] items-center gap-2.5 overflow-visible rounded-[22px] !border !border-white/[0.09] !bg-[#111113] px-3 py-3 shadow-[0_8px_30px_#0004]">
+      <div className="composer-row flex min-h-[60px] items-center gap-2.5 overflow-visible rounded-[22px] !border !border-white/[0.09] focus-within:!border-[#ffffff2a] !bg-[#111113] px-3 py-3 shadow-[0_8px_30px_#0004]">
         <input
           ref={fileInputRef}
           type="file"
@@ -437,7 +437,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           <button
             type="button"
             onClick={openFilePicker}
-            className="attach-button !flex h-9 w-9 shrink-0 items-center justify-center rounded-full !bg-transparent text-[#dedee3]"
+            className="attach-button !flex h-9 w-9 shrink-0 border-none items-center justify-center rounded-full !bg-transparent text-[#dedee3]"
             title={
               videoEnabled
                 ? VIDEO_ATTACH_TITLE
@@ -482,7 +482,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
               type="button"
               onClick={startRecording}
               disabled={isLoading || isTranscribing || isUploading}
-              className="mic-button !flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+              className="mic-button !flex h-9 w-9 shrink-0 border-none items-center justify-center rounded-full"
               title="Toca para grabar"
               aria-label="Grabar audio"
               aria-pressed={isRecording}
