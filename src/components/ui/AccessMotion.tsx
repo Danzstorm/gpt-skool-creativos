@@ -86,5 +86,5 @@ export default function AccessMotion() {
     };
   }, []);
 
-  return <canvas ref={ref} className="access-motion" aria-hidden />;
+  return <canvas ref={ref} className="pointer-events-none absolute inset-0 z-[-2] h-full w-full" aria-hidden />;
 }

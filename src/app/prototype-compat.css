@@ -15,7 +15,7 @@ body {
   font-family: var(--font-sans);
 }
 
-.gpt-title-row h1,.access-main h1,.ax-header h1,.ax-gate-copy h1,.ax-brand {
+.gpt-title-row h1,.ax-header h1,.ax-brand {
   font-family: var(--font-display);
 }
 
@@ -23,39 +23,13 @@ body {
    (hereda el body), no mono. Tipografía del campo: composer.css. */
 
 /* El prototipo fuerza 19px + fill:none + stroke a TODO svg. Lucide es
-   trazo: deja que width/height del componente ganen. El G de Google es
-   relleno: hay que devolverle el color o el botón de acceso se ve roto. */
-.app svg.lucide,
-.ax-shell svg.lucide,
-.ax-gate svg.lucide,
-.access-home svg.lucide {
+   trazo: deja que width/height del componente ganen. */
+.app svg.lucide,.ax-shell svg.lucide {
   width: unset;
   height: unset;
 }
 
 /* Tamaños de svg del composer: composer.css */
-#accessContinue svg {
-  width: 18px;
-  height: 18px;
-  fill: none;
-  stroke: none;
-  stroke-width: 0;
-}
-#accessContinue svg path {
-  stroke: none;
-}
-#accessContinue svg path:nth-of-type(1) {
-  fill: #4285f4;
-}
-#accessContinue svg path:nth-of-type(2) {
-  fill: #34a853;
-}
-#accessContinue svg path:nth-of-type(3) {
-  fill: #fbbc05;
-}
-#accessContinue svg path:nth-of-type(4) {
-  fill: #ea4335;
-}
 
 /* El prototipo scrollea el documento (`min-height: 100vh`). El shell de Next
    es `html/body/.app { height: 100% }`. Si `.app` Y `.main` tienen

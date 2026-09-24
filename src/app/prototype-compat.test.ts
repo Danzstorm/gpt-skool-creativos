@@ -123,7 +123,9 @@ describe("prototype-compat: chat y chrome", () => {
 
   it("el h1 global ya no clippea todo el documento", () => {
     expect(proto).not.toMatch(/letter-spacing:\.3px\}h1\{[^}]*background-clip:text/);
-    expect(proto).toMatch(/\.access-title-row h1\{[^}]*background-clip:text/);
+    const login = readFileSync(join(here, "login", "page.tsx"), "utf8");
+    expect(login).toMatch(/<h1 className="[^"]*bg-clip-text/);
+    expect(proto).not.toMatch(/access-/);
     expect(hero).toContain("![-webkit-text-fill-color:#8e909c]");
     expect(hero).toContain("!text-[#8e909c]");
   });

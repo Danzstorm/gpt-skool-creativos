@@ -48,31 +48,36 @@ export default async function UnauthorizedPage({
   const joinHref = isMismatch ? "/login" : (settings.skool_url ?? "https://www.skool.com/creativos");
 
   return (
-    <div className="ax-gate" id={expired ? "acceso-vencido" : "sin-acceso"}>
-      <header>
+    <div
+      className="relative isolate flex min-h-dvh flex-col overflow-hidden px-[6vw] py-8 before:absolute before:inset-0 before:z-[-1] before:bg-[radial-gradient(ellipse_at_70%_40%,#7b205418,transparent_55%),radial-gradient(ellipse_at_90%_90%,#58389712,transparent_50%)] before:content-[''] max-[650px]:p-6"
+      id={expired ? "acceso-vencido" : "sin-acceso"}
+    >
+      <header className="flex items-center justify-between gap-6">
         <Link href="/" className="ax-brand">
           Creativos <span>AI</span>
         </Link>
         <Link href="/login">Cambiar de cuenta ↗</Link>
       </header>
-      <main className="ax-gate-main">
-        <section className="ax-gate-copy">
-          <div className="ax-gate-energy">
+      <main className="m-auto grid w-[min(1080px,100%)] grid-cols-[1.1fr_1fr] items-center gap-[9vw] pt-[68px] pb-[76px] max-[900px]:gap-[35px] max-[650px]:grid-cols-1 max-[650px]:gap-[38px] max-[650px]:py-10">
+        <section className="animate-[ax-arrive_.65s_cubic-bezier(.22,1,.36,1)_both] motion-reduce:animate-none">
+          <div className="relative mb-6 h-16 w-16">
             <EnergyCanvas size={64} speed={0.0025} />
           </div>
           <div className="ax-eyebrow">{eyebrow}</div>
-          <h1>{title}</h1>
-          <p className="ax-gate-description">{description}</p>
+          <h1 className="mt-[18px] mb-[22px] font-[family-name:var(--font-display)] text-[clamp(30px,3.1vw,46px)] leading-[1.18] font-normal tracking-[-1.5px]">
+            {title}
+          </h1>
+          <p className="mb-[30px] max-w-[440px] text-sm leading-[1.9] text-[#93939e]">{description}</p>
           {isMismatch ? (
-            <Link className="ax-primary ax-join" href="/login">
+            <Link className="ax-primary text-[13px]" href="/login">
               {cta} <span>↗</span>
             </Link>
           ) : (
-            <a className="ax-primary ax-join" href={joinHref} target="_blank" rel="noopener">
+            <a className="ax-primary text-[13px]" href={joinHref} target="_blank" rel="noopener">
               {cta} <span>↗</span>
             </a>
           )}
-          <Link className="ax-recheck" href="/login">
+          <Link className="mt-[21px] block p-0 text-[12px] text-[#a8a8b2] hover:text-[#eeeef2]" href="/login">
             {neverMember ? "Ya soy miembro · Comprobar acceso" : "Ya renové · Comprobar acceso"}
           </Link>
         </section>
