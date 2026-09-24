@@ -126,14 +126,14 @@ export default function GptHero({ gpt, onStarter, children }: Props) {
   }, []);
 
   return (
-    <div className="chat-intro !m-0 !flex !w-full !shrink-0 !transform-none !flex-col !items-center !pb-[30px] !pt-0" id="chatIntro" ref={introRef}>
-      <div className="gpt-title-row !mx-auto !flex !w-fit !max-w-full !flex-row !flex-nowrap !items-center !justify-center !gap-[5px] ![transform:translateX(-8px)]">
+    <div className="chat-intro !m-0 !flex !w-full !shrink-0 !transform-none !flex-col !items-center !pb-[30px] !pt-0 !text-center" id="chatIntro" ref={introRef}>
+      <div className="gpt-title-row !mx-auto !flex !w-fit !min-w-0 !max-w-full !flex-row !flex-nowrap !items-center !justify-center !gap-[5px] ![transform:translateX(-8px)] [transition:--lava-drift_.22s_ease-out]">
         <div className="brand-energy !relative !ml-[-8px] !mr-0 !mt-0 !mb-0 !h-[58px] !w-[58px] !shrink-0 !overflow-visible" aria-hidden>
           <EnergyCanvas size={ENERGY_GPT.size} speed={ENERGY_GPT.speed} />
         </div>
         <h1
           data-title={displayed.name}
-          className="relative !bg-none !font-light !leading-[1.2] !text-[#eeeef2] !tracking-[-.5px] ![word-spacing:normal] ![-webkit-text-fill-color:#eeeef2] ![overflow-wrap:break-word] after:!font-light after:!tracking-[-.5px] after:![word-spacing:normal] after:![font-family:inherit] after:![-webkit-text-fill-color:transparent]"
+          className="relative !bg-none !font-light !leading-[1.2] !text-[#eeeef2] !tracking-[-.5px] ![word-spacing:normal] ![-webkit-text-fill-color:#eeeef2] ![overflow-wrap:break-word] ![font-family:'Plus_Jakarta_Sans',sans-serif] [transition:filter_.3s_ease] after:!font-light after:!tracking-[-.5px] after:![word-spacing:normal] after:![font-family:inherit] after:![-webkit-text-fill-color:transparent]"
         >
           {displayed.name}
         </h1>
