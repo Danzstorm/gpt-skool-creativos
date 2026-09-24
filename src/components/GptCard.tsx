@@ -31,7 +31,7 @@ export default function GptCard({ gpt, onSelect, onPreview, style }: Props) {
   return (
     <button
       type="button"
-      className="tool"
+      className="tool !min-h-[142px] !rounded-[12px] !border !border-[#ffffff10] !bg-[#101012] !bg-[linear-gradient(135deg,#ffffff03,transparent)] !px-[20px] !py-[21px] !shadow-[inset_0_1px_0_#ffffff05] max-[900px]:!px-[15px] max-[900px]:!py-[18px] max-[650px]:!min-h-[150px] max-[650px]:!px-[12px] max-[650px]:!py-[16px]"
       data-tool={gpt.id}
       onClick={() => onSelect(gpt.id)}
       onMouseEnter={() => onPreview?.(accentHex)}
@@ -43,12 +43,12 @@ export default function GptCard({ gpt, onSelect, onPreview, style }: Props) {
       aria-label={`Abrir ${gpt.name}`}
     >
       <HaloRim id={gpt.id} />
-      <GptGlyph gpt={gpt} size="sm" />
+      <GptGlyph gpt={gpt} size="sm" className="!mb-[19px]" />
       <span className="arrow">
         <ProtoIcon name="arrow" />
       </span>
-      <h3>{gpt.name}</h3>
-      <p title={description || undefined}>{description || "\u00a0"}</p>
+      <h3 className="!mb-[8px] !mt-0 !font-normal">{gpt.name}</h3>
+      <p className="!m-0 line-clamp-2 !leading-[1.5]" title={description || undefined}>{description || "\u00a0"}</p>
     </button>
   );
 }

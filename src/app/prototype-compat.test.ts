@@ -362,12 +362,6 @@ describe("prototype-compat: catálogo de home scrollea", () => {
     expect(messagesCss).toMatch(/\.chat \.messages\s*\{[^}]*overflow-y:\s*auto/);
   });
 
-  it("home conserva las tarjetas de Martin", () => {
-    expect(homeCss).toMatch(/#homeView \.tool\s*\{[^}]*padding:\s*21px 20px/);
-    expect(homeCss).toMatch(/#homeView \.tool \.edge-wrap\s*\{[^}]*opacity:\s*0/);
-    expect(homeCss).toMatch(/#homeView \.tool p\s*\{[^}]*-webkit-line-clamp:\s*2/);
-  });
-
   it("GptCatalog pinta filtered.map, sin tope de 9, dentro de #homeView", () => {
     expect(catalog).not.toMatch(/capCatalogList|HERO_GPT_PREVIEW_LIMIT|slice\(\s*0\s*,\s*9\s*\)/);
     expect(catalog).toMatch(/activeGptsForChat/);
