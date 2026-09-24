@@ -275,7 +275,7 @@ describe("prototype-compat: chat y chrome", () => {
     expect(layout).not.toMatch(/chat-sidebar-fence\.css/);
     expect(compat).not.toMatch(/chat-sidebar-brand/);
     expect(chatSidebar).toMatch(/relative top-\[15px\] z-\[2\] ml-auto flex/);
-    expect(chatSidebar).toMatch(/!collapsed && "min-w-\[230px\]"/);
+    expect(chatSidebar).toMatch(/\(!collapsed \|\| sidebarOpen\) && "min-w-\[230px\]"/);
     expect(chatSidebar).toMatch(/ffbd1626/);
     expect(chatSidebar).not.toMatch(/className="side-scroll"/);
     expect(chatSidebar).not.toMatch(/className="collapse"/);

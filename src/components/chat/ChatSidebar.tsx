@@ -411,24 +411,24 @@ function ChatSidebar({
         className={cn(
           // Sin clase `.sidebar`: el dump no debe pintar este panel. Siempre
           // relative (también en móvil), como lo dejaba la cerca.
-          "chat-sidebar relative z-30 box-border flex h-full min-h-0 shrink-0 flex-col overflow-hidden",
+          "chat-sidebar relative z-30 box-border flex h-full min-h-0 shrink-0 flex-col overflow-hidden max-[650px]:fixed max-[650px]:h-[100dvh]",
           "border-r border-white/[0.03] bg-[#111113]",
           "inset-y-0 left-0 md:inset-auto md:translate-x-0",
           // Íconos del panel (no el rim del halo). `!`: legacy aún trae
           // svg{stroke-width} y .app svg.lucide{width:unset}.
           "[&_svg:not(.rim-svg)]:!h-[18px] [&_svg:not(.rim-svg)]:!w-[18px] [&_svg:not(.rim-svg)]:flex-[0_0_18px]",
           "[&_svg:not(.rim-svg)]:fill-none [&_svg:not(.rim-svg)]:stroke-current [&_svg:not(.rim-svg)]:!stroke-[1.4]",
-          !collapsed && "min-w-[230px]",
+          (!collapsed || sidebarOpen) && "min-w-[230px]",
           "transition-[width,padding] duration-[320ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
           "motion-reduce:transition-none",
           "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
           resizing && "!transition-none",
-          collapsed && "pointer-events-none border-r-0",
+          collapsed && !sidebarOpen && "pointer-events-none border-r-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         )}
         style={
           {
-            width: collapsed ? 0 : sidebarWidth,
+            width: collapsed && !sidebarOpen ? 0 : sidebarWidth,
             "--sidebar-user-width": `${sidebarWidth}px`,
           } as React.CSSProperties
         }
@@ -439,7 +439,7 @@ function ChatSidebar({
             "transition-transform duration-[320ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
             "motion-reduce:transition-none",
             resizing && "!transition-none",
-            collapsed && "-translate-x-full"
+            collapsed && !sidebarOpen && "-translate-x-full"
           )}
         >
           {/* brandrow Martin: logo + ‹ hermanos en la misma fila (nunca dentro de #new).
