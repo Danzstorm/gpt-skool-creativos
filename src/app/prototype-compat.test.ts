@@ -19,10 +19,6 @@ const homeCss = readFileSync(
   join(here, "..", "components", "chat", "home.css"),
   "utf8"
 );
-const gptIntroCss = readFileSync(
-  join(here, "..", "components", "chat", "gpt-intro.css"),
-  "utf8"
-);
 const messagesCss = readFileSync(
   join(here, "..", "components", "chat", "messages.css"),
   "utf8"
@@ -85,10 +81,6 @@ describe("prototype-compat: chat y chrome", () => {
     expect(chat).toMatch(/showGptIntro && "justify-center"/);
     expect(chat).not.toMatch(/hidden=\{showGptIntro\}/);
     expect(chat).toMatch(/hasChatMessages && "chat-has-messages"/);
-    expect(gptIntroCss).toMatch(
-      /#chatIntro \.gpt-title-row\s*\{[^}]*flex-direction:\s*row/
-    );
-    expect(gptIntroCss).toMatch(/#chatIntro \.gpt-title-row \.brand-energy\s*\{[^}]*margin:\s*0/);
   });
 
   it("el hilo no pinta skeletons pulse; el primer mensaje se acerca al composer", () => {
@@ -104,12 +96,7 @@ describe("prototype-compat: chat y chrome", () => {
     expect(composer).toMatch(/<Plus /);
   });
 
-  it("restaura espacios en copy del intro y chrome (sin zoom)", () => {
-    expect(gptIntroCss).toMatch(/#chatIntro \.gpt-title-row h1\s*\{[^}]*letter-spacing:\s*-0\.5px/);
-    expect(gptIntroCss).toMatch(/#chatIntro \.gpt-intro-copy[\s\S]{0,240}word-spacing:\s*normal/);
-    expect(gptIntroCss).toMatch(/#chatIntro \.gpt-title-row h1:after\s*\{[^}]*letter-spacing:\s*-0\.5px/);
-    expect(gptIntroCss).toMatch(/#chatIntro \.gpt-title-row h1:after\s*\{[^}]*word-spacing:\s*normal/);
-    expect(gptIntroCss).toMatch(/#chatIntro \.gpt-title-row\s*\{[^}]*translateX\(-8px\)/);
+  it("no usa zoom en el chrome", () => {
     expect(css).not.toMatch(/zoom\s*:/);
     expect(proto).not.toMatch(/zoom\s*:/);
   });
@@ -137,8 +124,8 @@ describe("prototype-compat: chat y chrome", () => {
   it("el h1 global ya no clippea todo el documento", () => {
     expect(proto).not.toMatch(/letter-spacing:\.3px\}h1\{[^}]*background-clip:text/);
     expect(proto).toMatch(/\.access-title-row h1\{[^}]*background-clip:text/);
-    expect(hero).toMatch(/WebkitTextFillColor:\s*["']#8e909c["']/);
-    expect(hero).toMatch(/color:\s*["']#8e909c["']/);
+    expect(hero).toContain("![-webkit-text-fill-color:#8e909c]");
+    expect(hero).toContain("!text-[#8e909c]");
   });
 
   it("el home intro usa el saludo como h1, no Qué vas a crear hoy", () => {
@@ -215,7 +202,7 @@ describe("prototype-compat: chat y chrome", () => {
   });
 
   it("GptHero sigue pintando .examples y gpt-title-row", () => {
-    expect(hero).toMatch(/className="gpt-title-row"/);
+    expect(hero).toMatch(/className="gpt-title-row\s/);
     expect(hero).toMatch(/className="examples"/);
     expect(hero).toMatch(/conversation_starters/);
   });

@@ -126,21 +126,14 @@ export default function GptHero({ gpt, onStarter, children }: Props) {
   }, []);
 
   return (
-    <div className="chat-intro" id="chatIntro" ref={introRef}>
-      <div className="gpt-title-row">
-        <div className="brand-energy" aria-hidden>
+    <div className="chat-intro !m-0 !flex !w-full !shrink-0 !transform-none !flex-col !items-center !pb-[30px] !pt-0" id="chatIntro" ref={introRef}>
+      <div className="gpt-title-row !mx-auto !flex !w-fit !max-w-full !flex-row !flex-nowrap !items-center !justify-center !gap-[5px] ![transform:translateX(-8px)]">
+        <div className="brand-energy !relative !ml-[-8px] !mr-0 !mt-0 !mb-0 !h-[58px] !w-[58px] !shrink-0 !overflow-visible" aria-hidden>
           <EnergyCanvas size={ENERGY_GPT.size} speed={ENERGY_GPT.speed} />
         </div>
         <h1
           data-title={displayed.name}
-          style={{
-            letterSpacing: "-0.5px",
-            wordSpacing: "normal",
-            fontWeight: 300,
-            WebkitTextFillColor: "#eeeef2",
-            color: "#eeeef2",
-            background: "none",
-          }}
+          className="relative !bg-none !font-light !leading-[1.2] !text-[#eeeef2] !tracking-[-.5px] ![word-spacing:normal] ![-webkit-text-fill-color:#eeeef2] ![overflow-wrap:break-word] after:!font-light after:!tracking-[-.5px] after:![word-spacing:normal] after:![font-family:inherit] after:![-webkit-text-fill-color:transparent]"
         >
           {displayed.name}
         </h1>
@@ -148,18 +141,7 @@ export default function GptHero({ gpt, onStarter, children }: Props) {
       {description && (
         <p
           // my-[1em]: Martin conserva el margen por defecto del <p>.
-          className="gpt-intro-copy my-[1em]"
-          style={{
-            color: "#8e909c",
-            WebkitTextFillColor: "#8e909c",
-            background: "none",
-            fontFamily: "var(--font-display), 'Plus Jakarta Sans', sans-serif",
-            fontWeight: 400,
-            letterSpacing: 0,
-            wordSpacing: "normal",
-            lineHeight: 1.6,
-            whiteSpace: "pre-wrap",
-          }}
+          className="gpt-intro-copy my-[1em] !bg-none !font-normal !leading-[1.6] !text-[#8e909c] !tracking-normal ![word-spacing:normal] ![-webkit-text-fill-color:#8e909c] ![background-clip:border-box] ![-webkit-background-clip:border-box] [overflow-wrap:break-word] ![font-family:var(--font-display),'Plus_Jakarta_Sans',sans-serif] [white-space:pre-wrap]"
         >
           {description}
         </p>
