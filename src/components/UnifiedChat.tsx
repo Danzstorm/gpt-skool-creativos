@@ -401,7 +401,7 @@ export default function UnifiedChat({
 
   return (
     <div
-      className={`app${sidebarCollapsed ? " collapsed" : ""}${sidebarOpen ? " mobile-open" : ""}`}
+      className="app flex min-h-screen"
     >
       <ChatSidebar
         communityName={communityName}
@@ -449,7 +449,7 @@ export default function UnifiedChat({
       />
 
       <div
-        className="main"
+        className="main flex min-h-screen min-w-0 flex-1 flex-col bg-[#060606]"
         style={{ "--page-accent": pageAccent } as CSSProperties}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
@@ -457,7 +457,7 @@ export default function UnifiedChat({
       >
         <div
           className={cn(
-            "topbar",
+            "relative flex h-0 min-h-0 shrink-0 items-center justify-between overflow-visible border-0 bg-transparent px-0 text-xs text-[#aaa] shadow-none",
             // Expandir: el topbar queda height:0 bajo home/chat; subimos stacking
             // y devolvemos pointer-events al control del borde.
             sidebarCollapsed && "relative z-50 !h-0 !min-h-0 overflow-visible pointer-events-none"
@@ -466,14 +466,13 @@ export default function UnifiedChat({
           <button
             type="button"
             className={cn(
-              "mobile-menu",
+              "absolute left-[18px] top-[18px] z-[5] hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg border-0 bg-transparent p-[7px] text-[#9898a0] transition-colors hover:bg-white/[0.03] hover:text-[#eee] motion-reduce:transition-none max-[650px]:flex min-[651px]:left-5 min-[651px]:top-[var(--panel-toggle-top,42px)] min-[651px]:h-[30px] min-[651px]:w-[30px] min-[651px]:text-[#9a9aa4] min-[651px]:hover:bg-transparent min-[651px]:hover:text-[#9a9aa4] [&_svg]:h-[21px] [&_svg]:w-[21px] [&_svg]:shrink-0 min-[651px]:[&_svg]:h-4 min-[651px]:[&_svg]:w-4",
+              sidebarOpen && "max-[650px]:!hidden",
               sidebarCollapsed &&
-                "!visible !flex absolute left-5 z-[60] h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg border-0 bg-transparent p-[7px] text-[#9a9aa4] [-webkit-text-fill-color:#9a9aa4] pointer-events-auto transition-none [&_svg]:h-4 [&_svg]:w-4 [&_svg]:shrink-0"
+                "!visible !flex !pointer-events-auto !z-[60] [-webkit-text-fill-color:#9a9aa4]"
             )}
             style={
-              sidebarCollapsed
-                ? { top: "var(--panel-toggle-top, 42px)", display: "flex" }
-                : undefined
+              undefined
             }
             onClick={() => {
               // Martin runtime.js: ≤650 → mobile-open; desktop → toggle collapsed.
@@ -491,7 +490,7 @@ export default function UnifiedChat({
             <ProtoIcon name="menu" className="h-4 w-4 shrink-0" />
           </button>
           {hasChatMessages && (
-            <div id="breadcrumb" className="crumb">
+            <div id="breadcrumb" className="hidden">
               <span>{chatTitle}</span>
             </div>
           )}
@@ -544,9 +543,9 @@ export default function UnifiedChat({
           <div
             id="chatView"
             className={cn(
-              "chat",
+              "chat flex w-full !max-w-[940px] min-h-0 flex-1 flex-col overflow-y-auto !px-[38px] !pt-[22px] !pb-0 !relative [scroll-padding-bottom:140px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden max-[650px]:!px-4 max-[650px]:!pt-4",
               showGptIntro && "justify-center",
-              hasChatMessages && "chat-has-messages"
+              hasChatMessages && "chat-has-messages !overflow-hidden"
             )}
           >
             {showGptIntro && (

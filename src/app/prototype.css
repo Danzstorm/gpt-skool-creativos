@@ -40,29 +40,15 @@ svg{stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 .brand-energy canvas{position:absolute;width:200%;height:200%;left:-50%;top:-50%;mask-image:radial-gradient(ellipse at center,#000 35%,transparent 68%);-webkit-mask-image:radial-gradient(ellipse at center,#000 35%,transparent 68%)}
 
 /* Centre the home composition in the available workspace. */
-.main{display:flex;flex-direction:column;min-height:100vh}.topbar{flex-shrink:0}
 .workspace{width:100%;flex:1;display:flex;flex-direction:column;justify-content:center;padding-top:36px;padding-bottom:36px;margin:0 auto}
 @media(max-width:650px){.workspace{padding-top:30px;padding-bottom:30px}}
 
 /* Lift the centred composition slightly on desktop. */
 @media(min-width:651px){.workspace{padding-top:36px;padding-bottom:116px}}
 
-.main:has(#homeView:not([hidden])) .topbar{height:0;min-height:0;padding:0;border:0;background:none}
-.main:has(#homeView:not([hidden])) .topbar .community,
-.main:has(#homeView:not([hidden])) .topbar #home,
-.main:has(#homeView:not([hidden])) .topbar #breadcrumb{display:none}
-.main:has(#homeView:not([hidden])) .topbar .mobile-menu{position:absolute;top:18px;left:18px;z-index:5}
 @keyframes prompt-arrive{from{opacity:0;translate:0 5px}to{opacity:1;translate:0 0}}
 
-.main:has(#chatView:not([hidden])){height:100dvh;display:flex;flex-direction:column}
-.main:has(#chatView:not([hidden])) .topbar{flex-shrink:0}
-#chatView{width:100%;max-width:940px;min-height:0;flex:1;padding:22px 38px 0;overflow-y:auto;position:relative;scroll-padding-bottom:140px}
-#chatView .back{align-self:flex-start;flex-shrink:0}
 .attachments{display:flex;gap:9px;padding:10px;background:#111113;border:1px solid #ffffff10;border-radius:14px;margin-bottom:8px}
-@media(max-width:650px){#chatView{padding:16px 16px 0}}
-
-#chatView{scrollbar-width:none}
-#chatView::-webkit-scrollbar{display:none}
 @keyframes send-glow{0%{opacity:0}20%{opacity:.65}100%{opacity:0}}
 @keyframes send-press{0%{transform:scale(.95)}100%{transform:scale(1)}}
 @keyframes send-reflection{0%{opacity:.38}35%{opacity:.3}100%{opacity:0}}
@@ -72,9 +58,6 @@ svg{stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 .font-preview{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;align-self:flex-end;padding:8px 12px;margin-bottom:16px;border:1px solid #ffffff18;border-radius:10px;background:#141416;color:#aaa;font-size:11px}
 .font-preview select{background:#1d1d21;color:#eee;border:1px solid #ffffff18;border-radius:6px;padding:6px;font:inherit}
 
-.main .topbar{height:0;min-height:0;padding:0;border:0;background:none;box-shadow:none}
-.main .topbar .community,.main .topbar #home,.main .topbar #breadcrumb,#chatView .back{display:none}
-.main .topbar .mobile-menu{position:absolute;top:18px;left:18px;z-index:5}
 .gpt-icon-depth{stroke:#673253;stroke-width:1.65;transform:translate(.45px,.7px);opacity:.65}
 .gpt-icon-face{stroke:url(#gpt-metal);stroke-width:1.35}
 .gpt-icon-highlight{stroke:#ffe8ef;stroke-width:.25;opacity:.65;transform:translate(-.13px,-.18px);animation:gpt-shimmer 6s ease-in-out infinite}
@@ -95,8 +78,6 @@ svg{stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 .heading-font-picker{position:fixed;top:16px;right:20px;z-index:30;display:flex;align-items:center;gap:9px;padding:8px 11px;border:1px solid #ffffff18;border-radius:9px;background:#141416;color:#999;font-size:11px}
 .heading-font-picker select{font:inherit;padding:5px 7px;border:1px solid #ffffff16;border-radius:5px;color:#eee;background:#202023}
 @keyframes clean-filament-flow{0%,100%{transform:translate(-.2px,.12px) scale(var(--size)) rotate(-1deg)}50%{transform:translate(.2px,-.12px) scale(var(--size)) rotate(1deg)}}
-#chatView:has(#chatIntro:not([hidden])){justify-content:center}
-#chatView:has(#chatIntro:not([hidden])) #chatIntro{margin:0;padding:0 0 30px;transform:none;flex-shrink:0}
 @keyframes title-lava{0%{background-position:-70% 10%,55% 90%,150% 0%,0 0}35%{background-position:0% 70%,110% 0%,75% 80%,0 0}70%{background-position:65% 0%,-25% 60%,30% 0%,0 0}100%{background-position:130% 80%,35% 0%,-65% 70%,0 0}}
 @keyframes send-release{0%{transform:scale(.9)}100%{transform:scale(1)}}
 
@@ -114,8 +95,6 @@ svg{stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 @keyframes thinking-text{50%{opacity:.55}}
 @keyframes wait-appear{from{opacity:0}to{opacity:1}}
 @keyframes response-reveal{from{opacity:0;translate:0 4px}to{opacity:1;translate:0 0}}
-
-#chatView:has(#chatIntro[hidden]){overflow:hidden}
 
 .stream-segment{animation:stream-reveal .28s ease-out both}
 @keyframes stream-reveal{from{opacity:0}to{opacity:1}}
@@ -135,34 +114,6 @@ svg{stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 @keyframes user-message-arrive{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .secondary-font-picker{position:fixed;top:65px;right:20px;z-index:30;display:flex;align-items:center;gap:9px;padding:8px 11px;border:1px solid #ffffff18;border-radius:9px;background:#141416;color:#999;font-size:11px}
 .secondary-font-picker select{font:inherit;padding:5px 7px;border:1px solid #ffffff16;border-radius:5px;color:#eee;background:#202023}
-
-.main .topbar .mobile-menu{display:none;width:36px;height:36px;padding:7px;color:#9898a0;border-radius:8px}
-.main .topbar .mobile-menu:hover{background:#ffffff08;color:#eee}
-.collapsed .main .topbar .mobile-menu{display:block}
-
-.mobile-menu svg{width:21px;height:21px;stroke-width:1.4}
-@media(max-width:650px){.main .topbar .mobile-menu{display:block}.mobile-open .main .topbar .mobile-menu{display:none}}
-
-@media(min-width:651px){
-
-.main .topbar .mobile-menu{top:var(--panel-toggle-top,42px);left:20px;width:30px;height:30px;padding:7px}
-.main .topbar .mobile-menu svg{width:16px;height:16px}
-}
-
-@media(min-width:651px){
-
-.main .topbar .mobile-menu{visibility:hidden;transition:visibility 0s}
-.collapsed .main .topbar .mobile-menu{visibility:visible;transition:visibility 0s .32s}
-
-}
-@media(prefers-reduced-motion:reduce){.collapsed .main .topbar .mobile-menu{transition:none}}
-
-@media(min-width:651px){
-
-.collapsed .main .topbar .mobile-menu{transition:visibility 0s .48s}
-
-}
-@media(prefers-reduced-motion:reduce){.collapsed .main .topbar .mobile-menu{transition:none}}
 
 .account-divider{height:1px;background:#ffffff0d;margin:5px}
 
