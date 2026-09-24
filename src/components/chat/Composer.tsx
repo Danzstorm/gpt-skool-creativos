@@ -14,7 +14,7 @@ import { composerFieldDisabled } from "@/lib/composer-input";
 import { mentionAt, moveIndex, type MentionQuery } from "@/lib/file-search";
 import { VIDEO_ANALYZING_HINT, VIDEO_ANALYZING_LABEL, VIDEO_ATTACH_TITLE } from "@/lib/video-copy";
 import AttachmentStill from "./AttachmentStill";
-import AudioPreview from "./AudioPreview";
+import AudioPreview, { attachTileClass } from "./AudioPreview";
 import MentionField, { type MentionFieldHandle } from "./MentionField";
 import MentionMenu from "./MentionMenu";
 import MentionPreview from "./MentionPreview";
@@ -310,14 +310,14 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             const tileKey = f.clientId ?? f.openai_file_id ?? String(i);
             const visual = f.type === "image" || f.type === "video";
             return f.type === "audio" ? (
-              <div key={tileKey} className="attachment attach-tile">
+              <div key={tileKey} className={cn("attachment", attachTileClass)}>
                 <AudioPreview src={f.mediaUrl || f.previewUrl} name={f.name} />
                 <button type="button" onClick={() => onRemoveFile(i)} aria-label="Quitar adjunto">
                   ×
                 </button>
               </div>
             ) : visual ? (
-              <div key={tileKey} className="attachment attach-tile">
+              <div key={tileKey} className={cn("attachment", attachTileClass)}>
                 <AttachmentStill
                   file={{
                     kind: f.type,
@@ -351,7 +351,7 @@ const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           <button
             type="button"
             onClick={openFilePicker}
-            className="attachment-add attach-tile"
+            className={cn("attachment-add", attachTileClass)}
             title="Adjuntar más archivos"
             aria-label="Adjuntar más archivos"
           >

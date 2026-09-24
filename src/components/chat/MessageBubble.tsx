@@ -7,7 +7,18 @@ import type { MentionCandidate } from "@/lib/attachment-mentions";
 import { unwrapPromptFence } from "@/lib/unwrap-prompt";
 import MentionedText from "./MentionedText";
 import AttachmentStill from "./AttachmentStill";
-import AudioPreview from "./AudioPreview";
+import AudioPreview, { attachTileClass } from "./AudioPreview";
+
+// Botón Copiar/Regenerar/Editar: degradado ::before que destella al copiar.
+const copyClass =
+  "prompt-copy active:scale-[.97] before:pointer-events-none before:absolute before:inset-0 before:z-[-1] before:rounded-[inherit] before:bg-[linear-gradient(115deg,#ffbd16,#ff682f_22%,#ff165e_46%,#ee0de4_73%,#7753ff)] before:opacity-0 before:content-['']";
+// `!`: button{color:inherit} de legacy.
+const copyConfirmedClass =
+  "copy-confirmed !text-[#f4f4f6] animate-[copy-soft-press_1.5s_cubic-bezier(.22,1,.36,1)] before:animate-[copy-color_1.5s_cubic-bezier(.4,0,.2,1)] motion-reduce:animate-none motion-reduce:before:animate-none";
+
+// Nota bajo el prompt o el mensaje (Martin .prompt-note).
+const noteClass =
+  "prompt-note px-6 pb-[17px] text-[11px] text-[#777780] max-[650px]:px-[18px] max-[650px]:pb-4";
 
 interface Props {
   message: Message;
@@ -51,11 +62,11 @@ function MessageBubble({
         const position = numbers.images.get(f.openai_file_id) ?? null;
         const visual = f.type === "image" || f.type === "video";
         return f.type === "audio" ? (
-          <div key={f.openai_file_id || fi} className="attachment attach-tile">
+          <div key={f.openai_file_id || fi} className={cn("attachment", attachTileClass)}>
             <AudioPreview src={f.mediaUrl || f.previewUrl} name={f.name} />
           </div>
         ) : visual ? (
-          <div key={f.openai_file_id || fi} className="attach-tile">
+          <div key={f.openai_file_id || fi} className={attachTileClass}>
             <AttachmentStill
               file={{
                 kind: f.type,
@@ -71,7 +82,7 @@ function MessageBubble({
             </span>
           </div>
         ) : (
-          <span key={f.openai_file_id || fi} className="prompt-note">
+          <span key={f.openai_file_id || fi} className={noteClass}>
             {f.name}
           </span>
         );
@@ -91,8 +102,9 @@ function MessageBubble({
     return (
       <div
         className={cn(
-          "message assistant prompt-card shrink-0",
-          !streaming && "new-response",
+          "message assistant prompt-card shrink-0 leading-[1.85]",
+          // `!`: messages.css (legacy) pone animation:none en la tarjeta.
+          !streaming && "new-response !animate-[wait-appear_.3s_ease-out] motion-reduce:!animate-none",
           className
         )}
       >
@@ -100,10 +112,10 @@ function MessageBubble({
         {promptText ? (
           <>
             <div className="prompt-header">
-              <span className="prompt-label">PROMPT</span>
+              <span className="prompt-label tracking-[1.4px] text-[#99999f]">PROMPT</span>
               <button
                 type="button"
-                className={cn("prompt-copy", isCopied && "copy-confirmed")}
+                className={cn(copyClass, isCopied && copyConfirmedClass)}
                 onClick={() => onCopy(index, promptText)}
               >
                 <svg viewBox="0 0 24 24" aria-hidden>
@@ -124,11 +136,11 @@ function MessageBubble({
           msg.error && <p className="prompt-body" style={{ color: "#f88" }}>{msg.error}</p>
         )}
         {msg.content && msg.error && (
-          <p className="prompt-note" style={{ color: "#f88" }}>{msg.error}</p>
+          <p className={noteClass} style={{ color: "#f88" }}>{msg.error}</p>
         )}
         {!streaming && isLast && canRegenerate && (
-          <div className="prompt-note">
-            <button type="button" className="prompt-copy" onClick={onRegenerate}>
+          <div className={noteClass}>
+            <button type="button" className={copyClass} onClick={onRegenerate}>
               Regenerar
             </button>
           </div>
@@ -138,12 +150,12 @@ function MessageBubble({
   }
 
   return (
-    <div className={cn("message user ml-auto w-fit max-w-[min(100%,32rem)] shrink-0", className)}>
+    <div className={cn("message user ml-auto w-fit max-w-[min(100%,32rem)] shrink-0 whitespace-pre-wrap", className)}>
       {files}
       <MentionedText text={msg.content} mentions={mentions} />
       {!streaming && canEdit && (
-        <div className="prompt-note">
-          <button type="button" className="prompt-copy" onClick={() => onEdit(index)}>
+        <div className={noteClass}>
+          <button type="button" className={copyClass} onClick={() => onEdit(index)}>
             Editar
           </button>
         </div>

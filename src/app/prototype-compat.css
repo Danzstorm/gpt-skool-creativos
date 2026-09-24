@@ -26,9 +26,6 @@ body {
 
 /* Inconsolata solo en la tarjeta PROMPT. El composer de Martin es Inter
    (hereda el body), no mono. Tipografía del campo: composer.css. */
-.prompt-body {
-  font-family: var(--font-prompt);
-}
 
 /* El prototipo fuerza 19px + fill:none + stroke a TODO svg. Lucide es
    trazo: deja que width/height del componente ganen. El G de Google es
@@ -296,14 +293,6 @@ a.ax-primary:hover {
     visibility: hidden;
   }
 }
-.attach-energy {
-  position: absolute;
-  inset: -30%;
-  pointer-events: none;
-  filter: blur(13px);
-  background: linear-gradient(125deg, #38241b, #442035 48%, #29213e);
-  animation: attach-pulse 1.4s ease-in-out infinite, attach-hide 2.2s forwards;
-}
 
 @keyframes attach-pulse {
   0%,
@@ -315,41 +304,6 @@ a.ax-primary:hover {
     opacity: 1;
     filter: blur(13px) brightness(1);
   }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .attach-energy {
-    animation: none;
-    opacity: 0.6;
-  }
-}
-
-.attach-tile {
-  position: relative;
-  width: 64px;
-  height: 64px;
-  min-width: 64px;
-  overflow: hidden;
-  border-radius: 12px;
-}
-
-.attach-tile img,
-.attach-tile video {
-  display: block;
-  width: 64px;
-  height: 64px;
-  object-fit: cover;
-}
-
-.audio-preview audio {
-  position: absolute;
-  width: 0;
-  height: 0;
-  opacity: 0;
-  pointer-events: none;
-}
-.audio-preview.is-playing {
-  color: #eeeef2;
 }
 
 .ax-shell {
@@ -403,8 +357,7 @@ a.ax-primary:hover {
 /* Orbe de energía: overflow visible para que el halo no muera.
    Tamaños: home.css (82) / gpt-intro.css (58). */
 .brand-energy,
-.gpt-home-energy,
-.thinking-energy {
+.gpt-home-energy {
   position: relative;
   overflow: visible;
 }
