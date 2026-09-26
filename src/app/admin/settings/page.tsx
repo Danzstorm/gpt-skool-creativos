@@ -2,9 +2,21 @@
 
 import { useState, useEffect } from "react";
 import type { AppSettings, Profile } from "@/lib/types";
-import { UserPlus, ShieldOff } from "lucide-react";
-import { adminPrimaryClass } from "@/components/admin/admin-ui";
-import { cn } from "@/lib/utils";
+import {
+  adminActionClass,
+  adminAvatarClass,
+  adminPanelClass,
+  adminPrimaryClass,
+  adminStatusClass,
+  initialsOf,
+} from "@/components/admin/admin-ui";
+import { cn, humanDisplayName } from "@/lib/utils";
+
+// Campos y textos del panel "Marca y comunidad" del prototipo de Martin.
+const labelClass = "grid gap-[10px] text-[12px] text-[#9999a5]";
+const inputClass =
+  "w-full min-w-0 rounded-[8px] border border-solid border-[#ffffff12] bg-[#17171a] p-3 text-[12px] text-[#dddde5] placeholder:text-[#6f6f78] focus:border-[#ffffff2a] focus:outline-none";
+const noteClass = "mt-5 mb-3 text-[12px] leading-[1.8] text-[#777781]";
 
 const DEFAULT_FORM: AppSettings = {
   community_name: "",
@@ -75,70 +87,63 @@ function AdminsSection() {
     load();
   }
 
+  const msgTone =
+    msg?.kind === "ok" ? "text-[#7ed8a4]" : msg?.kind === "warn" ? "text-[#e6c568]" : "text-[#c3a0ac]";
+
   return (
-    <div className="max-w-xl">
-      <h2 className="leading-[calc(1.75/1.125)] text-white">Administradores</h2>
-      <p className="text-sm text-zinc-400 mb-4">
-        Cualquier admin puede dar acceso de admin a otro correo. La persona necesita iniciar sesión
-        al menos una vez antes de poder marcarse como admin.
+    <section className={cn(adminPanelClass, "mt-5")}>
+      <h2 className="text-[16px]">Administradores</h2>
+      <p className={noteClass}>
+        Separa los permisos de administración del acceso como miembro. La persona debe haber iniciado sesión al
+        menos una vez antes de recibir este rol.
       </p>
 
-      <form onSubmit={addAdmin} className="flex gap-2 mb-3">
+      <form onSubmit={addAdmin} className="flex flex-wrap gap-3">
         <input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="correo@ejemplo.com"
-          className="flex-1 bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500"
+          aria-label="Correo del nuevo administrador"
+          className={cn(inputClass, "max-w-[420px] flex-1 basis-[240px]")}
         />
-        <button
-          type="submit"
-          disabled={submitting || !email.trim()}
-          className={cn(adminPrimaryClass, "disabled:opacity-50")}
-        >
-          <UserPlus size={15} /> Hacer admin
+        <button type="submit" disabled={submitting || !email.trim()} className={cn(adminPrimaryClass, "disabled:opacity-50")}>
+          Hacer admin
         </button>
       </form>
 
-      {msg && (
-        <p
-          className={`text-xs mb-4 rounded-lg px-3 py-2 border ${
-            msg.kind === "ok"
-              ? "text-emerald-300 bg-emerald-500/10 border-emerald-500/20"
-              : msg.kind === "warn"
-                ? "text-amber-300 bg-amber-500/10 border-amber-500/20"
-                : "text-red-300 bg-red-500/10 border-red-500/20"
-          }`}
-        >
-          {msg.text}
-        </p>
-      )}
+      {msg && <p className={cn("mt-3 text-[12px] leading-[1.6]", msgTone)}>{msg.text}</p>}
 
       {loading ? (
-        <div className="text-zinc-500 text-sm">Cargando...</div>
+        <p className={noteClass}>Cargando…</p>
       ) : (
-        <div className="space-y-2">
+        <div className="mt-2">
           {admins.map((a) => (
             <div
               key={a.id}
-              className="flex items-center justify-between bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2.5"
+              className="flex items-center justify-between gap-3 border-b border-solid border-b-[#ffffff08] py-[19px] text-[12px] text-[#b6b6bf] last:border-b-0"
             >
-              <div className="min-w-0">
-                <div className="text-white text-sm truncate">{a.email}</div>
-                {a.full_name && <div className="text-zinc-500 text-xs truncate">{a.full_name}</div>}
+              <div className="flex min-w-0 items-center gap-3">
+                {/* Google a veces guarda el correo como nombre: humanDisplayName lo descarta. */}
+                <span className={adminAvatarClass}>{initialsOf(humanDisplayName(a.full_name), a.email ?? "")}</span>
+                <div className="min-w-0">
+                  <div className="truncate text-[13px] text-[#eeeef2]">{humanDisplayName(a.full_name) || a.email}</div>
+                  {humanDisplayName(a.full_name) && (
+                    <small className="mt-[5px] block truncate text-[11px] text-[#777781]">{a.email}</small>
+                  )}
+                </div>
               </div>
-              <button
-                onClick={() => revoke(a)}
-                className="p-2 rounded-xl text-zinc-400 hover:text-red-400 hover:bg-zinc-800 transition flex-shrink-0"
-                title="Quitar admin"
-              >
-                <ShieldOff size={15} />
-              </button>
+              <div className="flex shrink-0 items-center gap-2">
+                <span className={cn(adminStatusClass.base, adminStatusClass.neutral)}>Administrador</span>
+                <button type="button" onClick={() => revoke(a)} className={adminActionClass} title="Quitar admin">
+                  Quitar
+                </button>
+              </div>
             </div>
           ))}
         </div>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -203,119 +208,79 @@ export default function AdminSettingsPage() {
   }
 
   if (loading) {
-    return <div className="text-zinc-400 text-center py-12">Cargando...</div>;
+    return <p className="py-12 text-center text-[13px] text-[#777781]">Cargando…</p>;
   }
 
   if (loadError) {
     return (
-      <div className="text-center py-16 text-amber-400">
-        <div className="text-4xl mb-3">⚠️</div>
+      <div className={cn(adminPanelClass, "text-center text-[13px] text-[#e6c568]")}>
         <p>No se pudieron cargar los ajustes. La configuración actual no se perdió.</p>
-        <button
-          onClick={() => window.location.reload()}
-          className="mt-4 text-sm text-amber-300 underline hover:text-amber-200"
-        >
+        <button onClick={() => window.location.reload()} className={cn(adminActionClass, "mt-3")}>
           Reintentar
         </button>
       </div>
     );
   }
 
+  const field = (key: "community_name" | "skool_url" | "support_email" | "logo_url") => ({
+    value: form[key] ?? "",
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [key]: e.target.value }),
+  });
+
   return (
     <div>
-      <div className="mb-6">
-        <p className="text-zinc-400 text-sm mt-0.5">
-          Marca y configuración general de la plataforma — para replicar esto con otro cliente,
-          esto es lo único que cambia.
-        </p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="max-w-xl space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-zinc-300 mb-1.5">Nombre de la comunidad</label>
-          <input
-            value={form.community_name}
-            onChange={(e) => setForm({ ...form, community_name: e.target.value })}
-            placeholder="Creativos"
-            className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500"
-          />
-          <p className="text-xs text-zinc-500 mt-1">
-            Reemplaza el wordmark &ldquo;Creativos&rdquo; en header, landing y login.
-          </p>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-zinc-300 mb-1.5">Logo URL</label>
-          <input
-            value={form.logo_url ?? ""}
-            onChange={(e) => setForm({ ...form, logo_url: e.target.value })}
-            placeholder="https://..."
-            className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-zinc-300 mb-1.5">URL de la comunidad Skool</label>
-          <input
-            value={form.skool_url ?? ""}
-            onChange={(e) => setForm({ ...form, skool_url: e.target.value })}
-            placeholder="https://www.skool.com/tu-comunidad"
-            className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500"
-          />
-          <p className="text-xs text-zinc-500 mt-1">
-            Usada en el botón &ldquo;Unirme al Skool&rdquo; de landing/login y en el mensaje de acceso denegado.
-          </p>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-zinc-300 mb-1.5">Email de soporte</label>
-          <input
-            value={form.support_email ?? ""}
-            onChange={(e) => setForm({ ...form, support_email: e.target.value })}
-            placeholder="soporte@tudominio.com"
-            className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-zinc-300 mb-1.5">
-            Límite mensual de mensajes por defecto
+      <form onSubmit={handleSubmit} className={adminPanelClass}>
+        <h2 className="text-[16px]">Marca y comunidad</h2>
+        <div className="mt-6 grid grid-cols-2 gap-[22px] max-[700px]:grid-cols-1">
+          <label className={labelClass}>
+            Nombre de comunidad
+            <input required placeholder="Creativos" className={inputClass} {...field("community_name")} />
           </label>
-          <input
-            type="number"
-            min={0}
-            value={form.default_monthly_message_limit ?? ""}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                default_monthly_message_limit: e.target.value === "" ? null : Number(e.target.value),
-              })
-            }
-            placeholder="Sin límite"
-            className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500"
-          />
-          <p className="text-xs text-zinc-500 mt-1">
-            Aplica a todos los miembros salvo que tengan un límite propio (editable en Miembros). Vacío = sin
-            límite.
-          </p>
+          <label className={labelClass}>
+            Enlace de Skool
+            <input type="url" placeholder="https://www.skool.com/tu-comunidad" className={inputClass} {...field("skool_url")} />
+          </label>
+          <label className={labelClass}>
+            Correo de soporte
+            <input type="email" placeholder="soporte@tudominio.com" className={inputClass} {...field("support_email")} />
+          </label>
+          <label className={labelClass}>
+            Mensajes por mes
+            <input
+              type="number"
+              min={0}
+              value={form.default_monthly_message_limit ?? ""}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  default_monthly_message_limit: e.target.value === "" ? null : Number(e.target.value),
+                })
+              }
+              placeholder="Sin límite"
+              className={inputClass}
+            />
+          </label>
+          <label className={labelClass}>
+            Logo (URL)
+            <input type="url" placeholder="https://…" className={inputClass} {...field("logo_url")} />
+          </label>
         </div>
-
-        <div className="flex items-center gap-3 pt-2">
-          <button
-            type="submit"
-            disabled={saving}
-            className={cn(adminPrimaryClass, "disabled:opacity-50")}
-          >
-            {saving ? "Guardando..." : "Guardar ajustes"}
+        <p className={noteClass}>
+          El límite global se aplica salvo que el miembro tenga uno individual (editable en Miembros). El nombre y el
+          enlace de Skool se usan en el login y en la vista sin acceso.
+        </p>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <button type="submit" disabled={saving} className={cn(adminPrimaryClass, "disabled:opacity-50")}>
+            {saving ? "Guardando…" : "Guardar ajustes"}
           </button>
-          {saved && <span className="text-emerald-400 text-sm">Guardado.</span>}
-          {saveError && <span className="text-red-400 text-sm">{saveError}</span>}
+          <span role="status" className="text-[12px]">
+            {saved && <span className="text-[#7ed8a4]">Guardado.</span>}
+            {saveError && <span className="text-[#c3a0ac]">{saveError}</span>}
+          </span>
         </div>
       </form>
 
-      <div className="max-w-xl border-t border-zinc-800 mt-10 pt-8">
-        <AdminsSection />
-      </div>
+      <AdminsSection />
     </div>
   );
 }
