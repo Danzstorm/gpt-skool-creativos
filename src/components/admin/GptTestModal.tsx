@@ -5,6 +5,7 @@ import { X, Send } from "lucide-react";
 import { consumeSSE } from "@/lib/stream-client";
 import { useDismissable } from "@/hooks/useDismissable";
 import { cn } from "@/lib/utils";
+import { adminPrimaryClass } from "./admin-ui";
 
 interface Props {
   gptId: string;
@@ -80,7 +81,7 @@ export default function GptTestModal({ gptId, gptName, onClose }: Props) {
           </div>
           <button
             onClick={onClose}
-            className="ml-auto p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-800 transition"
+            className="ml-auto p-1.5 rounded-lg text-zinc-500 hover:!text-white hover:bg-zinc-800 transition"
             aria-label="Cerrar"
           >
             <X size={16} />
@@ -128,7 +129,7 @@ export default function GptTestModal({ gptId, gptName, onClose }: Props) {
             type="button"
             onClick={send}
             disabled={isLoading || !input.trim()}
-            className="ax-primary disabled:opacity-50 rounded-full p-2"
+            className={cn(adminPrimaryClass, "disabled:opacity-50")}
             aria-label="Enviar"
           >
             <Send size={15} />

@@ -153,8 +153,8 @@ describe("prototype-compat: chat y chrome", () => {
     expect(proto).not.toMatch(/\.app \.sidebar button/);
   });
 
-  it("el nav admin va en .ax-navigation y los CTA usan .ax-primary fuera de .ax-tw", () => {
-    expect(chrome).toMatch(/className="ax-navigation"/);
+  it("el chrome admin lleva sus estilos en Tailwind, sin reglas .ax-* en la plantilla", () => {
+    expect(chrome).toMatch(/adminPrimaryClass/);
     expect(chrome).toMatch(/AdminHeaderActions/);
     expect(chrome).toMatch(/href: "\/admin\/gpts"/);
     expect(chrome.indexOf('href: "/admin/gpts"')).toBeLessThan(chrome.indexOf('href: "/admin/members"'));
@@ -162,14 +162,14 @@ describe("prototype-compat: chat y chrome", () => {
     expect(chrome).toMatch(/isDashboard/);
     expect(chrome).toMatch(/!isDashboard &&/);
     expect(chrome).toMatch(/!slot\?\.isConnected/);
-    expect(css).toMatch(/\.ax-shell button\[class\*=["']bg-/);
-    expect(css).toMatch(/button\.ax-primary[\s\S]{0,300}background:\s*linear-gradient/);
+    expect(css).not.toMatch(/\.ax-/);
+    expect(proto).not.toMatch(/\.ax-/);
   });
 
   it("el Resumen usa Panel de control, pills 7/30/90 y series reales", () => {
     expect(adminPage).toMatch(/Panel de control/);
-    expect(adminPage).toMatch(/ax-summary-top/);
-    expect(adminPage).toMatch(/ax-range-caption/);
+    expect(adminPage).toMatch(/adminSummaryTopClass/);
+    expect(adminPage).toMatch(/adminRangeCaptionClass/);
     expect(adminPage).toMatch(/buildDailySeries/);
     expect(adminPage).not.toMatch(/Math\.sin/);
     expect(adminPage).toMatch(/title="Uso"/);
@@ -191,10 +191,9 @@ describe("prototype-compat: chat y chrome", () => {
     expect(chart).not.toMatch(/format:\s*\(n:\s*number\)\s*=>/);
   });
 
-  it("el catálogo admin de GPTs usa cards ax-gpt con métricas reales, no senos del mock", () => {
+  it("el catálogo admin de GPTs usa cards con métricas reales, no senos del mock", () => {
     const gptsPage = readFileSync(join(here, "admin", "gpts", "page.tsx"), "utf8");
-    expect(gptsPage).toMatch(/ax-catalog/);
-    expect(gptsPage).toMatch(/ax-gpt-metrics/);
+    expect(gptsPage).toMatch(/gptCatalogMetricRows/);
     expect(gptsPage).toMatch(/mapGptCatalogMetrics/);
     expect(gptsPage).toMatch(/Uso por herramienta · últimos 30 días/);
     expect(gptsPage).toMatch(/＋ Nuevo GPT/);

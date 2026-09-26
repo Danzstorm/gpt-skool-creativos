@@ -1,6 +1,13 @@
 import Link from "next/link";
 import { getAppSettings } from "@/lib/app-settings";
 import EnergyCanvas from "@/components/ui/EnergyCanvas";
+import {
+  adminBrandAccentClass,
+  adminBrandClass,
+  adminEyebrowClass,
+  adminPrimaryClass,
+} from "@/components/admin/admin-ui";
+import { cn } from "@/lib/utils";
 
 export default async function UnauthorizedPage({
   searchParams,
@@ -53,8 +60,8 @@ export default async function UnauthorizedPage({
       id={expired ? "acceso-vencido" : "sin-acceso"}
     >
       <header className="flex items-center justify-between gap-6">
-        <Link href="/" className="ax-brand">
-          Creativos <span>AI</span>
+        <Link href="/" className={adminBrandClass}>
+          Creativos <span className={adminBrandAccentClass}>AI</span>
         </Link>
         <Link href="/login">Cambiar de cuenta ↗</Link>
       </header>
@@ -63,17 +70,17 @@ export default async function UnauthorizedPage({
           <div className="relative mb-6 h-16 w-16">
             <EnergyCanvas size={64} speed={0.0025} />
           </div>
-          <div className="ax-eyebrow">{eyebrow}</div>
+          <div className={adminEyebrowClass}>{eyebrow}</div>
           <h1 className="mt-[18px] mb-[22px] font-[family-name:var(--font-display)] text-[clamp(30px,3.1vw,46px)] leading-[1.18] font-normal tracking-[-1.5px]">
             {title}
           </h1>
           <p className="mb-[30px] max-w-[440px] text-sm leading-[1.9] text-[#93939e]">{description}</p>
           {isMismatch ? (
-            <Link className="ax-primary text-[13px]" href="/login">
+            <Link className={cn(adminPrimaryClass, "text-[13px]")} href="/login">
               {cta} <span>↗</span>
             </Link>
           ) : (
-            <a className="ax-primary text-[13px]" href={joinHref} target="_blank" rel="noopener">
+            <a className={cn(adminPrimaryClass, "text-[13px]")} href={joinHref} target="_blank" rel="noopener">
               {cta} <span>↗</span>
             </a>
           )}

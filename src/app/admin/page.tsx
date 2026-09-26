@@ -3,7 +3,18 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/require-admin";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import AdminChartPanel, { AdminMonthPill, type ChartMetric } from "@/components/admin/AdminChartPanel";
+import AdminChartPanel, {
+  AdminMonthPill,
+  periodPillActiveClass,
+  periodPillClass,
+  type ChartMetric,
+} from "@/components/admin/AdminChartPanel";
+import {
+  adminMutedClass,
+  adminPanelClass,
+  adminRangeCaptionClass,
+  adminSummaryTopClass,
+} from "@/components/admin/admin-ui";
 import {
   activityPct,
   buildDailySeries,
@@ -71,6 +82,9 @@ const RANGE_LABELS: Record<(typeof VISIBLE_RANGES)[number], string> = {
   "30d": "30 días",
   "90d": "90 días",
 };
+
+// .ax-muted dentro de un panel: 12px, más aire arriba.
+const panelMutedClass = "mt-5 text-[12px] leading-[1.8] text-[#74747f]";
 
 function daysSince(iso: string | null): number | null {
   if (!iso) return null;
@@ -249,17 +263,17 @@ export default async function AdminDashboard({ searchParams }: Props) {
 
   return (
     <div>
-      <div className="ax-summary-top">
+      <div className={adminSummaryTopClass}>
         <div>
           Panel de control
-          <small className="ax-range-caption">{rangeCaption}</small>
+          <small className={adminRangeCaptionClass}>{rangeCaption}</small>
         </div>
-        <div className="ax-period">
+        <div className="ml-auto flex shrink-0 flex-wrap gap-[3px] rounded-[10px] bg-[#111113] p-1">
           {VISIBLE_RANGES.map((key) => (
             <Link
               key={key}
               href={`/admin?range=${key}`}
-              className={period.kind === "range" && period.key === key ? "active" : undefined}
+              className={cn(periodPillClass, period.kind === "range" && period.key === key && periodPillActiveClass)}
             >
               {RANGE_LABELS[key]}
             </Link>
@@ -276,18 +290,22 @@ export default async function AdminDashboard({ searchParams }: Props) {
 
       <Link
         href="/admin/members"
-        className={cn("ax-panel ax-sync", syncIsStale && "ax-sync-stale")}
+        className={cn(
+          adminPanelClass,
+          "mb-[22px] flex items-center justify-between max-[700px]:items-start max-[700px]:gap-2",
+          syncIsStale && "border-[#af7a4033]"
+        )}
       >
         <div>
-          <strong>
-            <span className="ax-sync-dot" />
+          <strong className="text-[13px] font-normal">
+            <span className="mr-[11px] inline-block h-[6px] w-[6px] rounded-full bg-[#af83a1]" />
             {daysSinceSync === null
               ? "Nunca se sincronizó la lista de miembros"
               : daysSinceSync === 0
                 ? "Miembros sincronizados hoy"
                 : `Última sincronización de miembros: hace ${daysSinceSync} ${daysSinceSync === 1 ? "día" : "días"}`}
           </strong>
-          <p>
+          <p className="mt-2 ml-[17px] text-[12px] text-[#82828e]">
             {syncIsStale
               ? "Las bajas de Skool solo se aplican al subir el CSV completo. Hasta entonces, quien canceló sigue teniendo acceso."
               : "Las altas entran solas por Zapier; el CSV es lo que aplica las bajas."}
@@ -295,32 +313,35 @@ export default async function AdminDashboard({ searchParams }: Props) {
         </div>
       </Link>
 
-      <section className="ax-panel">
+      <section className={adminPanelClass}>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2>Nuevos miembros</h2>
-          <span className="ax-muted">
+          <h2 className="!text-[16px]">Nuevos miembros</h2>
+          <span className={panelMutedClass}>
             {Number(firstWebLogins ?? 0)} entraron a la web por primera vez (incluye miembros antiguos)
           </span>
         </div>
 
-        <div className="ax-stats ax-kpis mb-5" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
+        <div className="mb-7 grid gap-4 max-[650px]:gap-[10px]" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
           {[
             { label: "Entraron a Skool (Zapier)", value: joinedSkool, hint: "" },
             { label: "Ya abrieron la web", value: enteredWeb, hint: pct(enteredWeb) },
             { label: "Ya chatearon", value: usedChat, hint: pct(usedChat) },
           ].map((s) => (
-            <div key={s.label}>
-              <strong>
+            <div
+              key={s.label}
+              className="min-w-0 rounded-[14px] border border-solid border-[#ffffff0e] bg-[#111113] p-[22px] max-[650px]:p-4"
+            >
+              <strong className="mt-[14px] block text-[30px] font-normal">
                 {s.value}
-                <span>{s.hint}</span>
+                <span className="block text-[12px] leading-[1.5] text-[#9999a2]">{s.hint}</span>
               </strong>
-              <small>{s.label}</small>
+              <small className="mt-[14px] block text-[10px] leading-[1.6] text-[#74747f]">{s.label}</small>
             </div>
           ))}
         </div>
 
         {signups.length === 0 ? (
-          <p className="ax-muted">Zapier no dio de alta a nadie en este período.</p>
+          <p className={panelMutedClass}>Zapier no dio de alta a nadie en este período.</p>
         ) : (
           <>
             <ul className="divide-y divide-white/[0.06]">
@@ -354,11 +375,11 @@ export default async function AdminDashboard({ searchParams }: Props) {
         )}
       </section>
 
-      <div className="ax-overview-grid mt-5">
-        <section className="ax-panel">
-          <h2>GPTs más usados</h2>
+      <div className="mt-5 grid grid-cols-[1.15fr_1fr] gap-5 max-[700px]:grid-cols-1">
+        <section className={adminPanelClass}>
+          <h2 className="!text-[16px]">GPTs más usados</h2>
           {topGpts.length === 0 ? (
-            <p className="ax-muted">Sin uso registrado en este período.</p>
+            <p className={panelMutedClass}>Sin uso registrado en este período.</p>
           ) : (
             <div className="space-y-2">
               {topGpts.map((g) => {
@@ -381,10 +402,10 @@ export default async function AdminDashboard({ searchParams }: Props) {
           )}
         </section>
 
-        <section className="ax-panel">
-          <h2>Usuarios más activos</h2>
+        <section className={adminPanelClass}>
+          <h2 className="!text-[16px]">Usuarios más activos</h2>
           {users.length === 0 ? (
-            <p className="ax-muted">Sin uso registrado en este período.</p>
+            <p className={panelMutedClass}>Sin uso registrado en este período.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -414,7 +435,7 @@ export default async function AdminDashboard({ searchParams }: Props) {
         </section>
       </div>
 
-      <p className="ax-muted mt-6 text-xs">{threadCount ?? 0} conversaciones en total (histórico).</p>
+      <p className={adminMutedClass}>{threadCount ?? 0} conversaciones en total (histórico).</p>
     </div>
   );
 }

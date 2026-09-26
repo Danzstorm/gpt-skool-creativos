@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import type { AppSettings, Profile } from "@/lib/types";
 import { UserPlus, ShieldOff } from "lucide-react";
+import { adminPrimaryClass } from "@/components/admin/admin-ui";
+import { cn } from "@/lib/utils";
 
 const DEFAULT_FORM: AppSettings = {
   community_name: "",
@@ -92,7 +94,7 @@ function AdminsSection() {
         <button
           type="submit"
           disabled={submitting || !email.trim()}
-          className="ax-primary disabled:opacity-50"
+          className={cn(adminPrimaryClass, "disabled:opacity-50")}
         >
           <UserPlus size={15} /> Hacer admin
         </button>
@@ -127,7 +129,7 @@ function AdminsSection() {
               </div>
               <button
                 onClick={() => revoke(a)}
-                className="p-2 rounded-xl text-zinc-400 hover:text-red-400 hover:bg-zinc-800 transition flex-shrink-0"
+                className="p-2 rounded-xl !text-zinc-400 hover:!text-red-400 hover:bg-zinc-800 transition flex-shrink-0"
                 title="Quitar admin"
               >
                 <ShieldOff size={15} />
@@ -211,7 +213,7 @@ export default function AdminSettingsPage() {
         <p>No se pudieron cargar los ajustes. La configuración actual no se perdió.</p>
         <button
           onClick={() => window.location.reload()}
-          className="mt-4 text-sm text-amber-300 underline hover:text-amber-200"
+          className="mt-4 text-sm !text-amber-300 underline hover:text-amber-200"
         >
           Reintentar
         </button>
@@ -302,7 +304,7 @@ export default function AdminSettingsPage() {
           <button
             type="submit"
             disabled={saving}
-            className="ax-primary disabled:opacity-50"
+            className={cn(adminPrimaryClass, "disabled:opacity-50")}
           >
             {saving ? "Guardando..." : "Guardar ajustes"}
           </button>

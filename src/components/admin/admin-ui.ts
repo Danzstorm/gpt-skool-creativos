@@ -1,0 +1,26 @@
+// Clases compartidas del admin (valores del prototipo de Martin).
+// Los `!` ganan a los resets de la capa legacy (button{color:inherit;font:inherit},
+// transición de a/button y focus-visible) mientras sigan vivos.
+
+export const adminPrimaryClass =
+  "inline-flex cursor-pointer items-center justify-center gap-[10px] rounded-[11px] border border-solid border-[#ffffff20] bg-[linear-gradient(115deg,#ff682f20,#ff165e24,#7753ff26)] px-5 py-[13px] !text-[#f4f1f5] ![transition:background_.2s,box-shadow_.2s,transform_.2s] hover:bg-[linear-gradient(115deg,#ff682f30,#ff165e35,#7753ff35)] hover:[box-shadow:0_0_22px_#ff165e15] active:[transform:scale(.98)]";
+
+export const adminActionClass =
+  "whitespace-nowrap rounded-[7px] p-2 !text-[12px] !text-[#a4a4ad] hover:bg-[#ffffff08]";
+
+export const adminEyebrowClass = "text-[10px] leading-[1.6] tracking-[1.6px] text-[#888891]";
+
+export const adminBrandClass =
+  "font-[family-name:var(--font-display)] text-[24px] leading-[normal] font-normal tracking-[-1px]";
+
+export const adminBrandAccentClass =
+  "bg-[linear-gradient(110deg,#ffbd16,#ff165e,#ee0de4,#7753ff)] bg-clip-text text-[16px] text-transparent";
+
+export const adminPanelClass =
+  "min-w-0 rounded-[15px] border border-solid border-[#ffffff0e] bg-[#101012] p-[25px]";
+
+export const adminMutedClass = "mt-2 text-[13px] text-[#74747f]";
+
+export const adminSummaryTopClass = "mb-6 flex flex-wrap items-center justify-between gap-[18px] text-[17px]";
+
+export const adminRangeCaptionClass = "mt-[9px] block text-[10px] leading-[1.6] text-[#686873]";

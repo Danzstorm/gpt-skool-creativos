@@ -15,7 +15,7 @@ body {
   font-family: var(--font-sans);
 }
 
-.gpt-title-row h1,.ax-header h1,.ax-brand {
+.gpt-title-row h1 {
   font-family: var(--font-display);
 }
 
@@ -24,7 +24,7 @@ body {
 
 /* El prototipo fuerza 19px + fill:none + stroke a TODO svg. Lucide es
    trazo: deja que width/height del componente ganen. */
-.app svg.lucide,.ax-shell svg.lucide {
+.app svg.lucide {
   width: unset;
   height: unset;
 }
@@ -82,134 +82,6 @@ body {
   pointer-events: none;
 }
 
-/* CTAs de admin: el reset global ya no pisa Tailwind. Estas reglas
-   cubren el header fuera de `.ax-tw`. */
-.ax-shell button[class*="bg-"],
-.ax-shell a[class*="bg-"],
-.ax-tw button[class*="bg-"],
-.ax-tw a[class*="bg-"] {
-  border-style: solid;
-}
-.ax-shell button[class~="bg-zinc-100"],
-.ax-tw button[class~="bg-zinc-100"] {
-  background-color: var(--color-zinc-100);
-  color: var(--color-zinc-900);
-}
-.ax-shell button[class~="bg-zinc-800"],
-.ax-tw button[class~="bg-zinc-800"] {
-  background-color: var(--color-zinc-800);
-  color: #fff;
-}
-.ax-shell button[class~="bg-zinc-900"],
-.ax-tw button[class~="bg-zinc-900"] {
-  background-color: var(--color-zinc-900);
-}
-.ax-shell button[class~="text-zinc-900"],
-.ax-tw button[class~="text-zinc-900"] {
-  color: var(--color-zinc-900);
-}
-.ax-shell button[class~="text-white"],
-.ax-tw button[class~="text-white"] {
-  color: #fff;
-}
-.ax-shell button[class~="text-zinc-400"],
-.ax-tw button[class~="text-zinc-400"] {
-  color: var(--color-zinc-400);
-}
-.ax-shell button[class~="text-amber-300"],
-.ax-tw button[class~="text-amber-300"] {
-  color: var(--color-amber-300, #fcd34d);
-}
-.ax-shell button[class~="text-red-400"],
-.ax-tw button[class~="text-red-400"] {
-  color: var(--color-red-400, #f87171);
-}
-.ax-shell button[class~="hover:bg-white"]:hover,
-.ax-tw button[class~="hover:bg-white"]:hover {
-  background-color: #fff;
-}
-.ax-shell button[class~="hover:bg-zinc-700"]:hover,
-.ax-tw button[class~="hover:bg-zinc-700"]:hover {
-  background-color: var(--color-zinc-700);
-}
-.ax-shell button[class~="hover:bg-zinc-800"]:hover,
-.ax-tw button[class~="hover:bg-zinc-800"]:hover {
-  background-color: var(--color-zinc-800);
-}
-.ax-shell button[class~="hover:text-white"]:hover,
-.ax-tw button[class~="hover:text-white"]:hover {
-  color: #fff;
-}
-.ax-shell button[class~="hover:text-red-400"]:hover,
-.ax-tw button[class~="hover:text-red-400"]:hover {
-  color: var(--color-red-400, #f87171);
-}
-.ax-shell a[class~="bg-violet-600"],
-.ax-tw a[class~="bg-violet-600"] {
-  background-color: var(--color-violet-600, #7c3aed);
-  color: #fff;
-}
-
-/* El reset `button{background:none}` pisa el `.ax-primary` del prototipo
-   si un utility o un hover llega después. Se reafirma aquí. */
-.ax-shell button.ax-primary,
-.ax-shell a.ax-primary,
-button.ax-primary,
-a.ax-primary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 13px 20px;
-  border-radius: 11px;
-  border: 1px solid #ffffff20 !important;
-  background: linear-gradient(115deg, #ff682f20, #ff165e24, #7753ff26) !important;
-  color: #f4f1f5 !important;
-}
-.ax-shell button.ax-primary:hover,
-.ax-shell a.ax-primary:hover,
-button.ax-primary:hover,
-a.ax-primary:hover {
-  background: linear-gradient(115deg, #ff682f30, #ff165e35, #7753ff35) !important;
-  color: #f4f1f5 !important;
-  box-shadow: 0 0 22px #ff165e15;
-}
-
-.ax-gpt-actions button {
-  background: none;
-  border: 0;
-  cursor: pointer;
-}
-.ax-gpt-actions button:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-.ax-gpt-actions button:not(:disabled):hover {
-  color: #eeeef2;
-}
-
-.ax-navigation {
-  display: grid;
-  gap: 6px;
-}
-.ax-navigation .ax-nav {
-  display: block;
-  width: 100%;
-  color: inherit;
-  text-decoration: none;
-}
-.ax-header-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-}
-.ax-main {
-  flex: 1;
-  min-width: 0;
-  width: auto;
-}
-
 .undo-toast {
   position: fixed;
   bottom: 24px;
@@ -259,54 +131,6 @@ a.ax-primary:hover {
     opacity: 1;
     filter: blur(13px) brightness(1);
   }
-}
-
-.ax-shell {
-  min-height: 100%;
-  height: 100%;
-}
-.ax-main {
-  overflow-y: auto;
-}
-.ax-stats,
-.ax-kpis,
-.ax-selectable {
-  display: grid;
-}
-.ax-period a,
-.ax-period label {
-  padding: 9px 11px;
-  color: #888893;
-  font-size: 11px;
-  border-radius: 7px;
-  text-decoration: none;
-}
-.ax-period a.active,
-.ax-period label.active {
-  color: #f0cadb;
-  background: linear-gradient(110deg, #ff682f12, #ff165e22, #7753ff22);
-}
-.ax-period input[type="month"] {
-  position: absolute;
-  opacity: 0;
-  inset: 0;
-  cursor: pointer;
-}
-.ax-period #axCustomDates {
-  position: relative;
-}
-.ax-header-bare {
-  min-height: 0;
-  margin-bottom: 0;
-}
-.ax-empty-chart,
-.ax-muted {
-  color: #74747f;
-  font-size: 13px;
-  margin: 8px 0 0;
-}
-.ax-sync-stale {
-  border-color: #af7a4033;
 }
 
 /* Orbe de energía: overflow visible para que el halo no muera.

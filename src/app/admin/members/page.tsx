@@ -6,6 +6,8 @@ import type { AllowedMember, WebhookEvent, AuthEvent } from "@/lib/types";
 import { UserX, UserCheck, Trash2, Download, History as HistoryIcon } from "lucide-react";
 import Papa from "papaparse";
 import { AdminHeaderActions } from "@/components/admin/AdminChrome";
+import { adminActionClass, adminPrimaryClass } from "@/components/admin/admin-ui";
+import { cn } from "@/lib/utils";
 
 // Los valores crudos de auth_events son para grep; acá se leen de un vistazo.
 const AUTH_EVENT_LABELS: Record<string, { text: string; tone: string }> = {
@@ -271,15 +273,15 @@ export default function AdminMembersPage() {
   return (
     <div>
       <AdminHeaderActions>
-        <button type="button" className="ax-primary" onClick={() => setShowAddForm(!showAddForm)}>
+        <button type="button" className={adminPrimaryClass} onClick={() => setShowAddForm(!showAddForm)}>
           ＋ Agregar
         </button>
-        <button type="button" className="ax-primary" onClick={() => fileInputRef.current?.click()}>
+        <button type="button" className={adminPrimaryClass} onClick={() => fileInputRef.current?.click()}>
           ＋ Importar CSV
         </button>
         <button
           type="button"
-          className="ax-action"
+          className={adminActionClass}
           onClick={exportCsv}
           disabled={members.length === 0}
         >
@@ -302,7 +304,7 @@ export default function AdminMembersPage() {
       {importMsg && (
         <div className="mb-4 flex items-start justify-between gap-3 bg-amber-500/10 border border-amber-500/30 text-amber-200 text-sm rounded-xl px-4 py-3">
           <span>{importMsg}</span>
-          <button onClick={() => setImportMsg("")} className="text-amber-300/70 hover:text-white flex-shrink-0">
+          <button onClick={() => setImportMsg("")} className="text-amber-300/70 hover:!text-white flex-shrink-0">
             ✕
           </button>
         </div>
@@ -318,7 +320,7 @@ export default function AdminMembersPage() {
             </p>
             <button
               onClick={() => setRevokedAfterImport([])}
-              className="text-red-300/70 hover:text-white text-xs"
+              className="text-red-300/70 hover:!text-white text-xs"
             >
               ✕
             </button>
@@ -331,7 +333,7 @@ export default function AdminMembersPage() {
                   <span>{m.email}</span>
                   <button
                     onClick={() => reactivate(m)}
-                    className="text-zinc-400 hover:text-white underline underline-offset-2"
+                    className="!text-zinc-400 hover:!text-white underline underline-offset-2"
                   >
                     Reactivar
                   </button>
@@ -393,7 +395,7 @@ export default function AdminMembersPage() {
               type="button"
               onClick={addSingle}
               disabled={!newEmail}
-              className="ax-primary disabled:opacity-50"
+              className={cn(adminPrimaryClass, "disabled:opacity-50")}
             >
               Agregar
             </button>
@@ -474,14 +476,14 @@ export default function AdminMembersPage() {
               type="button"
               onClick={confirmImport}
               disabled={importing}
-              className="ax-primary disabled:opacity-50"
+              className={cn(adminPrimaryClass, "disabled:opacity-50")}
             >
               {importing ? "Importando..." : `Confirmar import (${preview.length})`}
             </button>
             <button
               type="button"
               onClick={() => setPreview(null)}
-              className="ax-action"
+              className={adminActionClass}
             >
               Cancelar
             </button>
@@ -507,7 +509,7 @@ export default function AdminMembersPage() {
           <p>No se pudieron cargar los miembros. Los datos siguen intactos.</p>
           <button
             onClick={loadMembers}
-            className="mt-4 text-sm text-amber-300 underline hover:text-amber-200"
+            className="mt-4 text-sm !text-amber-300 underline hover:text-amber-200"
           >
             Reintentar
           </button>
@@ -603,20 +605,20 @@ export default function AdminMembersPage() {
                   loadAuthEvents(member.email);
                 }}
                 title="Ver su historial de accesos"
-                      className="hidden rounded-xl p-2 text-zinc-400 transition hover:bg-zinc-800 hover:text-white sm:block"
+                      className="hidden rounded-xl p-2 !text-zinc-400 transition hover:bg-zinc-800 hover:!text-white sm:block"
               >
                 <HistoryIcon size={15} />
               </button>
                 <button
                   onClick={() => toggleActive(member)}
-                      className="rounded-xl p-2 text-zinc-400 transition hover:bg-zinc-800 hover:text-white"
+                      className="rounded-xl p-2 !text-zinc-400 transition hover:bg-zinc-800 hover:!text-white"
                   title={member.is_active ? "Revocar acceso" : "Restaurar acceso"}
                 >
                   {member.is_active ? <UserX size={15} /> : <UserCheck size={15} />}
                 </button>
                 <button
                   onClick={() => deleteMember(member)}
-                      className="rounded-xl p-2 text-zinc-400 transition hover:bg-zinc-800 hover:text-red-400"
+                      className="rounded-xl p-2 !text-zinc-400 transition hover:bg-zinc-800 hover:!text-red-400"
                 >
                   <Trash2 size={15} />
                 </button>
@@ -643,7 +645,7 @@ export default function AdminMembersPage() {
                 setAuthFilter("");
                 loadAuthEvents();
               }}
-              className="text-xs text-zinc-400 hover:text-white transition"
+              className="text-xs !text-zinc-400 hover:!text-white transition"
             >
               Ver todos
             </button>

@@ -8,6 +8,16 @@ import { getGptVisual } from "@/lib/gpt-visual";
 import GptTestModal from "@/components/admin/GptTestModal";
 import { AdminHeaderActions } from "@/components/admin/AdminChrome";
 import { gptCatalogMetricRows, mapGptCatalogMetrics } from "@/lib/admin-gpt-catalog";
+import {
+  adminActionClass,
+  adminPrimaryClass,
+  adminRangeCaptionClass,
+  adminSummaryTopClass,
+} from "@/components/admin/admin-ui";
+import { cn } from "@/lib/utils";
+
+const gptActionClass =
+  "border-none p-0 !text-[11px] !text-[#9999a5] disabled:!cursor-default disabled:opacity-35 enabled:hover:!text-[#eeeef2]";
 
 const CATEGORIES = ["General", "Imágenes", "Marketing", "Copywriting", "Diseño", "Ventas", "Productividad", "Educación"];
 // Ordenados de más económico a más caro por mensaje real (medido, no por precio
@@ -289,7 +299,7 @@ export default function AdminGptsPage() {
   return (
     <div>
       <AdminHeaderActions>
-        <button type="button" className="ax-primary" onClick={openCreate}>
+        <button type="button" className={adminPrimaryClass} onClick={openCreate}>
           ＋ Nuevo GPT
         </button>
       </AdminHeaderActions>
@@ -328,7 +338,7 @@ export default function AdminGptsPage() {
                       <button
                         type="button"
                         onClick={() => setForm({ ...form, icon_url: "" })}
-                        className="ml-2 text-zinc-400 hover:text-red-400 text-sm"
+                        className="ml-2 !text-zinc-400 hover:!text-red-400 text-sm"
                       >
                         Quitar
                       </button>
@@ -445,7 +455,7 @@ export default function AdminGptsPage() {
                         <button
                           type="button"
                           onClick={() => removeStarter(i)}
-                          className="p-2 rounded-xl text-zinc-400 hover:text-red-400 hover:bg-zinc-800 transition flex-shrink-0"
+                          className="p-2 rounded-xl !text-zinc-400 hover:!text-red-400 hover:bg-zinc-800 transition flex-shrink-0"
                         >
                           <X size={16} />
                         </button>
@@ -473,14 +483,14 @@ export default function AdminGptsPage() {
                   <button
                     type="submit"
                     disabled={saving}
-                    className="ax-primary disabled:opacity-50"
+                    className={cn(adminPrimaryClass, "disabled:opacity-50")}
                   >
                     {saving ? "Guardando..." : editingId ? "Guardar cambios" : "Crear GPT"}
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowForm(false)}
-                    className="ax-action"
+                    className={adminActionClass}
                   >
                     Cancelar
                   </button>
@@ -500,10 +510,10 @@ export default function AdminGptsPage() {
         </div>
       )}
 
-      <div className="ax-summary-top">
+      <div className={adminSummaryTopClass}>
         <div>
           GPTs
-          <small className="ax-range-caption">Uso por herramienta · últimos 30 días</small>
+          <small className={adminRangeCaptionClass}>Uso por herramienta · últimos 30 días</small>
         </div>
       </div>
 
@@ -513,7 +523,7 @@ export default function AdminGptsPage() {
         <div className="text-center py-16 text-amber-400">
           <div className="text-4xl mb-3">⚠️</div>
           <p>No se pudieron cargar los GPTs. El catálogo real sigue intacto.</p>
-          <button onClick={loadGpts} className="mt-4 text-sm text-amber-300 underline hover:text-amber-200">
+          <button onClick={loadGpts} className="mt-4 text-sm !text-amber-300 underline hover:text-amber-200">
             Reintentar
           </button>
         </div>
@@ -523,50 +533,60 @@ export default function AdminGptsPage() {
           <p>No hay GPTs. Crea el primero.</p>
         </div>
       ) : (
-        <div className="ax-catalog">
+        <div className="grid grid-cols-3 gap-4 max-[1100px]:grid-cols-2 max-[700px]:grid-cols-1">
           {gpts.map((gpt, i) => {
             const metrics = mapGptCatalogMetrics({
               usage: gpt.usage_30d ?? null,
               usageAvailable: gpt.usage_30d != null,
             });
             return (
-              <article key={gpt.id} className="ax-gpt">
-                <div className="ax-panel-title">
-                  <span className={`ax-status ${gpt.is_active ? "active" : "expired"}`}>
+              <article
+                key={gpt.id}
+                className="rounded-[15px] border border-solid border-[#ffffff10] bg-[#111113] p-[22px]"
+              >
+                <div className="flex items-center justify-between gap-3 max-[700px]:flex-wrap">
+                  <span
+                    className={cn(
+                      "inline-block rounded-[20px] px-[10px] py-[6px] text-[10px] whitespace-nowrap",
+                      gpt.is_active ? "bg-[#9fcbae0c] text-[#a3b8ab]" : "bg-[#ff165e09] text-[#c3a0ac]"
+                    )}
+                  >
                     {gpt.is_active ? "Activo" : "Inactivo"}
                   </span>
                   <div>
-                    <button type="button" className="ax-action" onClick={() => openEdit(gpt)}>
+                    <button type="button" className={adminActionClass} onClick={() => openEdit(gpt)}>
                       Editar
                     </button>
-                    <button type="button" className="ax-action" onClick={() => setTestingGpt(gpt)}>
+                    <button type="button" className={adminActionClass} onClick={() => setTestingGpt(gpt)}>
                       Probar
                     </button>
                   </div>
                 </div>
-                <h2>{gpt.name}</h2>
-                <p>{gpt.description || ""}</p>
-                <dl className="ax-gpt-metrics">
+                <h2 className="!mt-[22px] !mb-3">{gpt.name}</h2>
+                <p className="min-h-[44px] text-[12px] leading-[1.8] text-[#858590]">{gpt.description || ""}</p>
+                <dl className="mt-[18px] mb-6 grid grid-cols-2 gap-4">
                   {gptCatalogMetricRows(metrics).map((row) => (
                     <div key={row.label}>
-                      <dt>{row.label}</dt>
-                      <dd>{row.display}</dd>
+                      <dt className="text-[10px] text-[#81818d]">{row.label}</dt>
+                      <dd className="mt-[7px] text-[14px] text-[#d5c3d0]">{row.display}</dd>
                     </div>
                   ))}
                 </dl>
-                <div className="ax-gpt-actions">
+                <div className="flex gap-[14px] border-t border-solid border-t-[#ffffff08] pt-[17px]">
                   <button
                     type="button"
+                    className={gptActionClass}
                     onClick={() => duplicateGpt(gpt)}
                     disabled={duplicatingId === gpt.id}
                   >
                     {duplicatingId === gpt.id ? "Duplicando…" : "Duplicar"}
                   </button>
-                  <button type="button" onClick={() => toggleActive(gpt)}>
+                  <button type="button" className={gptActionClass} onClick={() => toggleActive(gpt)}>
                     {gpt.is_active ? "Desactivar" : "Activar"}
                   </button>
                   <button
                     type="button"
+                    className={gptActionClass}
                     onClick={() => moveUp(i)}
                     disabled={i === 0 || movingId === gpt.id}
                     aria-label={`Subir ${gpt.name}`}
@@ -574,7 +594,7 @@ export default function AdminGptsPage() {
                   >
                     ↑
                   </button>
-                  <button type="button" onClick={() => deleteGpt(gpt)}>
+                  <button type="button" className={gptActionClass} onClick={() => deleteGpt(gpt)}>
                     Eliminar
                   </button>
                 </div>
