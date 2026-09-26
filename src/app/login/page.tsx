@@ -4,6 +4,7 @@ import { useState, useEffect, useSyncExternalStore, use } from "react";
 import { createClient } from "@/lib/supabase/client";
 import EnergyCanvas from "@/components/ui/EnergyCanvas";
 import AccessMotion from "@/components/ui/AccessMotion";
+import EmailCodeLogin from "@/components/auth/EmailCodeLogin";
 
 const ERROR_COPY: Record<string, { title: string; body: string }> = {
   cancelled: {
@@ -160,6 +161,7 @@ export default function LoginPage({
             </svg>
             {loading ? "Conectando con Google…" : "Continuar con Google"}
           </button>
+          <EmailCodeLogin onOpen={() => setShowUrlError(false)} />
         </div>
         <div className={NOTES}>
           <p className={HINT}>Accede con el mismo correo que usas en Skool</p>

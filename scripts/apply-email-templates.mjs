@@ -29,13 +29,13 @@ const TEMPLATES = [
     file: "bienvenida.html",
     contentKey: "mailer_templates_confirmation_content",
     subjectKey: "mailer_subjects_confirmation",
-    subject: "Tu acceso a GPT Creativos",
+    subject: "Tu código de acceso a Creativos AI",
   },
   {
     file: "acceso.html",
     contentKey: "mailer_templates_magic_link_content",
     subjectKey: "mailer_subjects_magic_link",
-    subject: "Tu enlace de acceso a GPT Creativos",
+    subject: "Tu código de acceso a Creativos AI",
   },
 ];
 
@@ -44,8 +44,9 @@ const payload = {};
 
 for (const t of TEMPLATES) {
   const html = fs.readFileSync(path.join(dir, t.file), "utf8");
-  if (!html.includes("{{ .ConfirmationURL }}")) {
-    console.error(`${t.file} no contiene {{ .ConfirmationURL }} — sin eso el correo no sirve para entrar.`);
+  // Acceso por código (no por enlace): sin {{ .Token }} el correo no sirve para entrar.
+  if (!html.includes("{{ .Token }}")) {
+    console.error(`${t.file} no contiene {{ .Token }} — sin eso el correo no sirve para entrar.`);
     process.exit(1);
   }
   payload[t.contentKey] = html;

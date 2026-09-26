@@ -14,6 +14,12 @@ describe("apiAccessForPath", () => {
     expect(apiAccessForPath("/api/auth/signout/otra")).toBe("authenticated");
   });
 
+  it("permite pedir y validar el código de acceso por correo sin sesión", () => {
+    expect(apiAccessForPath("/api/auth/email-code")).toBe("session-exempt");
+    expect(apiAccessForPath("/api/auth/verify-code")).toBe("session-exempt");
+    expect(apiAccessForPath("/api/auth/email-code/extra")).toBe("authenticated");
+  });
+
   it("ya no expone el chequeo de email previo al login (retirado con el magic link)", () => {
     expect(apiAccessForPath("/api/auth/check-email")).toBe("authenticated");
   });

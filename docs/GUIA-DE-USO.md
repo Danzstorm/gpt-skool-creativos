@@ -8,10 +8,10 @@ Plataforma web privada de GPTs para una comunidad de Skool. Cada miembro tiene s
 
 **Solo entran miembros de Skool.** No hay registro abierto. El puente entre Skool y la app es la **lista blanca** (`allowed_members`), que se llena vía CSV manual, import automático o webhook (ver §3). Una persona solo puede entrar si su email está en esa lista y está activo.
 
-Forma de ingresar (única, validada contra la lista):
+Formas de ingresar (las dos validadas contra la lista):
 
 - **Google:** botón "Continuar con Google". Google muestra siempre el selector de cuentas; tras autenticarte, si tu email no está en la lista, se cierra la sesión y no entras. El primer login crea la cuenta (no hay registro aparte). Requiere configuración propia por cliente (ver §5).
-- El **enlace mágico por correo se retiró**: a mucha gente no le llegaba o lo abría en otro navegador y no funcionaba. Las cuentas creadas antes por magic link siguen funcionando: al entrar con Google con el mismo correo, Supabase enlaza la identidad al mismo usuario y conservan sus conversaciones.
+- **Código por correo:** "Entrar con un código por correo" → la persona escribe su correo y recibe un código de 8 dígitos que escribe en la misma pantalla (vence en 1 hora, sirve una vez). Solo se envía si el correo está activo en la lista; la pantalla responde igual en ambos casos para no revelar quién es miembro. Reemplaza al enlace mágico, que fallaba si se abría en otro navegador o si un antivirus de correo lo abría primero. Rutas: `/api/auth/email-code` y `/api/auth/verify-code`; después se aplica el mismo gate que con Google (`src/lib/finish-login.ts`).
 - Google **no permite** iniciar sesión desde el navegador embebido de Instagram/Facebook/TikTok; el login lo detecta y pide abrir la página en Chrome/Safari.
 
 Si tu email no está en la lista, verás un mensaje para unirte al Skool.
@@ -213,7 +213,7 @@ Esta plataforma es **single-tenant por diseño**: cada cliente corre su propia c
 | **Google AI Studio** (`GEMINI_API_KEY`) | Describir los videos que se adjuntan al chat — [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | El cliente — es su costo, igual que OpenAI. **Solo necesario si quiere adjuntar video**; sin la key el resto del chat funciona igual (ver abajo qué pasa exactamente) |
 | **Zapier** (o Make) | Automatizar altas/bajas desde Skool | El cliente (ya lo tienen, según mencionaste) |
 | **Upstash** (Redis, capa gratis alcanza) | Rate limiting compartido en producción | Recomendado, no bloqueante para lanzar |
-| **Resend** (SMTP) | Ya no hace falta: sin magic link, el login no manda correos — ver §7 | — |
+| **Resend** (SMTP) | Envía los códigos de acceso por correo — ver §7 | Sí (ya configurado) |
 
 #### Qué pasa exactamente sin `GEMINI_API_KEY`
 
@@ -314,12 +314,14 @@ Una Action semanal (domingo 05:00 Colombia) **solo informa**. Auto-borra únicam
 
 ---
 
-## 7. Correo (SMTP) — ya no es bloqueante
+## 7. Correo (SMTP) — códigos de acceso
 
-El login es solo con Google y no manda correos, así que el SMTP propio (Resend)
-dejó de ser requisito para lanzar. El SMTP default de Supabase (2 correos/hora)
-alcanza para lo único que queda: nada, hoy. Si más adelante se vuelve a usar
-algún correo de Auth, configurar Resend en Supabase → Authentication → Emails →
-SMTP Settings (host `smtp.resend.com`, puerto 465, usuario `resend`, contraseña
-= API key). Las plantillas en `supabase/email-templates/` y
-`scripts/apply-email-templates.mjs` quedan por si se retoma.
+El acceso por código envía correos desde Supabase Auth con Resend (Supabase →
+Authentication → Emails → SMTP Settings: host `smtp.resend.com`, puerto 465,
+usuario `resend`, contraseña = API key; remitente `noreply@send.creativos.lat`).
+El SMTP default de Supabase (2 correos/hora) no alcanza.
+
+Las plantillas (solo código, sin enlace) viven en `supabase/email-templates/` y
+se publican con `scripts/apply-email-templates.mjs`. Para que no caigan en spam
+el dominio necesita SPF y DKIM (ya están) y un registro DMARC en
+`_dmarc.creativos.lat`.

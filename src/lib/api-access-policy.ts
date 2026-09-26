@@ -4,6 +4,10 @@ export type ApiAccess = "not-api" | "session-exempt" | "authenticated";
 // decidir y documentar qué la autentica; el resto exige sesión automáticamente.
 const SESSION_EXEMPT_API_PATHS = new Set([
   "/api/auth/signout",
+  // Login por código de correo: se usan sin sesión por definición. email-code
+  // solo envía a miembros activos; verify-code lo valida Supabase.
+  "/api/auth/email-code",
+  "/api/auth/verify-code",
   "/api/webhooks/skool",
   "/api/webhooks/skool/bulk",
 ]);

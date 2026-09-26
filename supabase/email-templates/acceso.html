@@ -1,61 +1,48 @@
-<!-- Plantilla "Magic Link" de Supabase Auth.
-     La recibe quien YA entró alguna vez y vuelve a pedir enlace (sesión vencida,
-     dispositivo nuevo, o tras cerrar sesión). Más corta que bienvenida.html a
-     propósito: acá la persona ya sabe qué es la plataforma, solo quiere entrar.
-     Variables disponibles: {{ .ConfirmationURL }} {{ .Email }} {{ .SiteURL }} {{ .Token }}
+<!-- Plantilla "Magic Link" de Supabase Auth (quien ya entró alguna vez).
+     Solo código, SIN enlace: el enlace fallaba si se abría en otro navegador o
+     en la app de correo, y los antivirus de correo lo gastaban antes que la
+     persona. El código se escribe en la pantalla de acceso.
+     Variables: {{ .Token }} {{ .Email }} {{ .SiteURL }}
      Estilos SIEMPRE inline: Gmail y Outlook descartan <style> en <head>.
      Aplicar con: scripts/apply-email-templates.mjs -->
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#0b0a09" style="background-color:#0b0a09;margin:0;padding:32px 12px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#060607" style="background-color:#060607;margin:0;padding:32px 12px;">
   <tr>
     <td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background-color:#16130f;border:1px solid #292524;border-radius:16px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px;background-color:#101012;border:1px solid #1e1e22;border-radius:18px;">
         <tr>
-          <td style="padding:40px 40px 0 40px;">
-            <p style="margin:0 0 32px 0;font-family:Georgia,'Times New Roman',serif;font-size:22px;font-weight:600;color:#fafaf9;letter-spacing:-0.3px;">
-              Creativos<span style="font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:600;color:#78716c;letter-spacing:2px;">&nbsp;&nbsp;GPT</span>
+          <td style="padding:36px 36px 8px 36px;">
+            <p style="margin:0 0 28px 0;font-family:Arial,Helvetica,sans-serif;font-size:22px;color:#eeeef2;letter-spacing:-0.8px;">
+              Creativos<span style="font-size:14px;color:#ff165e;">&nbsp;AI</span>
             </p>
-
-            <h1 style="margin:0 0 16px 0;font-family:Georgia,'Times New Roman',serif;font-size:30px;line-height:1.2;font-weight:600;color:#fafaf9;letter-spacing:-0.5px;">
-              Tu enlace de acceso
+            <p style="margin:0 0 10px 0;font-family:Arial,Helvetica,sans-serif;font-size:10px;letter-spacing:1.6px;color:#888891;">
+              TU CÓDIGO DE ACCESO
+            </p>
+            <h1 style="margin:0 0 14px 0;font-family:Arial,Helvetica,sans-serif;font-size:24px;line-height:1.25;font-weight:normal;color:#eeeef2;letter-spacing:-0.6px;">
+              Escribe este código en la pantalla de acceso
             </h1>
-
-            <p style="margin:0 0 28px 0;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;color:#a8a29e;">
-              Toca el botón y entras directo. No hace falta contraseña.
+            <p style="margin:0 0 24px 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.7;color:#93939e;">
+              No hace falta abrir ningún enlace: vuelve a la pantalla donde lo pediste y escríbelo ahí.
             </p>
-
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding:0 36px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#17171a;border:1px solid #2a2a30;border-radius:14px;">
               <tr>
-                <td align="center" bgcolor="#7c3aed" style="background-color:#7c3aed;border-radius:12px;">
-                  <a href="{{ .ConfirmationURL }}" style="display:block;padding:16px 24px;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;color:#ffffff;text-decoration:none;">
-                    Entrar
-                  </a>
+                <td align="center" style="padding:22px 12px;font-family:'Courier New',Courier,monospace;font-size:34px;font-weight:bold;letter-spacing:8px;color:#f4f1f5;">
+                  {{ .Token }}
                 </td>
               </tr>
             </table>
           </td>
         </tr>
-
         <tr>
-          <td style="padding:28px 40px 0 40px;">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-              <tr><td style="border-top:1px solid #292524;font-size:0;line-height:0;">&nbsp;</td></tr>
-            </table>
-          </td>
-        </tr>
-
-        <tr>
-          <td style="padding:24px 40px 40px 40px;">
-            <p style="margin:0 0 12px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:#78716c;">
-              El enlace vence en 1 hora y sirve una sola vez. Si vence, pide uno nuevo desde la pantalla de acceso.
+          <td style="padding:24px 36px 36px 36px;">
+            <p style="margin:0 0 10px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#777781;">
+              Vence en 1 hora y sirve una sola vez. Si vence, pide otro desde la pantalla de acceso.
             </p>
-            <p style="margin:0 0 12px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:#78716c;">
-              ¿El botón no funciona? Copia y pega esta dirección en tu navegador:
-            </p>
-            <p style="margin:0 0 20px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;word-break:break-all;">
-              <a href="{{ .ConfirmationURL }}" style="color:#a78bfa;text-decoration:underline;">{{ .ConfirmationURL }}</a>
-            </p>
-            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#57534e;">
-              Si no pediste este enlace, ignora el correo. Nadie puede entrar a tu cuenta sin él.
+            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#5f5f69;">
+              Si no pediste este código, ignora el correo. Nadie puede entrar a tu cuenta sin él.
             </p>
           </td>
         </tr>

@@ -19,7 +19,7 @@ La verificación confirmó 9 configuraciones privadas para 9 GPTs, 446 adjuntos 
 Es la parte que más confusión genera, así que en corto:
 
 1. **`allowed_members` es la única fuente de verdad.** Si tu correo no está ahí y activo, no entras. No hay registro abierto.
-2. **Solo se entra con Google.** El enlace por correo (magic link) se retiró: a mucha gente no le llegaba o lo abría en otro navegador y no funcionaba. El primer login con Google crea la cuenta; no hay un "registro" aparte.
+2. **Se entra con Google o con un código por correo.** El código (8 dígitos, se escribe en la misma pantalla) reemplaza al enlace mágico, que fallaba si se abría en otro navegador. El primer ingreso crea la cuenta; no hay un "registro" aparte.
 3. **El filtro corre en cada petición, no solo al entrar.** Si alguien se da de baja de Skool, pierde el acceso en menos de un minuto aunque tuviera la sesión abierta. Esto es a propósito.
 
 > **Estar en la base de datos no es un pase permanente.** Es una confusión habitual: el acceso se comprueba continuamente contra `allowed_members`, no una sola vez al iniciar sesión.
@@ -56,8 +56,8 @@ Si la sección Accesos está **vacía pese a haber logins reales**, la auditorí
 | **Supabase** | Auth, base de datos, storage | Sí |
 | **OpenAI** | Chat (se factura a esta cuenta) | Sí |
 | **Vercel** | Hosting | Sí. **Hobby alcanza**: con Fluid Compute activo el tope por función es 300s también en Hobby (verificado en el proyecto: `fluid: true`, `functionDefaultTimeout: 300`), que es lo que necesitan las rutas de chat. Pro solo hace falta si se quiere recuperar el auto-deploy por push (ver Deploy) |
-| **Google Cloud** (OAuth) | Login con Google — la única forma de entrar | Sí |
-| **Resend** (u otro SMTP) | Correos de Supabase Auth | Ya no: sin magic link, el login no manda correos |
+| **Google Cloud** (OAuth) | Login con Google | Sí |
+| **Resend** (u otro SMTP) | Correos de Supabase Auth (códigos de acceso) | Sí |
 | **Google AI Studio** (Gemini) | Describir los videos que se adjuntan (se factura a esta cuenta) | Solo si se quiere adjuntar video. Sin la key el resto del chat funciona igual — ver `GEMINI_API_KEY` más abajo |
 | **Zapier / Make** | Automatizar altas/bajas desde Skool | Recomendado |
 | **Upstash Redis** | Rate limiting global en serverless | Recomendado, no bloqueante |
