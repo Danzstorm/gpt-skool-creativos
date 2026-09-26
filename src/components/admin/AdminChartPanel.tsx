@@ -4,11 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatChartValue, formatMonthLabel, type ChartFormat } from "@/lib/admin-summary";
 import { cn } from "@/lib/utils";
-import { adminPanelClass } from "./admin-ui";
-
-// Pastilla de período del Resumen (7/30/90 días y mes).
-export const periodPillClass = "rounded-[7px] px-[11px] py-[9px] text-[11px] text-[#888893] no-underline";
-export const periodPillActiveClass = "bg-[linear-gradient(110deg,#ff682f12,#ff165e22,#7753ff22)] text-[#f0cadb]";
+import { adminPanelClass, periodPillActiveClass, periodPillClass } from "./admin-ui";
 
 export function AdminMonthPill({
   value,

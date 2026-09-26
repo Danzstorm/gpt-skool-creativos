@@ -24,3 +24,10 @@ export const adminMutedClass = "mt-2 text-[13px] text-[#74747f]";
 export const adminSummaryTopClass = "mb-6 flex flex-wrap items-center justify-between gap-[18px] text-[17px]";
 
 export const adminRangeCaptionClass = "mt-[9px] block text-[10px] leading-[1.6] text-[#686873]";
+
+// Pastilla de período del Resumen (7/30/90 días y mes). Vive aquí y no en
+// AdminChartPanel: un Server Component que importa de un módulo "use client"
+// recibe una referencia de cliente, no el string.
+export const periodPillClass = "rounded-[7px] px-[11px] py-[9px] text-[11px] text-[#888893] no-underline";
+
+export const periodPillActiveClass = "bg-[linear-gradient(110deg,#ff682f12,#ff165e22,#7753ff22)] text-[#f0cadb]";

@@ -3,17 +3,14 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/require-admin";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import AdminChartPanel, {
-  AdminMonthPill,
-  periodPillActiveClass,
-  periodPillClass,
-  type ChartMetric,
-} from "@/components/admin/AdminChartPanel";
+import AdminChartPanel, { AdminMonthPill, type ChartMetric } from "@/components/admin/AdminChartPanel";
 import {
   adminMutedClass,
   adminPanelClass,
   adminRangeCaptionClass,
   adminSummaryTopClass,
+  periodPillActiveClass,
+  periodPillClass,
 } from "@/components/admin/admin-ui";
 import {
   activityPct,
