@@ -161,7 +161,7 @@ export default function LoginPage({
             </svg>
             {loading ? "Conectando con Google…" : "Continuar con Google"}
           </button>
-          <EmailCodeLogin onOpen={() => setShowUrlError(false)} />
+          <EmailCodeLogin onStart={() => setShowUrlError(false)} />
         </div>
         <div className={NOTES}>
           <p className={HINT}>Accede con el mismo correo que usas en Skool</p>

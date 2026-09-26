@@ -19,7 +19,7 @@ La verificación confirmó 9 configuraciones privadas para 9 GPTs, 446 adjuntos 
 Es la parte que más confusión genera, así que en corto:
 
 1. **`allowed_members` es la única fuente de verdad.** Si tu correo no está ahí y activo, no entras. No hay registro abierto.
-2. **Se entra con Google o con un código por correo.** El código (8 dígitos, se escribe en la misma pantalla) reemplaza al enlace mágico, que fallaba si se abría en otro navegador. El primer ingreso crea la cuenta; no hay un "registro" aparte.
+2. **Se entra con Google o con un código por correo.** El código (6 dígitos, se escribe en la misma pantalla) reemplaza al enlace mágico, que fallaba si se abría en otro navegador. El primer ingreso crea la cuenta; no hay un "registro" aparte.
 3. **El filtro corre en cada petición, no solo al entrar.** Si alguien se da de baja de Skool, pierde el acceso en menos de un minuto aunque tuviera la sesión abierta. Esto es a propósito.
 
 > **Estar en la base de datos no es un pase permanente.** Es una confusión habitual: el acceso se comprueba continuamente contra `allowed_members`, no una sola vez al iniciar sesión.

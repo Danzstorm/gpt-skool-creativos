@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 
-// Alternativa a Google: código de 8 dígitos por correo, escrito en esta misma
+// Alternativa a Google: código de 6 dígitos por correo, escrito en esta misma
 // pantalla. No hay enlace que abrir, así que no importa desde qué navegador o app
 // de correo se lea, ni que un antivirus lo abra antes.
 
 const RESEND_SECONDS = 60;
+const CODE_LENGTH = 6;
 
 const ERRORS: Record<string, string> = {
   invalid_email: "Revisa el correo: parece que falta algo.",
@@ -36,8 +37,7 @@ async function post(url: string, body: object): Promise<{ ok: boolean; data: Rec
   }
 }
 
-export default function EmailCodeLogin({ onOpen }: { onOpen?: () => void }) {
-  const [open, setOpen] = useState(false);
+export default function EmailCodeLogin({ onStart }: { onStart?: () => void }) {
   const [step, setStep] = useState<"email" | "code">("email");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -54,6 +54,7 @@ export default function EmailCodeLogin({ onOpen }: { onOpen?: () => void }) {
 
   async function sendCode(e?: React.FormEvent) {
     e?.preventDefault();
+    onStart?.();
     setBusy(true);
     setError("");
     const { ok, data } = await post("/api/auth/email-code", { email });
@@ -68,11 +69,11 @@ export default function EmailCodeLogin({ onOpen }: { onOpen?: () => void }) {
     setTimeout(() => codeRef.current?.focus(), 0);
   }
 
-  async function verify(e: React.FormEvent) {
-    e.preventDefault();
+  async function verify(value = code) {
+    if (busy || value.length < CODE_LENGTH) return;
     setBusy(true);
     setError("");
-    const { ok, data } = await post("/api/auth/verify-code", { email, code });
+    const { ok, data } = await post("/api/auth/verify-code", { email, code: value });
     if (!ok || !data.redirect) {
       setBusy(false);
       setError(ERRORS[data.error] ?? GENERIC_ERROR);
@@ -82,26 +83,12 @@ export default function EmailCodeLogin({ onOpen }: { onOpen?: () => void }) {
     window.location.assign(data.redirect);
   }
 
-  if (!open) {
-    return (
-      <button
-        type="button"
-        className={`${linkClass} mt-4`}
-        onClick={() => {
-          setOpen(true);
-          onOpen?.();
-        }}
-      >
-        Entrar con un código por correo
-      </button>
-    );
-  }
-
   return (
     <div className="mt-5 w-full text-left">
-      <div className="mb-4 flex items-center gap-3 text-[11px] text-[#6f6f78]">
-        <span className="h-px flex-1 bg-[#ffffff12]" />o con un código por correo<span className="h-px flex-1 bg-[#ffffff12]" />
+      <div className="mb-4 flex items-center gap-3 text-[11px] uppercase tracking-[1.4px] text-[#6f6f78]">
+        <span className="h-px flex-1 bg-[#ffffff14]" />o<span className="h-px flex-1 bg-[#ffffff14]" />
       </div>
+      <p className="mb-[10px] text-center text-[12px] text-[#a8a8b2]">Entra con un código que te enviamos por correo</p>
 
       {step === "email" ? (
         <form onSubmit={sendCode} className="grid gap-[10px]">
@@ -121,7 +108,13 @@ export default function EmailCodeLogin({ onOpen }: { onOpen?: () => void }) {
           </button>
         </form>
       ) : (
-        <form onSubmit={verify} className="grid gap-[10px]">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            verify();
+          }}
+          className="grid gap-[10px]"
+        >
           <p className="text-center text-[12px] leading-[1.6] text-[#92929c]">
             Si <strong className="font-normal text-[#eeeef2]">{email}</strong> tiene acceso, te llegó un código. Revisa
             también la carpeta de spam.
@@ -133,14 +126,27 @@ export default function EmailCodeLogin({ onOpen }: { onOpen?: () => void }) {
             inputMode="numeric"
             autoComplete="one-time-code"
             pattern="[0-9]*"
-            maxLength={10}
-            placeholder="Código"
+            maxLength={CODE_LENGTH}
+            placeholder="Código de 6 dígitos"
             aria-label="Código de acceso"
             value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+            // Acepta pegar el código con espacios o texto alrededor ("Código: 123 456").
+            // Con los 6 dígitos completos entra solo, sin pulsar "Entrar".
+            onPaste={(e) => {
+              const digits = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, CODE_LENGTH);
+              if (!digits) return;
+              e.preventDefault();
+              setCode(digits);
+              if (digits.length === CODE_LENGTH) verify(digits);
+            }}
+            onChange={(e) => {
+              const digits = e.target.value.replace(/\D/g, "").slice(0, CODE_LENGTH);
+              setCode(digits);
+              if (digits.length === CODE_LENGTH) verify(digits);
+            }}
             className={`${inputClass} text-center text-[20px] tracking-[6px] tabular-nums placeholder:text-[14px] placeholder:tracking-normal`}
           />
-          <button type="submit" disabled={busy || code.length < 6} className={submitClass}>
+          <button type="submit" disabled={busy || code.length < CODE_LENGTH} className={submitClass}>
             {busy ? "Entrando…" : "Entrar"}
           </button>
           <div className="flex items-center justify-between gap-3">

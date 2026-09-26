@@ -38,10 +38,15 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(siteUrl),
     title: `GPT ${settings.community_name}`,
     description: `Plataforma de GPTs para la comunidad de ${settings.community_name}`,
+    // SVG para navegadores de escritorio; .ico para buscadores y clientes que
+    // solo piden /favicon.ico; PNG para iPhone/Safari (no usan SVG como ícono).
     icons: {
-      icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
-      shortcut: "/favicon.svg",
-      apple: "/favicon.svg",
+      icon: [
+        { url: "/favicon.svg", type: "image/svg+xml" },
+        { url: "/favicon.ico", sizes: "48x48" },
+      ],
+      shortcut: "/favicon.ico",
+      apple: { url: "/apple-touch-icon.png", sizes: "180x180" },
     },
   };
 }

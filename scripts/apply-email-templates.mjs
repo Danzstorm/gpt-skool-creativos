@@ -29,13 +29,13 @@ const TEMPLATES = [
     file: "bienvenida.html",
     contentKey: "mailer_templates_confirmation_content",
     subjectKey: "mailer_subjects_confirmation",
-    subject: "Tu código de acceso a Creativos AI",
+    subject: "{{ .Token }} es tu código de acceso a Creativos AI",
   },
   {
     file: "acceso.html",
     contentKey: "mailer_templates_magic_link_content",
     subjectKey: "mailer_subjects_magic_link",
-    subject: "Tu código de acceso a Creativos AI",
+    subject: "{{ .Token }} es tu código de acceso a Creativos AI",
   },
 ];
 

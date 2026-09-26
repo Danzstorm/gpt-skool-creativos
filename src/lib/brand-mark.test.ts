@@ -10,10 +10,12 @@ const favicon = readFileSync(join(root, "public", "favicon.svg"), "utf8");
 const catalog = readFileSync(join(here, "..", "components", "GptCatalog.tsx"), "utf8");
 
 describe("marca: blob estático + canvas animado", () => {
-  it("layout usa /favicon.svg en icon, shortcut y apple; no hay icon.tsx generado", () => {
+  it("layout sirve el blob como SVG, .ico y PNG de Apple; no hay icon.tsx generado", () => {
     expect(layout).toMatch(/icon:\s*\[\s*\{\s*url:\s*"\/favicon\.svg"/);
-    expect(layout).toMatch(/shortcut:\s*"\/favicon\.svg"/);
-    expect(layout).toMatch(/apple:\s*"\/favicon\.svg"/);
+    expect(layout).toMatch(/url:\s*"\/favicon\.ico"/);
+    expect(layout).toMatch(/apple:\s*\{\s*url:\s*"\/apple-touch-icon\.png"/);
+    expect(existsSync(join(root, "public", "favicon.ico"))).toBe(true);
+    expect(existsSync(join(root, "public", "apple-touch-icon.png"))).toBe(true);
     expect(existsSync(join(here, "..", "app", "icon.tsx"))).toBe(false);
     expect(existsSync(join(here, "..", "app", "apple-icon.tsx"))).toBe(false);
   });
