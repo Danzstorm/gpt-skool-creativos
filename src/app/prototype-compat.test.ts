@@ -159,8 +159,10 @@ describe("prototype-compat: chat y chrome", () => {
     expect(chrome).toMatch(/href: "\/admin\/gpts"/);
     expect(chrome.indexOf('href: "/admin/gpts"')).toBeLessThan(chrome.indexOf('href: "/admin/members"'));
     expect(chrome).toMatch(/＋ Importar miembros/);
-    expect(chrome).toMatch(/isDashboard/);
-    expect(chrome).toMatch(/!isDashboard &&/);
+    // Como el prototipo publicado: la cabecera solo lleva acciones, sin título.
+    expect(chrome).toMatch(/ref=\{setActionSlot\}/);
+    expect(chrome).toMatch(/empty:hidden/);
+    expect(chrome).not.toMatch(/Control de acceso/);
     expect(chrome).toMatch(/!slot\?\.isConnected/);
     expect(css).not.toMatch(/\.ax-/);
     expect(proto).not.toMatch(/\.ax-/);

@@ -55,5 +55,5 @@ export const adminTdClass = "border-t border-solid border-t-[#ffffff08] py-[14px
 export function initialsOf(name: string | null | undefined, email: string): string {
   const words = (name ?? "").trim().split(/\s+/).filter(Boolean);
   if (words.length) return (words[0][0] + (words[1]?.[0] ?? "")).toUpperCase();
-  return email.slice(0, 2).toUpperCase();
+  return (email.split("@")[0].replace(/[^a-z]/gi, "").slice(0, 2) || "?").toUpperCase();
 }

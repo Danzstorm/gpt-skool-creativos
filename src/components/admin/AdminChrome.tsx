@@ -19,29 +19,6 @@ const NAV = [
   { href: "/admin/settings", label: "Ajustes", match: (p: string) => p.startsWith("/admin/settings") },
 ];
 
-const HEAD: Record<string, { eyebrow: string; title: string; sub: string }> = {
-  "/admin": {
-    eyebrow: "CREATIVOS · ADMIN",
-    title: "Resumen",
-    sub: "Uso, altas y costos de la plataforma.",
-  },
-  "/admin/members": {
-    eyebrow: "TU COMUNIDAD, CONECTADA",
-    title: "Control de acceso",
-    sub: "Las personas detrás de las ideas.",
-  },
-  "/admin/gpts": {
-    eyebrow: "CREATIVOS · ADMIN",
-    title: "Tus asistentes.",
-    sub: "Un catálogo claro, ordenado y listo para crear.",
-  },
-  "/admin/settings": {
-    eyebrow: "CREATIVOS · ADMIN",
-    title: "Ajustes del espacio.",
-    sub: "Identidad y límites, con controles fáciles de encontrar.",
-  },
-};
-
 const HeaderSlotContext = createContext<HTMLElement | null>(null);
 
 export function AdminHeaderActions({ children }: { children: ReactNode }) {
@@ -60,9 +37,7 @@ export default function AdminChrome({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const isDashboard = pathname === "/admin";
-  const head = HEAD[pathname] ?? HEAD["/admin"];
-  const [actionSlot, setActionSlot] = useState<HTMLDivElement | null>(null);
+  const [actionSlot, setActionSlot] = useState<HTMLElement | null>(null);
 
   return (
     <div className="flex h-full min-h-full w-full max-w-[100vw] max-[650px]:block [&_svg.lucide]:h-[unset] [&_svg.lucide]:w-[unset]">
@@ -94,23 +69,12 @@ export default function AdminChrome({
         </div>
       </aside>
       <main className="m-auto w-auto min-w-0 flex-1 overflow-y-auto px-[52px] pt-10 pb-[60px] max-[900px]:px-6 max-[650px]:px-[18px]">
+        {/* Como en el prototipo publicado: sin título de página, solo las acciones
+            de cada pantalla arriba a la derecha. Vacía, no ocupa lugar. */}
         <header
-          className={cn(
-            "flex flex-wrap items-center justify-end gap-6 max-[650px]:flex-col max-[650px]:items-start",
-            isDashboard ? "mb-0 min-h-0" : "mb-[25px]"
-          )}
-        >
-          {!isDashboard && (
-            <div>
-              <div className={adminEyebrowClass}>{head.eyebrow}</div>
-              <h1 className="my-3 font-[family-name:var(--font-display)] text-[36px] leading-[normal] font-normal tracking-[-1.2px] max-[650px]:text-[30px]">
-                {head.title}
-              </h1>
-              <p className="text-[#8e8e98]">{head.sub}</p>
-            </div>
-          )}
-          <div className="flex flex-wrap items-center gap-3" ref={setActionSlot} />
-        </header>
+          ref={setActionSlot}
+          className="mb-[25px] flex flex-wrap items-center justify-end gap-3 empty:hidden max-[650px]:justify-start"
+        />
         <HeaderSlotContext.Provider value={actionSlot}>
           <div>{children}</div>
         </HeaderSlotContext.Provider>
