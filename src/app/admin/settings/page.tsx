@@ -134,7 +134,7 @@ function AdminsSection() {
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                <span className={cn(adminStatusClass.base, adminStatusClass.neutral)}>Administrador</span>
+                <span className={cn(adminStatusClass.base, adminStatusClass.neutral, "max-[650px]:hidden")}>Administrador</span>
                 <button type="button" onClick={() => revoke(a)} className={adminActionClass} title="Quitar admin">
                   Quitar
                 </button>

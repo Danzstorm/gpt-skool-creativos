@@ -34,6 +34,17 @@ describe("clampTextSize / parseTextSize", () => {
 });
 
 describe("textSizeCss", () => {
+  it("en pantallas táctiles los campos de escritura no bajan de 16px (evita el zoom de iOS)", () => {
+    const touch = (percent: number) => {
+      const css = textSizeCss(percent);
+      return css.slice(css.indexOf("@media(pointer:coarse)"));
+    };
+    expect(touch(100)).toContain(".mention-field{font-size:16px!important}");
+    expect(touch(100)).toContain(".side-search input{font-size:16px!important}");
+    // Si el ajuste de tamaño ya supera 16px, se respeta.
+    expect(touch(125)).toContain(".mention-field{font-size:18.4375px!important}");
+  });
+
   it("emite --text-scale y reglas con !important, sin zoom", () => {
     const css = textSizeCss(100);
     expect(css).toContain("--text-scale:1");

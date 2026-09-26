@@ -546,13 +546,13 @@ export default function AdminMembersPage() {
           </p>
         ) : (
           <div className="overflow-auto">
-            <table className="w-full border-collapse text-left">
+            <table className="w-full border-collapse text-left max-[650px]:table-fixed">
               <thead>
                 <tr>
                   <th className={cn(adminThClass, thPad)}>Miembro</th>
-                  <th className={cn(adminThClass, thPad)}>Acceso</th>
+                  <th className={cn(adminThClass, thPad, "max-[650px]:hidden")}>Acceso</th>
                   <th className={cn(adminThClass, thPad, "max-[800px]:hidden")}>Cupo</th>
-                  <th className={cn(adminThClass, thPad)}>Acciones</th>
+                  <th className={cn(adminThClass, thPad, "max-[650px]:w-[124px]")}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -568,10 +568,14 @@ export default function AdminMembersPage() {
                             {member.full_name && (
                               <small className="mt-[5px] block truncate text-[11px] text-[#777781]">{member.email}</small>
                             )}
+                            {/* Móvil: la columna Acceso se oculta y el estado va aquí. */}
+                            <span className={cn(adminStatusClass.base, STATUS[status].tone, "mt-2 hidden max-[650px]:inline-block")}>
+                              {STATUS[status].text}
+                            </span>
                           </div>
                         </div>
                       </td>
-                      <td className={cn(adminTdClass, tdPad)}>
+                      <td className={cn(adminTdClass, tdPad, "max-[650px]:hidden")}>
                         <span className={cn(adminStatusClass.base, STATUS[status].tone)}>{STATUS[status].text}</span>
                         {(member.tier || member.ltv != null) && (
                           <small className="mt-[6px] block text-[10px] capitalize text-[#686873]">
@@ -614,7 +618,7 @@ export default function AdminMembersPage() {
                             onClick={() => deleteMember(member)}
                             title="Eliminar de la lista"
                             aria-label={`Eliminar a ${member.email}`}
-                            className={cn(adminActionClass, "hover:text-[#c3a0ac]")}
+                            className={cn(adminActionClass, "hover:text-[#c3a0ac] max-[650px]:hidden")}
                           >
                             <Trash2 size={14} />
                           </button>

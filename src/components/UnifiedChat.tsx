@@ -461,6 +461,14 @@ export default function UnifiedChat({
             sidebarCollapsed && "relative z-50 !h-0 !min-h-0 overflow-visible pointer-events-none"
           )}
         >
+          {/* Móvil con mensajes: el ☰ flota sobre el hilo; este difuminado evita
+              que el texto que sube por detrás se lea encimado con el ícono. */}
+          {hasChatMessages && (
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 top-0 z-[4] hidden h-[68px] bg-[linear-gradient(#060606_45%,#06060600)] max-[650px]:block"
+            />
+          )}
           <button
             type="button"
             className={cn(

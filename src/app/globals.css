@@ -5,6 +5,19 @@
 @layer theme, base, components, utilities, legacy;
 @import "tailwindcss";
 
+/* Pantallas táctiles: iOS hace zoom al enfocar un campo con letra menor a 16px.
+   En utilities y con :not() suma especificidad, así gana a las text-[12px] de
+   los formularios; solo afecta a dispositivos táctiles. */
+@layer utilities {
+  @media (pointer: coarse) {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+    textarea:not([type="hidden"]),
+    select:not([multiple]) {
+      font-size: max(16px, 1em);
+    }
+  }
+}
+
 /* Resets genéricos (antes en la capa legacy, que ganaba a las utilities).
    En base, cualquier clase de Tailwind los pisa sin `!`. */
 @layer base {

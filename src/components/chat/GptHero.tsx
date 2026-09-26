@@ -128,7 +128,7 @@ export default function GptHero({ gpt, onStarter, children }: Props) {
   return (
     <div className="chat-intro !m-0 !flex !w-full !shrink-0 !transform-none !flex-col !items-center !pb-[30px] !pt-0 !text-center" id="chatIntro" ref={introRef}>
       <div className="gpt-title-row !mx-auto !flex !w-fit !min-w-0 !max-w-full !flex-row !flex-nowrap !items-center !justify-center !gap-[5px] ![transform:translateX(-8px)] [transition:--lava-drift_.22s_ease-out]">
-        <div className="brand-energy !relative !ml-[-8px] !mr-0 !mt-0 !mb-0 !h-[58px] !w-[58px] !shrink-0 !overflow-visible" aria-hidden>
+        <div className="brand-energy !relative !ml-[-8px] !mr-0 !mt-0 !mb-0 !h-[58px] !w-[58px] !shrink-0 !overflow-visible max-[650px]:!h-[42px] max-[650px]:!w-[42px]" aria-hidden>
           <EnergyCanvas size={ENERGY_GPT.size} speed={ENERGY_GPT.speed} />
         </div>
         <h1

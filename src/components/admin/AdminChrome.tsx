@@ -45,17 +45,19 @@ export default function AdminChrome({
         <Link href="/chat" className={adminBrandClass}>
           {communityName} <span className={adminBrandAccentClass}>AI</span>
         </Link>
-        <Link href="/admin/members" className={cn(adminPrimaryClass, "w-full text-[12px]")}>
+        <Link href="/admin/members" className={cn(adminPrimaryClass, "w-full text-[12px] max-[650px]:hidden")}>
           ＋ Importar miembros
         </Link>
         <div className={cn(adminEyebrowClass, "mt-[10px] max-[650px]:hidden")}>ADMINISTRACIÓN</div>
-        <nav className="grid gap-[6px] max-[700px]:flex-wrap">
+        {/* Móvil: fila de pestañas desplazable en vez de lista vertical, para que
+            el contenido aparezca arriba (así lo planteaba el prototipo). */}
+        <nav className="grid gap-[6px] max-[650px]:flex max-[650px]:gap-1 max-[650px]:overflow-x-auto max-[650px]:[scrollbar-width:none] max-[650px]:[&::-webkit-scrollbar]:hidden">
           {NAV.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                "block w-full rounded-[10px] border-none p-[13px] text-left text-[13px] no-underline",
+                "block w-full rounded-[10px] border-none p-[13px] text-left text-[13px] no-underline max-[650px]:w-auto max-[650px]:shrink-0 max-[650px]:whitespace-nowrap max-[650px]:px-[14px] max-[650px]:py-[10px]",
                 item.match(pathname) && "bg-[linear-gradient(110deg,#ff682f12,#ff165e12,#7753ff20)]"
               )}
             >

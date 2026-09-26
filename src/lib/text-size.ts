@@ -44,6 +44,12 @@ export const TEXT_SIZE_RULES: [string, number][] = [
   ["#accessContinue", 12],
 ];
 
+// Campos de escritura con tamaño fijado arriba; en táctil nunca bajan de 16px.
+const TOUCH_INPUT_RULES: [string, number][] = [
+  [".search input,.side-search input", 12],
+  ["#composer textarea,.composer-row textarea,.mention-field", 14],
+];
+
 export function scaledPx(base: number, percent: number): number {
   const factor = clampTextSize(percent) / 100;
   return (base < 20 ? base + 0.75 : base) * factor;
@@ -61,7 +67,9 @@ export function textSizeCss(percent: number): string {
     `#chatIntro p,#chatIntro .gpt-intro-copy,.chat-intro p{letter-spacing:0!important;word-spacing:normal!important;-webkit-text-fill-color:currentColor!important}` +
     `.compose-hint,.note,.label,.nav,.new,.chat-name,.history-item,.folder-heading,.profile strong,.profile span:last-child{letter-spacing:0!important;word-spacing:.06em!important;-webkit-text-fill-color:currentColor!important}` +
     `#chatIntro p,#chatIntro .gpt-intro-copy,.chat-intro p,.compose-hint,.note{background:none!important;background-clip:border-box!important;-webkit-background-clip:border-box!important}` +
-    `@media(max-width:650px){#chatIntro .gpt-title-row h1{font-size:${32 * factor}px!important}.intro h1{font-size:${30 * factor}px!important}}`
+    `@media(max-width:650px){#chatIntro .gpt-title-row h1{font-size:${32 * factor}px!important}.intro h1{font-size:${30 * factor}px!important}}` +
+    // Pantallas táctiles: iOS hace zoom al enfocar un campo con letra < 16px.
+    `@media(pointer:coarse){${TOUCH_INPUT_RULES.map(([selector, px]) => `${selector}{font-size:${Math.max(16, scaledPx(px, size))}px!important}`).join("")}}`
   );
 }
 

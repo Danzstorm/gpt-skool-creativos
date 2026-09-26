@@ -379,7 +379,7 @@ export default function AdminGptsPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-3 gap-4 max-[650px]:grid-cols-1">
                   <div>
                     <label className="block text-sm font-medium text-zinc-300 mb-1.5">Categoría</label>
                     <input
