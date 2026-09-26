@@ -69,7 +69,8 @@ export function enumerateDays(since: Date, until: Date): string[] {
 export function formatDayLabel(dayKey: string): string {
   const [year, month, day] = dayKey.split("-").map(Number);
   if (!year || !month || !day) return dayKey;
-  return `${String(day).padStart(2, "0")} ${SHORT_MONTHS[month - 1]}`;
+  // Formato es-PE del prototipo: "01-set.".
+  return `${String(day).padStart(2, "0")}-${SHORT_MONTHS[month - 1]}`;
 }
 
 export function formatRangeCaption(since: Date, until: Date): string {

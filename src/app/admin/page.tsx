@@ -261,8 +261,15 @@ export default async function AdminDashboard({ searchParams }: Props) {
         </div>
       </div>
 
-      <AdminChartPanel title="Uso" chartKey="usage" metrics={usageMetrics} dates={dateLabels} />
-      <AdminChartPanel title="Costos" chartKey="cost" metrics={costMetrics} dates={dateLabels} />
+      <AdminChartPanel title="Uso" chartKey="usage" metrics={usageMetrics} dates={dateLabels} rangeLabel={rangeCaption} />
+      <AdminChartPanel
+        title="Costos"
+        chartKey="cost"
+        metrics={costMetrics}
+        dates={dateLabels}
+        rangeLabel={rangeCaption}
+        note="USD · arriba: totales del período. Gráfico: costos y poblaciones de cada día."
+      />
 
       <Link
         href="/admin/members"

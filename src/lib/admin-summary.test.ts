@@ -43,7 +43,7 @@ describe("periodBounds / captions", () => {
       "2026-09-21",
       "2026-09-22",
     ]);
-    expect(formatRangeCaption(since, until)).toBe("16 set. – 22 set.");
+    expect(formatRangeCaption(since, until)).toBe("16-set. – 22-set.");
   });
 
   it("acota el mes actual hasta hoy", () => {
