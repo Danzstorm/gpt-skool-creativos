@@ -304,7 +304,7 @@ export default function AdminMembersPage() {
       {importMsg && (
         <div className="mb-4 flex items-start justify-between gap-3 bg-amber-500/10 border border-amber-500/30 text-amber-200 text-sm rounded-xl px-4 py-3">
           <span>{importMsg}</span>
-          <button onClick={() => setImportMsg("")} className="text-amber-300/70 hover:!text-white flex-shrink-0">
+          <button onClick={() => setImportMsg("")} className="text-amber-300/70 hover:text-white flex-shrink-0">
             ✕
           </button>
         </div>
@@ -320,7 +320,7 @@ export default function AdminMembersPage() {
             </p>
             <button
               onClick={() => setRevokedAfterImport([])}
-              className="text-red-300/70 hover:!text-white text-xs"
+              className="text-red-300/70 hover:text-white text-xs"
             >
               ✕
             </button>
@@ -333,7 +333,7 @@ export default function AdminMembersPage() {
                   <span>{m.email}</span>
                   <button
                     onClick={() => reactivate(m)}
-                    className="!text-zinc-400 hover:!text-white underline underline-offset-2"
+                    className="text-zinc-400 hover:text-white underline underline-offset-2"
                   >
                     Reactivar
                   </button>
@@ -382,14 +382,14 @@ export default function AdminMembersPage() {
               placeholder="email@ejemplo.com"
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
-              className="flex-1 min-w-[200px] bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500 text-sm"
+              className="flex-1 min-w-[200px] bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500"
             />
             <input
               type="text"
               placeholder="Nombre (opcional)"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              className="flex-1 min-w-[200px] bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500 text-sm"
+              className="flex-1 min-w-[200px] bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500"
             />
             <button
               type="button"
@@ -497,7 +497,7 @@ export default function AdminMembersPage() {
         placeholder="Buscar por email o nombre..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-2.5 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500 text-sm mb-4"
+        className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-2.5 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500 mb-4"
       />
 
       {/* Lista */}
@@ -509,7 +509,7 @@ export default function AdminMembersPage() {
           <p>No se pudieron cargar los miembros. Los datos siguen intactos.</p>
           <button
             onClick={loadMembers}
-            className="mt-4 text-sm !text-amber-300 underline hover:text-amber-200"
+            className="mt-4 text-sm text-amber-300 underline hover:text-amber-200"
           >
             Reintentar
           </button>
@@ -594,7 +594,7 @@ export default function AdminMembersPage() {
                 onBlur={(e) => updateQuota(member, e.target.value)}
                 placeholder="∞"
                 title="Límite mensual de mensajes (vacío = usa el default global de Ajustes)"
-                    className="w-16 rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-1 text-center text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+                    className="w-16 rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-1 text-center text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-500"
               />
                 </td>
                 <td className="px-3 py-3">
@@ -605,20 +605,20 @@ export default function AdminMembersPage() {
                   loadAuthEvents(member.email);
                 }}
                 title="Ver su historial de accesos"
-                      className="hidden rounded-xl p-2 !text-zinc-400 transition hover:bg-zinc-800 hover:!text-white sm:block"
+                      className="hidden rounded-xl p-2 text-zinc-400 transition hover:bg-zinc-800 hover:text-white sm:block"
               >
                 <HistoryIcon size={15} />
               </button>
                 <button
                   onClick={() => toggleActive(member)}
-                      className="rounded-xl p-2 !text-zinc-400 transition hover:bg-zinc-800 hover:!text-white"
+                      className="rounded-xl p-2 text-zinc-400 transition hover:bg-zinc-800 hover:text-white"
                   title={member.is_active ? "Revocar acceso" : "Restaurar acceso"}
                 >
                   {member.is_active ? <UserX size={15} /> : <UserCheck size={15} />}
                 </button>
                 <button
                   onClick={() => deleteMember(member)}
-                      className="rounded-xl p-2 !text-zinc-400 transition hover:bg-zinc-800 hover:!text-red-400"
+                      className="rounded-xl p-2 text-zinc-400 transition hover:bg-zinc-800 hover:text-red-400"
                 >
                   <Trash2 size={15} />
                 </button>
@@ -636,7 +636,7 @@ export default function AdminMembersPage() {
           sesión queda registrado con su motivo. */}
       <div className="mt-8">
         <div className="mb-2 flex items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold text-zinc-300">
+          <h2 className="leading-[calc(1.25/0.875)] text-zinc-300">
             Accesos {authFilter && <span className="text-zinc-500">— {authFilter}</span>}
           </h2>
           {authFilter && (
@@ -645,7 +645,7 @@ export default function AdminMembersPage() {
                 setAuthFilter("");
                 loadAuthEvents();
               }}
-              className="text-xs !text-zinc-400 hover:!text-white transition"
+              className="text-xs text-zinc-400 hover:text-white transition"
             >
               Ver todos
             </button>
@@ -688,7 +688,7 @@ export default function AdminMembersPage() {
           llegando al webhook, y con qué resultado. */}
       {webhookEvents.length > 0 && (
         <div className="mt-8">
-          <h2 className="text-sm font-semibold text-zinc-300 mb-2">Actividad de integración (Zapier/Skool)</h2>
+          <h2 className="leading-[calc(1.25/0.875)] text-zinc-300">Actividad de integración (Zapier/Skool)</h2>
           <div className="bg-zinc-900 border border-zinc-800 rounded-2xl divide-y divide-zinc-800/80 max-h-80 overflow-y-auto">
             {webhookEvents.map((ev) => (
               <div key={ev.id} className="flex items-center gap-3 px-4 py-2.5 text-xs">

@@ -1,12 +1,10 @@
 // Clases compartidas del admin (valores del prototipo de Martin).
-// Los `!` ganan a los resets de la capa legacy (button{color:inherit;font:inherit},
-// transición de a/button y focus-visible) mientras sigan vivos.
 
 export const adminPrimaryClass =
-  "inline-flex cursor-pointer items-center justify-center gap-[10px] rounded-[11px] border border-solid border-[#ffffff20] bg-[linear-gradient(115deg,#ff682f20,#ff165e24,#7753ff26)] px-5 py-[13px] !text-[#f4f1f5] ![transition:background_.2s,box-shadow_.2s,transform_.2s] hover:bg-[linear-gradient(115deg,#ff682f30,#ff165e35,#7753ff35)] hover:[box-shadow:0_0_22px_#ff165e15] active:[transform:scale(.98)]";
+  "inline-flex cursor-pointer items-center justify-center gap-[10px] rounded-[11px] border border-solid border-[#ffffff20] bg-[linear-gradient(115deg,#ff682f20,#ff165e24,#7753ff26)] px-5 py-[13px] text-[#f4f1f5] [transition:background_.2s,box-shadow_.2s,transform_.2s] hover:bg-[linear-gradient(115deg,#ff682f30,#ff165e35,#7753ff35)] hover:[box-shadow:0_0_22px_#ff165e15] active:[transform:scale(.98)]";
 
 export const adminActionClass =
-  "whitespace-nowrap rounded-[7px] p-2 !text-[12px] !text-[#a4a4ad] hover:bg-[#ffffff08]";
+  "whitespace-nowrap rounded-[7px] p-2 text-[12px] text-[#a4a4ad] hover:bg-[#ffffff08]";
 
 export const adminEyebrowClass = "text-[10px] leading-[1.6] tracking-[1.6px] text-[#888891]";
 

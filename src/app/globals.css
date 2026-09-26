@@ -5,6 +5,87 @@
 @layer theme, base, components, utilities, legacy;
 @import "tailwindcss";
 
+/* Resets genéricos (antes en la capa legacy, que ganaba a las utilities).
+   En base, cualquier clase de Tailwind los pisa sin `!`. */
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    background: #060606;
+    color: var(--text);
+    font: 400 14px var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--accent) 30%, transparent);
+    color: #fff;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-zinc-800);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-zinc-700);
+    background-clip: padding-box;
+  }
+  button,
+  input,
+  textarea {
+    font: inherit;
+  }
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+  button {
+    cursor: pointer;
+    color: inherit;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    a,
+    button {
+      transition-property: color, background-color, border-color, transform, box-shadow, opacity;
+      transition-duration: 160ms;
+      transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+  }
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+  }
+  kbd {
+    font: 11px Inter;
+    color: #777b88;
+    white-space: nowrap;
+  }
+  h2 {
+    font-weight: 400;
+    font-size: 17px;
+    letter-spacing: -0.4px;
+    margin: 0;
+  }
+  svg {
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+}
+
 /* ============================================================
    Tema único: Creativos
    Base neutra-fría casi negra. Acento rojo de marca. El espectro
@@ -100,13 +181,6 @@
 }
 
 @layer legacy {
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-inter), Inter, Arial, Helvetica, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-}
 
 /* Display condensada (Archivo, eje wdth) para titulares y wordmark. */
 .font-display {
@@ -133,29 +207,8 @@ body {
 }
 
 /* Selección con el acento */
-::selection {
-  background: color-mix(in srgb, var(--accent) 30%, transparent);
-  color: #fff;
-}
 
 /* Scrollbar fina y discreta (WebKit) */
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--color-zinc-800);
-  border-radius: 9999px;
-  border: 2px solid transparent;
-  background-clip: padding-box;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-zinc-700);
-  background-clip: padding-box;
-}
 }
 
 
@@ -174,17 +227,6 @@ body {
   }
 }
 
-/* Transición base suave para interacción (respeta reduce-motion) */
-@layer legacy {
-@media (prefers-reduced-motion: no-preference) {
-  a,
-  button {
-    transition-property: color, background-color, border-color, transform, box-shadow, opacity;
-    transition-duration: 160ms;
-    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-  }
-}
-}
 
 
 /* ============================================================

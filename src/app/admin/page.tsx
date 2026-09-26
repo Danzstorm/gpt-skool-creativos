@@ -291,7 +291,7 @@ export default async function AdminDashboard({ searchParams }: Props) {
 
       <section className={adminPanelClass}>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="!text-[16px]">Nuevos miembros</h2>
+          <h2 className="text-[16px]">Nuevos miembros</h2>
           <span className={panelMutedClass}>
             {Number(firstWebLogins ?? 0)} entraron a la web por primera vez (incluye miembros antiguos)
           </span>
@@ -353,7 +353,7 @@ export default async function AdminDashboard({ searchParams }: Props) {
 
       <div className="mt-5 grid grid-cols-[1.15fr_1fr] gap-5 max-[700px]:grid-cols-1">
         <section className={adminPanelClass}>
-          <h2 className="!text-[16px]">GPTs más usados</h2>
+          <h2 className="text-[16px]">GPTs más usados</h2>
           {topGpts.length === 0 ? (
             <p className={panelMutedClass}>Sin uso registrado en este período.</p>
           ) : (
@@ -379,7 +379,7 @@ export default async function AdminDashboard({ searchParams }: Props) {
         </section>
 
         <section className={adminPanelClass}>
-          <h2 className="!text-[16px]">Usuarios más activos</h2>
+          <h2 className="text-[16px]">Usuarios más activos</h2>
           {users.length === 0 ? (
             <p className={panelMutedClass}>Sin uso registrado en este período.</p>
           ) : (

@@ -76,7 +76,7 @@ export default function AdminChartPanel({ title, chartKey, metrics, dates }: Pro
 
   return (
     <section className={cn(adminPanelClass, "relative mb-7 p-[22px]")}>
-      <h2 className="!mb-[18px] !text-[20px] font-normal">{title}</h2>
+      <h2 className="mb-[18px] text-[20px] font-normal">{title}</h2>
       <div
         className={cn(
           "mb-6 grid gap-[10px]",
@@ -93,7 +93,7 @@ export default function AdminChartPanel({ title, chartKey, metrics, dates }: Pro
             data-index={i}
             aria-pressed={i === index}
             onClick={() => setIndex(i)}
-            className="block min-w-0 rounded-[12px] border border-solid border-[#ffffff0c] bg-[#131315] px-3 py-[14px] text-left ![transition:background_.25s,border-color_.25s] hover:bg-[#19191c] focus-visible:!outline-2 focus-visible:!outline-offset-3 focus-visible:!outline-[#b76c99] aria-pressed:border-[#ad64873d] aria-pressed:bg-[linear-gradient(120deg,#ff682f0c,#ff165e12,#7753ff15)]"
+            className="block min-w-0 rounded-[12px] border border-solid border-[#ffffff0c] bg-[#131315] px-3 py-[14px] text-left [transition:background_.25s,border-color_.25s] hover:bg-[#19191c] focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[#b76c99] aria-pressed:border-[#ad64873d] aria-pressed:bg-[linear-gradient(120deg,#ff682f0c,#ff165e12,#7753ff15)]"
           >
             <span className="block text-[11px] leading-[1.5] text-[#9999a2]">{item.label}</span>
             <strong className="mt-[9px] block text-[24px] font-normal">{item.value}</strong>

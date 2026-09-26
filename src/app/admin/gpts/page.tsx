@@ -17,7 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const gptActionClass =
-  "border-none p-0 !text-[11px] !text-[#9999a5] disabled:!cursor-default disabled:opacity-35 enabled:hover:!text-[#eeeef2]";
+  "border-none p-0 text-[11px] text-[#9999a5] disabled:cursor-default disabled:opacity-35 enabled:hover:text-[#eeeef2]";
 
 const CATEGORIES = ["General", "Imágenes", "Marketing", "Copywriting", "Diseño", "Ventas", "Productividad", "Educación"];
 // Ordenados de más económico a más caro por mensaje real (medido, no por precio
@@ -308,7 +308,7 @@ export default function AdminGptsPage() {
         <div className="modal-backdrop fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="modal-panel bg-zinc-900 border border-zinc-700 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6">
-              <h2 className="text-xl font-bold text-white mb-5">
+              <h2 className="leading-[calc(1.75/1.25)] text-white">
                 {editingId ? "Editar GPT" : "Nuevo GPT"}
               </h2>
 
@@ -338,7 +338,7 @@ export default function AdminGptsPage() {
                       <button
                         type="button"
                         onClick={() => setForm({ ...form, icon_url: "" })}
-                        className="ml-2 !text-zinc-400 hover:!text-red-400 text-sm"
+                        className="ml-2 text-zinc-400 hover:text-red-400 text-sm"
                       >
                         Quitar
                       </button>
@@ -353,7 +353,7 @@ export default function AdminGptsPage() {
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     required
-                    className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500 text-sm"
+                    className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500"
                   />
                 </div>
 
@@ -363,7 +363,7 @@ export default function AdminGptsPage() {
                     value={form.description}
                     onChange={(e) => setForm({ ...form, description: e.target.value })}
                     rows={2}
-                    className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500 text-sm resize-none"
+                    className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500 resize-none"
                   />
                 </div>
 
@@ -375,7 +375,7 @@ export default function AdminGptsPage() {
                     value={form.author}
                     onChange={(e) => setForm({ ...form, author: e.target.value })}
                     placeholder="Ej: Martín Velarde"
-                    className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500 text-sm"
+                    className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500"
                   />
                 </div>
 
@@ -387,7 +387,7 @@ export default function AdminGptsPage() {
                       value={form.category}
                       onChange={(e) => setForm({ ...form, category: e.target.value })}
                       placeholder="General"
-                      className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500 text-sm"
+                      className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500"
                     />
                     <datalist id="categorias">
                       {CATEGORIES.map((c) => (
@@ -400,7 +400,7 @@ export default function AdminGptsPage() {
                     <select
                       value={form.model}
                       onChange={(e) => setForm({ ...form, model: e.target.value })}
-                      className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500 text-sm"
+                      className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500"
                     >
                       {MODELS.map((m) => (
                         <option key={m} value={m}>{m}</option>
@@ -413,7 +413,7 @@ export default function AdminGptsPage() {
                       type="number"
                       value={form.sort_order}
                       onChange={(e) => setForm({ ...form, sort_order: Number(e.target.value) })}
-                      className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500 text-sm"
+                      className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500"
                     />
                   </div>
                 </div>
@@ -429,7 +429,7 @@ export default function AdminGptsPage() {
                     required={!editingId}
                     rows={6}
                     placeholder="Eres un asistente de marketing experto en..."
-                    className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500 text-sm resize-none font-mono"
+                    className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500 resize-none font-mono"
                   />
                 </div>
 
@@ -450,12 +450,12 @@ export default function AdminGptsPage() {
                           value={s}
                           onChange={(e) => updateStarter(i, e.target.value)}
                           placeholder="Ej: Crea el character sheet de una mujer de 30 años..."
-                          className="flex-1 bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500 text-sm"
+                          className="flex-1 bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500"
                         />
                         <button
                           type="button"
                           onClick={() => removeStarter(i)}
-                          className="p-2 rounded-xl !text-zinc-400 hover:!text-red-400 hover:bg-zinc-800 transition flex-shrink-0"
+                          className="p-2 rounded-xl text-zinc-400 hover:text-red-400 hover:bg-zinc-800 transition flex-shrink-0"
                         >
                           <X size={16} />
                         </button>
@@ -523,7 +523,7 @@ export default function AdminGptsPage() {
         <div className="text-center py-16 text-amber-400">
           <div className="text-4xl mb-3">⚠️</div>
           <p>No se pudieron cargar los GPTs. El catálogo real sigue intacto.</p>
-          <button onClick={loadGpts} className="mt-4 text-sm !text-amber-300 underline hover:text-amber-200">
+          <button onClick={loadGpts} className="mt-4 text-sm text-amber-300 underline hover:text-amber-200">
             Reintentar
           </button>
         </div>
@@ -562,7 +562,7 @@ export default function AdminGptsPage() {
                     </button>
                   </div>
                 </div>
-                <h2 className="!mt-[22px] !mb-3">{gpt.name}</h2>
+                <h2 className="mt-[22px] mb-3">{gpt.name}</h2>
                 <p className="min-h-[44px] text-[12px] leading-[1.8] text-[#858590]">{gpt.description || ""}</p>
                 <dl className="mt-[18px] mb-6 grid grid-cols-2 gap-4">
                   {gptCatalogMetricRows(metrics).map((row) => (

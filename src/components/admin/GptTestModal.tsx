@@ -76,12 +76,12 @@ export default function GptTestModal({ gptId, gptName, onClose }: Props) {
       >
         <div className="flex items-center gap-2.5 px-4 py-3 border-b border-zinc-800/80">
           <div>
-            <h2 className="text-sm font-semibold text-zinc-100">Probar: {gptName}</h2>
+            <h2 className="leading-[calc(1.25/0.875)] text-zinc-100">Probar: {gptName}</h2>
             <p className="text-xs text-zinc-500">Conversación de prueba — no se guarda</p>
           </div>
           <button
             onClick={onClose}
-            className="ml-auto p-1.5 rounded-lg text-zinc-500 hover:!text-white hover:bg-zinc-800 transition"
+            className="ml-auto p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-800 transition"
             aria-label="Cerrar"
           >
             <X size={16} />
@@ -123,7 +123,7 @@ export default function GptTestModal({ gptId, gptName, onClose }: Props) {
             placeholder="Mensaje de prueba... (Enter para enviar)"
             rows={1}
             disabled={isLoading}
-            className="flex-1 bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-white placeholder-zinc-500 resize-none focus:outline-none focus:border-zinc-500 max-h-24"
+            className="flex-1 bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2 text-white placeholder-zinc-500 resize-none focus:outline-none focus:border-zinc-500 max-h-24"
           />
           <button
             type="button"

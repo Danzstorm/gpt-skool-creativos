@@ -11,10 +11,6 @@
   --font-prompt: var(--font-inconsolata), Inconsolata, ui-monospace, monospace;
 }
 
-body {
-  font-family: var(--font-sans);
-}
-
 .gpt-title-row h1 {
   font-family: var(--font-display);
 }

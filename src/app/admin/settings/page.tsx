@@ -77,7 +77,7 @@ function AdminsSection() {
 
   return (
     <div className="max-w-xl">
-      <h2 className="text-lg font-semibold text-white mb-1">Administradores</h2>
+      <h2 className="leading-[calc(1.75/1.125)] text-white">Administradores</h2>
       <p className="text-sm text-zinc-400 mb-4">
         Cualquier admin puede dar acceso de admin a otro correo. La persona necesita iniciar sesión
         al menos una vez antes de poder marcarse como admin.
@@ -89,7 +89,7 @@ function AdminsSection() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="correo@ejemplo.com"
-          className="flex-1 bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500 text-sm"
+          className="flex-1 bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500"
         />
         <button
           type="submit"
@@ -129,7 +129,7 @@ function AdminsSection() {
               </div>
               <button
                 onClick={() => revoke(a)}
-                className="p-2 rounded-xl !text-zinc-400 hover:!text-red-400 hover:bg-zinc-800 transition flex-shrink-0"
+                className="p-2 rounded-xl text-zinc-400 hover:text-red-400 hover:bg-zinc-800 transition flex-shrink-0"
                 title="Quitar admin"
               >
                 <ShieldOff size={15} />
@@ -213,7 +213,7 @@ export default function AdminSettingsPage() {
         <p>No se pudieron cargar los ajustes. La configuración actual no se perdió.</p>
         <button
           onClick={() => window.location.reload()}
-          className="mt-4 text-sm !text-amber-300 underline hover:text-amber-200"
+          className="mt-4 text-sm text-amber-300 underline hover:text-amber-200"
         >
           Reintentar
         </button>
@@ -237,7 +237,7 @@ export default function AdminSettingsPage() {
             value={form.community_name}
             onChange={(e) => setForm({ ...form, community_name: e.target.value })}
             placeholder="Creativos"
-            className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500 text-sm"
+            className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500"
           />
           <p className="text-xs text-zinc-500 mt-1">
             Reemplaza el wordmark &ldquo;Creativos&rdquo; en header, landing y login.
@@ -250,7 +250,7 @@ export default function AdminSettingsPage() {
             value={form.logo_url ?? ""}
             onChange={(e) => setForm({ ...form, logo_url: e.target.value })}
             placeholder="https://..."
-            className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500 text-sm"
+            className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500"
           />
         </div>
 
@@ -260,7 +260,7 @@ export default function AdminSettingsPage() {
             value={form.skool_url ?? ""}
             onChange={(e) => setForm({ ...form, skool_url: e.target.value })}
             placeholder="https://www.skool.com/tu-comunidad"
-            className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500 text-sm"
+            className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500"
           />
           <p className="text-xs text-zinc-500 mt-1">
             Usada en el botón &ldquo;Unirme al Skool&rdquo; de landing/login y en el mensaje de acceso denegado.
@@ -273,7 +273,7 @@ export default function AdminSettingsPage() {
             value={form.support_email ?? ""}
             onChange={(e) => setForm({ ...form, support_email: e.target.value })}
             placeholder="soporte@tudominio.com"
-            className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500 text-sm"
+            className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500"
           />
         </div>
 
@@ -292,7 +292,7 @@ export default function AdminSettingsPage() {
               })
             }
             placeholder="Sin límite"
-            className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500 text-sm"
+            className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500"
           />
           <p className="text-xs text-zinc-500 mt-1">
             Aplica a todos los miembros salvo que tengan un límite propio (editable en Miembros). Vacío = sin
