@@ -41,12 +41,6 @@ export function toDayKey(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-export function dayKeyFromIso(iso: string): string | null {
-  const parsed = new Date(iso);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return toDayKey(parsed);
-}
-
 export function periodBounds(period: AdminPeriod, now = new Date()): { since: Date; until: Date } {
   const today = startOfLocalDay(now);
   const until = addLocalDays(today, 1);
@@ -116,8 +110,14 @@ export function activityPct(active: number, members: number): number {
   return (active / members) * 100;
 }
 
-export type UsageRow = { created_at: string; user_id: string | null; cost: number | null };
-export type ThreadRow = { created_at: string };
+/** Fila de la RPC admin_daily_series (sumada en SQL). */
+export type DailySeriesRow = {
+  day: string;
+  messages: number | string;
+  active_users: number | string;
+  cost: number | string;
+  new_threads: number | string;
+};
 
 export type DailyPoint = {
   date: string;
@@ -127,59 +127,22 @@ export type DailyPoint = {
   cost: number;
 };
 
-export function buildDailySeries(
-  days: string[],
-  usage: UsageRow[],
-  threads: ThreadRow[]
-): DailyPoint[] {
-  const usersByDay = new Map<string, Set<string>>();
-  const messagesByDay = new Map<string, number>();
-  const costByDay = new Map<string, number>();
-  const threadsByDay = new Map<string, number>();
-
-  for (const row of usage) {
-    const day = dayKeyFromIso(row.created_at);
-    if (!day) continue;
-    messagesByDay.set(day, (messagesByDay.get(day) ?? 0) + 1);
-    costByDay.set(day, (costByDay.get(day) ?? 0) + Number(row.cost ?? 0));
-    if (row.user_id) {
-      const set = usersByDay.get(day) ?? new Set<string>();
-      set.add(row.user_id);
-      usersByDay.set(day, set);
-    }
-  }
-
-  for (const row of threads) {
-    const day = dayKeyFromIso(row.created_at);
-    if (!day) continue;
-    threadsByDay.set(day, (threadsByDay.get(day) ?? 0) + 1);
-  }
-
-  return days.map((date) => ({
-    date,
-    activeUsers: usersByDay.get(date)?.size ?? 0,
-    messages: messagesByDay.get(date) ?? 0,
-    newThreads: threadsByDay.get(date) ?? 0,
-    cost: costByDay.get(date) ?? 0,
-  }));
+/** Una fila por día del período; los días sin actividad quedan en cero. */
+export function buildDailySeries(days: string[], rows: DailySeriesRow[]): DailyPoint[] {
+  const byDay = new Map(rows.map((row) => [row.day, row]));
+  return days.map((date) => {
+    const row = byDay.get(date);
+    return {
+      date,
+      activeUsers: Number(row?.active_users ?? 0),
+      messages: Number(row?.messages ?? 0),
+      newThreads: Number(row?.new_threads ?? 0),
+      cost: Number(row?.cost ?? 0),
+    };
+  });
 }
 
 export function seriesHasSignal(points: DailyPoint[]): boolean {
   return points.some((point) => point.activeUsers || point.messages || point.newThreads || point.cost);
 }
 
-const PAGE_SIZE = 500;
-
-export async function fetchAllRows<T>(
-  query: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>
-): Promise<T[]> {
-  const rows: T[] = [];
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await query(from, from + PAGE_SIZE - 1);
-    if (error) throw new Error(error.message);
-    if (!data?.length) break;
-    rows.push(...data);
-    if (data.length < PAGE_SIZE) break;
-  }
-  return rows;
-}

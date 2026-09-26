@@ -56,21 +56,20 @@ describe("periodBounds / captions", () => {
 });
 
 describe("buildDailySeries", () => {
-  it("agrega eventos reales por día y no rellena curvas", () => {
+  it("ubica las filas sumadas en SQL en su día y deja en cero los días vacíos", () => {
     const points = buildDailySeries(
-      ["2026-09-21", "2026-09-22"],
+      ["2026-09-21", "2026-09-22", "2026-09-23"],
       [
-        { created_at: "2026-09-21T12:00:00", user_id: "a", cost: 0.2 },
-        { created_at: "2026-09-21T18:00:00", user_id: "b", cost: 0.1 },
-        { created_at: "2026-09-22T12:00:00", user_id: "a", cost: 0.4 },
-      ],
-      [{ created_at: "2026-09-22T09:00:00" }]
+        { day: "2026-09-21", messages: "2", active_users: "2", cost: "0.3", new_threads: "0" },
+        { day: "2026-09-22", messages: 1, active_users: 1, cost: 0.4, new_threads: 1 },
+      ]
     );
     expect(points[0]).toMatchObject({ date: "2026-09-21", activeUsers: 2, messages: 2, newThreads: 0 });
     expect(points[0].cost).toBeCloseTo(0.3);
     expect(points[1]).toMatchObject({ date: "2026-09-22", activeUsers: 1, messages: 1, newThreads: 1 });
+    expect(points[2]).toMatchObject({ date: "2026-09-23", activeUsers: 0, messages: 0, newThreads: 0, cost: 0 });
     expect(seriesHasSignal(points)).toBe(true);
-    expect(seriesHasSignal(buildDailySeries(["2026-09-22"], [], []))).toBe(false);
+    expect(seriesHasSignal(buildDailySeries(["2026-09-22"], []))).toBe(false);
   });
 });
 

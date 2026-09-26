@@ -17,7 +17,6 @@ import {
   buildDailySeries,
   currentMonthValue,
   enumerateDays,
-  fetchAllRows,
   formatCount,
   formatDayLabel,
   formatRangeCaption,
@@ -26,8 +25,7 @@ import {
   periodBounds,
   seriesHasSignal,
   VISIBLE_RANGES,
-  type ThreadRow,
-  type UsageRow,
+  type DailySeriesRow,
 } from "@/lib/admin-summary";
 
 interface Props {
@@ -111,6 +109,8 @@ export default async function AdminDashboard({ searchParams }: Props) {
     { data: signupRows },
     { data: signupSummary },
     { data: firstWebLogins },
+    { data: seriesRows, error: seriesError },
+    { data: lastSyncRow },
   ] = await Promise.all([
     supabase.from("allowed_members").select("*", { count: "exact", head: true }).eq("is_active", true),
     supabase.from("threads").select("*", { count: "exact", head: true }),
@@ -120,35 +120,23 @@ export default async function AdminDashboard({ searchParams }: Props) {
     supabase.rpc("admin_skool_signups", { since: sinceIso, until: untilIso, result_limit: SIGNUPS_SHOWN }),
     supabase.rpc("admin_skool_signups_summary", { since: sinceIso, until: untilIso }),
     supabase.rpc("admin_first_web_logins", { since: sinceIso, until: untilIso }),
+    // Días en la zona del servidor, igual que enumerateDays().
+    supabase.rpc("admin_daily_series", {
+      since: sinceIso,
+      until: untilIso,
+      tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    }),
+    supabase
+      .from("webhook_events")
+      .select("created_at")
+      .eq("action", "bulk_sync")
+      .eq("success", true)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
-  let usageRows: UsageRow[] = [];
-  let threadRows: ThreadRow[] = [];
-  let seriesError = false;
-  try {
-    [usageRows, threadRows] = await Promise.all([
-      fetchAllRows<UsageRow>((from, to) =>
-        supabase
-          .from("usage_events")
-          .select("created_at, user_id, cost")
-          .gte("created_at", sinceIso)
-          .lt("created_at", untilIso)
-          .range(from, to)
-      ),
-      fetchAllRows<ThreadRow>((from, to) =>
-        supabase
-          .from("threads")
-          .select("created_at")
-          .gte("created_at", sinceIso)
-          .lt("created_at", untilIso)
-          .range(from, to)
-      ),
-    ]);
-  } catch {
-    seriesError = true;
-  }
-
-  const daily = buildDailySeries(days, usageRows, threadRows);
+  const daily = buildDailySeries(days, (seriesRows as DailySeriesRow[] | null) ?? []);
   const hasSeries = !seriesError && seriesHasSignal(daily);
   const dateLabels = days.map(formatDayLabel);
 
@@ -158,15 +146,6 @@ export default async function AdminDashboard({ searchParams }: Props) {
   const enteredWeb = Number(funnel?.entered_web ?? 0);
   const usedChat = Number(funnel?.used_chat ?? 0);
   const pct = (n: number) => (joinedSkool ? ` · ${Math.round((n / joinedSkool) * 100)}%` : "");
-
-  const { data: lastSyncRow } = await supabase
-    .from("webhook_events")
-    .select("created_at")
-    .eq("action", "bulk_sync")
-    .eq("success", true)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
 
   const daysSinceSync = daysSince(lastSyncRow?.created_at ?? null);
   const syncIsStale = daysSinceSync === null || daysSinceSync >= 2;
@@ -190,7 +169,7 @@ export default async function AdminDashboard({ searchParams }: Props) {
   const totalCost = Number(summary?.total_cost ?? 0);
   const activeUsers = Number(summary?.active_users ?? 0);
   const members = memberCount ?? 0;
-  const newChats = threadRows.length;
+  const newChats = daily.reduce((sum, d) => sum + d.newThreads, 0);
   const activity = activityPct(activeUsers, members);
 
   const usageMetrics: ChartMetric[] = [
