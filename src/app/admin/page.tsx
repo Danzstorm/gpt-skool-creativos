@@ -9,6 +9,12 @@ import {
   adminPanelClass,
   adminRangeCaptionClass,
   adminSummaryTopClass,
+  adminAvatarClass,
+  adminStatClass,
+  adminStatusClass,
+  adminTdClass,
+  adminThClass,
+  initialsOf,
   periodPillActiveClass,
   periodPillClass,
 } from "@/components/admin/admin-ui";
@@ -145,7 +151,8 @@ export default async function AdminDashboard({ searchParams }: Props) {
   const joinedSkool = Number(funnel?.joined_skool ?? 0);
   const enteredWeb = Number(funnel?.entered_web ?? 0);
   const usedChat = Number(funnel?.used_chat ?? 0);
-  const pct = (n: number) => (joinedSkool ? ` · ${Math.round((n / joinedSkool) * 100)}%` : "");
+  const pct = (n: number) =>
+    joinedSkool ? `${Math.round((n / joinedSkool) * 100)}% de las altas` : "Sin altas en el período";
 
   const daysSinceSync = daysSince(lastSyncRow?.created_at ?? null);
   const syncIsStale = daysSinceSync === null || daysSinceSync >= 2;
@@ -306,19 +313,14 @@ export default async function AdminDashboard({ searchParams }: Props) {
 
         <div className="mb-7 grid gap-4 max-[650px]:gap-[10px]" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
           {[
-            { label: "Entraron a Skool (Zapier)", value: joinedSkool, hint: "" },
+            { label: "Entraron a Skool (Zapier)", value: joinedSkool, hint: "Altas del período" },
             { label: "Ya abrieron la web", value: enteredWeb, hint: pct(enteredWeb) },
             { label: "Ya chatearon", value: usedChat, hint: pct(usedChat) },
           ].map((s) => (
-            <div
-              key={s.label}
-              className="min-w-0 rounded-[14px] border border-solid border-[#ffffff0e] bg-[#111113] p-[22px] max-[650px]:p-4"
-            >
-              <strong className="mt-[14px] block text-[30px] font-normal">
-                {s.value}
-                <span className="block text-[12px] leading-[1.5] text-[#9999a2]">{s.hint}</span>
-              </strong>
-              <small className="mt-[14px] block text-[10px] leading-[1.6] text-[#74747f]">{s.label}</small>
+            <div key={s.label} className={adminStatClass}>
+              <span className="block text-[12px] leading-[1.5] text-[#9999a2]">{s.label}</span>
+              <strong className="mt-[14px] block text-[30px] font-normal">{s.value}</strong>
+              <small className="mt-[14px] block text-[10px] leading-[1.6] text-[#74747f]">{s.hint}</small>
             </div>
           ))}
         </div>
@@ -327,30 +329,31 @@ export default async function AdminDashboard({ searchParams }: Props) {
           <p className={panelMutedClass}>Zapier no dio de alta a nadie en este período.</p>
         ) : (
           <>
-            <ul className="divide-y divide-white/[0.06]">
+            <ul>
               {signups.map((s) => {
                 const status = s.first_message_at
-                  ? { text: "Chateó", tone: "text-green-400" }
+                  ? { text: "Chateó", tone: adminStatusClass.active }
                   : s.first_login_at
-                    ? { text: "Entró", tone: "text-[#e6bfce]" }
-                    : { text: "Sin entrar", tone: "text-[#74747f]" };
+                    ? { text: "Entró", tone: adminStatusClass.pending }
+                    : { text: "Sin entrar", tone: adminStatusClass.neutral };
                 const daysAgo = daysSince(s.joined_at) ?? 0;
                 return (
-                  <li key={s.email} className="flex items-center gap-3 py-2 text-sm">
+                  <li key={s.email} className="flex items-center gap-3 border-t border-solid border-t-[#ffffff08] py-[14px]">
+                    <span className={adminAvatarClass}>{initialsOf(s.full_name, s.email)}</span>
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-[#eeeef2]">{s.full_name || s.email}</div>
-                      {s.full_name && <div className="truncate text-xs text-[#74747f]">{s.email}</div>}
+                      <div className="truncate text-[13px] text-[#eeeef2]">{s.full_name || s.email}</div>
+                      {s.full_name && <small className="mt-[5px] block truncate text-[11px] text-[#777781]">{s.email}</small>}
                     </div>
-                    <span className="whitespace-nowrap text-xs tabular-nums text-[#74747f]">
+                    <span className="whitespace-nowrap text-[11px] tabular-nums text-[#777781]">
                       {daysAgo === 0 ? "hoy" : daysAgo === 1 ? "ayer" : `hace ${daysAgo} días`}
                     </span>
-                    <span className={cn("whitespace-nowrap text-xs", status.tone)}>{status.text}</span>
+                    <span className={cn(adminStatusClass.base, status.tone)}>{status.text}</span>
                   </li>
                 );
               })}
             </ul>
             {joinedSkool > SIGNUPS_SHOWN && (
-              <Link href="/admin/members" className="mt-3 inline-block text-xs text-[#e6bfce]">
+              <Link href="/admin/members" className="mt-4 inline-block text-[12px] text-[#a4a4ad] hover:text-[#eeeef2]">
                 Ver las {joinedSkool} altas en Miembros → Actividad de integración
               </Link>
             )}
@@ -360,23 +363,26 @@ export default async function AdminDashboard({ searchParams }: Props) {
 
       <div className="mt-5 grid grid-cols-[1.15fr_1fr] gap-5 max-[700px]:grid-cols-1">
         <section className={adminPanelClass}>
-          <h2 className="text-[16px]">GPTs más usados</h2>
+          <h2 className="mb-2 text-[16px]">GPTs más usados</h2>
           {topGpts.length === 0 ? (
             <p className={panelMutedClass}>Sin uso registrado en este período.</p>
           ) : (
-            <div className="space-y-2">
+            <div>
               {topGpts.map((g) => {
                 const bar = Math.round((g.n / (topGpts[0].n || 1)) * 100);
                 return (
-                  <div key={g.name}>
-                    <div className="mb-1 flex justify-between text-sm">
-                      <span className="text-[#d3d3d8]">{g.name}</span>
-                      <span className="text-[#74747f]">
-                        {g.n} · <span className="text-[#9999a5]">{money(g.cost)}</span>
+                  <div key={g.name} className="border-b border-solid border-b-[#ffffff08] py-[14px] last:border-b-0">
+                    <div className="flex justify-between gap-3 text-[12px] text-[#b6b6bf]">
+                      <span>{g.name}</span>
+                      <span className="tabular-nums">
+                        {formatCount(g.n)} · <small className="text-[12px] text-[#bd8fa7]">{money(g.cost)}</small>
                       </span>
                     </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-white/[0.06]">
-                      <div className="h-full rounded-full bg-[#be6589]" style={{ width: `${bar}%` }} />
+                    <div className="mt-3 h-[5px] overflow-hidden rounded-[5px] bg-[#ffffff05]">
+                      <i
+                        className="block h-full rounded-[5px] bg-[linear-gradient(90deg,#b76b42,#b34171,#784792)]"
+                        style={{ width: `${bar}%` }}
+                      />
                     </div>
                   </div>
                 );
@@ -386,29 +392,29 @@ export default async function AdminDashboard({ searchParams }: Props) {
         </section>
 
         <section className={adminPanelClass}>
-          <h2 className="text-[16px]">Usuarios más activos</h2>
+          <h2 className="mb-5 text-[16px]">Usuarios más activos</h2>
           {users.length === 0 ? (
             <p className={panelMutedClass}>Sin uso registrado en este período.</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full border-collapse">
                 <thead>
-                  <tr className="text-left text-xs text-[#74747f]">
-                    <th className="pb-2 font-medium">Usuario</th>
-                    <th className="pb-2 text-right font-medium">Msgs</th>
-                    <th className="pb-2 text-right font-medium">GPTs</th>
-                    <th className="pb-2 text-right font-medium">Chats</th>
-                    <th className="pb-2 text-right font-medium">Costo</th>
+                  <tr>
+                    <th className={adminThClass}>Usuario</th>
+                    <th className={cn(adminThClass, "pl-3 text-right")}>Msgs</th>
+                    <th className={cn(adminThClass, "pl-3 text-right")}>GPTs</th>
+                    <th className={cn(adminThClass, "pl-3 text-right")}>Chats</th>
+                    <th className={cn(adminThClass, "pl-3 text-right")}>Costo</th>
                   </tr>
                 </thead>
                 <tbody>
                   {users.map((u) => (
-                    <tr key={u.email} className="border-t border-white/[0.06]">
-                      <td className="max-w-[160px] truncate py-2 text-[#d3d3d8]">{u.email}</td>
-                      <td className="py-2 text-right tabular-nums text-[#d3d3d8]">{u.messages}</td>
-                      <td className="py-2 text-right tabular-nums text-[#9999a5]">{u.gpts}</td>
-                      <td className="py-2 text-right tabular-nums text-[#9999a5]">{u.threads}</td>
-                      <td className="py-2 text-right tabular-nums text-[#9999a5]">{money(u.cost)}</td>
+                    <tr key={u.email}>
+                      <td className={cn(adminTdClass, "max-w-[180px] truncate pr-3 text-[#d3d3d8]")}>{u.email}</td>
+                      <td className={cn(adminTdClass, "pl-3 text-right tabular-nums text-[#d3d3d8]")}>{u.messages}</td>
+                      <td className={cn(adminTdClass, "pl-3 text-right tabular-nums text-[#9999a5]")}>{u.gpts}</td>
+                      <td className={cn(adminTdClass, "pl-3 text-right tabular-nums text-[#9999a5]")}>{u.threads}</td>
+                      <td className={cn(adminTdClass, "pl-3 text-right tabular-nums text-[#9999a5]")}>{money(u.cost)}</td>
                     </tr>
                   ))}
                 </tbody>

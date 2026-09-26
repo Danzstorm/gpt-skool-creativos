@@ -29,3 +29,31 @@ export const adminRangeCaptionClass = "mt-[9px] block text-[10px] leading-[1.6] 
 export const periodPillClass = "rounded-[7px] px-[11px] py-[9px] text-[11px] text-[#888893] no-underline";
 
 export const periodPillActiveClass = "bg-[linear-gradient(110deg,#ff682f12,#ff165e22,#7753ff22)] text-[#f0cadb]";
+
+// Fila de persona (avatar con iniciales + nombre + correo), tarjetas y etiquetas
+// de estado del prototipo (Miembros y extras del Resumen).
+export const adminAvatarClass =
+  "grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#242025] text-[11px] text-[#c3b7c0]";
+
+export const adminStatClass =
+  "min-w-0 rounded-[14px] border border-solid border-[#ffffff0e] bg-[#111113] p-[22px] max-[650px]:p-4";
+
+export const adminStatusClass = {
+  base: "inline-block whitespace-nowrap rounded-[20px] px-[10px] py-[6px] text-[11px]",
+  active: "bg-[#39b97418] text-[#7ed8a4]",
+  pending: "bg-[#e6b83c18] text-[#e6c568]",
+  expired: "bg-[#ff165e09] text-[#c3a0ac]",
+  neutral: "bg-[#ffffff06] text-[#b5b5bd]",
+} as const;
+
+export const adminThClass =
+  "border-t border-solid border-t-[#ffffff08] py-[14px] text-left text-[10px] font-normal uppercase tracking-[1px] text-[#777781]";
+
+export const adminTdClass = "border-t border-solid border-t-[#ffffff08] py-[14px] text-[13px]";
+
+/** Iniciales del nombre ("Ana Ramírez" da "AR"); sin nombre, las dos primeras letras del correo. */
+export function initialsOf(name: string | null | undefined, email: string): string {
+  const words = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  if (words.length) return (words[0][0] + (words[1]?.[0] ?? "")).toUpperCase();
+  return email.slice(0, 2).toUpperCase();
+}
