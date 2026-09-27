@@ -24,8 +24,7 @@ interface Props {
   onSubmitRename: (id: string) => void;
   onCancelRename: () => void;
   onDelete: (id: string) => void;
-  // Opcionales: las carpetas se gestionan en el sidebar. GptChatsModal reusa
-  // esta fila solo para listar los chats de un GPT y no las necesita.
+  // Opcionales: las carpetas se gestionan en el sidebar.
   projects?: Project[];
   onMoveToProject?: (threadId: string, projectId: string | null) => void;
   onCreateProjectWith?: (threadIds: string[]) => void;

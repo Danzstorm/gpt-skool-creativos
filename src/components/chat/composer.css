@@ -189,29 +189,6 @@
   pointer-events: none;
 }
 
-#composer .send.just-sent {
-  animation: send-release 0.5s ease-in-out;
-}
-
-#composer .send.just-sent:before {
-  inset: 0;
-  filter: none;
-  z-index: 0;
-  animation: send-reflection 0.6s ease-out;
-}
-
-#composer .send.just-sent:after {
-  animation: send-soft-halo 0.6s ease-out;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  #composer .send.just-sent,
-  #composer .send.just-sent:before,
-  #composer .send.just-sent:after {
-    animation: none;
-  }
-}
-
 /* Adjuntos dentro del shell. */
 #composer .attachments {
   display: flex;
@@ -313,27 +290,6 @@
   place-items: center;
   padding: 0;
   color: #b6b6bd;
-}
-
-#composer .voice-live {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 1;
-  min-width: 0;
-  height: 36px;
-}
-
-#composer .voice-live[hidden],
-#composer .voice-preview[hidden] {
-  display: none;
-}
-
-#composer .voice-live canvas {
-  height: 36px;
-  flex: 1;
-  min-width: 0;
-  width: 100%;
 }
 
 @media (max-width: 650px) {

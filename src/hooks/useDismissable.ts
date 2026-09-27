@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 
 // Cierra un popover al hacer click fuera de `ref` o al presionar Escape.
 // Lo usan SidebarFooter, el menú `@` del composer, ThreadListItem y GptTestModal.
-// GptChatsModal y ProjectInstructionsModal pasaron a Radix Dialog.
+// ProjectInstructionsModal pasó a Radix Dialog.
 export function useDismissable<T extends HTMLElement>(open: boolean, onDismiss: () => void) {
   const ref = useRef<T>(null);
 

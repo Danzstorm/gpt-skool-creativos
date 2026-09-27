@@ -106,29 +106,6 @@
   background: #ffffff0c;
 }
 
-@keyframes attach-hide {
-  0%,
-  80% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    visibility: hidden;
-  }
-}
-
-@keyframes attach-pulse {
-  0%,
-  100% {
-    opacity: 0.2;
-    filter: blur(13px) brightness(0.3);
-  }
-  50% {
-    opacity: 1;
-    filter: blur(13px) brightness(1);
-  }
-}
-
 /* Orbe de energía: overflow visible para que el halo no muera.
    Tamaños: home.css (82) / gpt-intro.css (58). */
 .brand-energy,
