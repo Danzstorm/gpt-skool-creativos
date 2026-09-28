@@ -79,4 +79,12 @@ export async function consumeSSE(
 
   buffer += decoder.decode(); // vacía cualquier byte multibyte pendiente
   if (buffer.trim()) processFrame(buffer);
+
+  // El servidor siempre cierra un turno con [DONE], también cuando falla. Si
+  // no llegó, la función murió a mitad (timeout de Vercel, corte en el
+  // camino): antes se mostraba el texto parcial como si fuera la respuesta.
+  if (!doneNotified) throw new Error(STREAM_CUT_MESSAGE);
 }
+
+export const STREAM_CUT_MESSAGE =
+  "La respuesta se cortó antes de terminar. Usa Regenerar para intentarlo de nuevo.";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { consumeSSE } from "./stream-client";
+import { consumeSSE, STREAM_CUT_MESSAGE } from "./stream-client";
 
 /** Arma una Response cuyo body entrega exactamente los trozos dados. */
 function sseResponse(chunks: string[]): Response {
@@ -14,6 +14,7 @@ function sseResponse(chunks: string[]): Response {
 }
 
 const frame = (obj: unknown) => `data: ${JSON.stringify(obj)}\n\n`;
+const DONE = "data: [DONE]\n\n";
 
 describe("consumeSSE — frames de fase", () => {
   it("manda las fases a onPhase y el texto a onToken", async () => {
@@ -43,7 +44,7 @@ describe("consumeSSE — frames de fase", () => {
     const tokens: string[] = [];
 
     await expect(
-      consumeSSE(sseResponse([frame({ phase: "code" }), frame({ text: "ok" })]), (t) =>
+      consumeSSE(sseResponse([frame({ phase: "code" }), frame({ text: "ok" }), DONE]), (t) =>
         tokens.push(t)
       )
     ).resolves.toBeUndefined();
@@ -68,7 +69,7 @@ describe("consumeSSE — bugs de producción ya arreglados que no pueden volver"
     const tokens: string[] = [];
 
     await consumeSSE(
-      sseResponse([completo.slice(0, corte), completo.slice(corte)]),
+      sseResponse([completo.slice(0, corte), completo.slice(corte), DONE]),
       (t) => tokens.push(t)
     );
 
@@ -93,6 +94,7 @@ describe("consumeSSE — bugs de producción ya arreglados que no pueden volver"
       start(controller) {
         controller.enqueue(bytes.slice(0, corte));
         controller.enqueue(bytes.slice(corte));
+        controller.enqueue(new TextEncoder().encode(DONE));
         controller.close();
       },
     });
@@ -106,7 +108,7 @@ describe("consumeSSE — bugs de producción ya arreglados que no pueden volver"
     const tokens: string[] = [];
 
     await consumeSSE(
-      sseResponse(["data: {esto no es json}\n\n", frame({ text: "sigue vivo" })]),
+      sseResponse(["data: {esto no es json}\n\n", frame({ text: "sigue vivo" }), DONE]),
       (t) => tokens.push(t)
     );
 
@@ -142,5 +144,19 @@ describe("consumeSSE — [DONE] y título diferido", () => {
     expect(tokens.join("")).toBe("hola");
     expect(doneAt).toBe(1);
     expect(titles).toEqual(["Brief de logo"]);
+  });
+});
+
+describe("consumeSSE — stream cortado", () => {
+  it("falla si el stream termina sin [DONE], conservando el texto parcial", async () => {
+    // Vercel mata la función a mitad (timeout) o el camino corta la conexión:
+    // antes el texto parcial quedaba en pantalla como si fuera la respuesta.
+    const tokens: string[] = [];
+
+    await expect(
+      consumeSSE(sseResponse([frame({ text: "Cinematic wide" })]), (t) => tokens.push(t))
+    ).rejects.toThrow(STREAM_CUT_MESSAGE);
+
+    expect(tokens.join("")).toBe("Cinematic wide");
   });
 });
