@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Message } from "@/lib/types";
+import { collapseVersions } from "@/lib/message-versions";
 
 // El historial vive en la tabla local `messages` (caché instantánea, poblada
 // en cada turno y, para conversaciones previas a la migración a Responses API,
@@ -11,13 +12,19 @@ export async function getThreadMessages(
 ): Promise<Message[]> {
   const { data, error } = await supabase
     .from("messages")
-    .select("role, content, files")
+    .select("role, content, files, active")
     .eq("thread_id", threadId)
     .order("created_at", { ascending: true });
 
   if (error || !data) return [];
 
-  return data.map((m) => {
+  const rows = data as Array<{
+    role: "user" | "assistant";
+    content: string;
+    files: unknown;
+    active: boolean | null;
+  }>;
+  return collapseVersions(rows, (row) => row.content).map((m) => {
     const rawFiles =
       (m.files as Array<{
         openai_file_id: string;
@@ -40,6 +47,7 @@ export async function getThreadMessages(
               ...(typeof f.n === "number" ? { n: f.n } : {}),
             }))
           : undefined,
+      ...(m.versions ? { versions: m.versions, versionIndex: m.versionIndex } : {}),
     };
   });
 }

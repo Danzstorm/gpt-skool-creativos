@@ -65,7 +65,12 @@ function attachmentLookupLog(cause: unknown): { code?: unknown; message: string 
 // mensaje del usuario y todo lo posterior (reasoning, herramientas, respuesta).
 // Mirar solo 1-2 ítems dejaba el mensaje del usuario vivo cuando había ítems
 // intermedios, y al reenviarlo quedaba duplicado (más tokens, pregunta doble).
-async function deleteLastTurn(conversationId: string): Promise<void> {
+// `includeUser: false` deja el mensaje del usuario y borra solo la respuesta
+// (cambio de versión: se reinserta otra respuesta sin reenviar la pregunta).
+async function deleteLastTurn(
+  conversationId: string,
+  { includeUser = true }: { includeUser?: boolean } = {}
+): Promise<void> {
   const recent = await openai.conversations.items.list(conversationId, {
     order: "desc",
     limit: 100,
@@ -77,23 +82,15 @@ async function deleteLastTurn(conversationId: string): Promise<void> {
   const stale =
     userIndex === -1
       ? recent.data.slice(0, 1).filter((item) => item.type === "message" && item.role === "assistant")
-      : recent.data.slice(0, userIndex + 1);
+      : recent.data.slice(0, includeUser ? userIndex + 1 : userIndex);
   for (const item of stale) {
     if (!item.id) continue;
     await openai.conversations.items.delete(item.id, { conversation_id: conversationId });
   }
 }
 
-// Espejo local de deleteLastTurn, por posición y no según lo que había en
-// OpenAI: el aviso ⚠️ de un turno fallido solo existe en `messages`. Contar
-// filas a partir de OpenAI borraba el aviso en vez del mensaje (Editar) o lo
-// dejaba vivo junto a la respuesta nueva (Regenerar).
-async function deleteLocalLastTurn(
-  service: SupabaseClient,
-  threadId: string,
-  { includeUser }: { includeUser: boolean }
-): Promise<void> {
-  const { data: lastUser, error: lookupError } = await service
+async function lastUserCreatedAt(service: SupabaseClient, threadId: string): Promise<string | null> {
+  const { data, error } = await service
     .from("messages")
     .select("created_at")
     .eq("thread_id", threadId)
@@ -101,13 +98,36 @@ async function deleteLocalLastTurn(
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (lookupError) throw lookupError;
-  if (!lastUser) return;
+  if (error) throw error;
+  return data?.created_at ?? null;
+}
 
-  const base = service.from("messages").delete().eq("thread_id", threadId);
-  const { error } = includeUser
-    ? await base.gte("created_at", lastUser.created_at)
-    : await base.gt("created_at", lastUser.created_at);
+// Espejo local de deleteLastTurn, por posición y no según lo que había en
+// OpenAI: el aviso ⚠️ de un turno fallido solo existe en `messages`. Contar
+// filas a partir de OpenAI borraba el aviso en vez del mensaje (Editar).
+// Borra el mensaje del usuario y todas las versiones de su respuesta.
+async function deleteLocalLastTurn(service: SupabaseClient, threadId: string): Promise<void> {
+  const since = await lastUserCreatedAt(service, threadId);
+  if (!since) return;
+  const { error } = await service
+    .from("messages")
+    .delete()
+    .eq("thread_id", threadId)
+    .gte("created_at", since);
+  if (error) throw error;
+}
+
+// Regenerar conserva las respuestas anteriores como versiones inactivas; la
+// nueva fila entra activa.
+async function deactivateLastAnswers(service: SupabaseClient, threadId: string): Promise<void> {
+  const since = await lastUserCreatedAt(service, threadId);
+  if (!since) return;
+  const { error } = await service
+    .from("messages")
+    .update({ active: false })
+    .eq("thread_id", threadId)
+    .eq("role", "assistant")
+    .gt("created_at", since);
   if (error) throw error;
 }
 
@@ -239,7 +259,7 @@ export async function executeChatTurn({
 
     if (replaceLast) {
       await deleteLastTurn(conversationId);
-      await deleteLocalLastTurn(serviceClient, threadId, { includeUser: true });
+      await deleteLocalLastTurn(serviceClient, threadId);
     }
 
     const numbers = await threadAttachmentNumbers(serviceClient, threadId, user.id, incoming);
@@ -482,7 +502,7 @@ export async function executeRegenerateTurn({
     // El mensaje del usuario se reenvía abajo con buildUserInput: hay que sacarlo
     // también de la Conversation, no solo la respuesta.
     await deleteLastTurn(conversationId);
-    await deleteLocalLastTurn(serviceClient, threadId, { includeUser: false });
+    await deactivateLastAnswers(serviceClient, threadId);
 
     const tools = buildCodeInterpreterTools(incoming);
     await syncProjectContext({
@@ -543,5 +563,110 @@ export async function executeRegenerateTurn({
     return jsonError(PRE_STREAM_ERROR, 500);
   } finally {
     await releaseLeaseIfNotStreamed(handedToStream, supabase, threadId, lease);
+  }
+}
+
+/**
+ * Cambia la versión visible de la última respuesta (flechas ‹ 2/3 ›). La
+ * Conversation de OpenAI guarda una sola respuesta por turno: se reemplaza por
+ * la elegida para que el siguiente mensaje continúe desde ella.
+ */
+export async function executeSelectVersion({
+  request,
+  user,
+  supabase,
+  threadId,
+}: ChatTurnClients & { threadId: string }): Promise<Response> {
+  const parsedJson = await readJsonBody(request);
+  if (!parsedJson.ok) return parsedJson.response;
+  const index = (parsedJson.body as { index?: unknown } | null)?.index;
+  if (typeof index !== "number" || !Number.isInteger(index) || index < 0) {
+    return jsonError("Versión no válida", 400);
+  }
+
+  const { data: thread, error: threadError } = await supabase
+    .from("threads")
+    .select("openai_conversation_id, conversation_key_fingerprint, gpt_id")
+    .eq("id", threadId)
+    .single();
+  if (threadError || !thread?.openai_conversation_id) {
+    return jsonError("Conversación no encontrada", 404);
+  }
+
+  const leaseResult = await acquireRouteThreadLease(supabase, threadId, "version");
+  if (!leaseResult.ok) return leaseResult.response;
+  const lease: ThreadLease = leaseResult.lease;
+  const serviceClient = createServiceClient();
+
+  try {
+    const since = await lastUserCreatedAt(serviceClient, threadId);
+    let query = serviceClient
+      .from("messages")
+      .select("id, content, active")
+      .eq("thread_id", threadId)
+      .eq("role", "assistant");
+    if (since) query = query.gt("created_at", since);
+    const { data: versions, error: versionsError } = await query.order("created_at", {
+      ascending: true,
+    });
+    if (versionsError) throw versionsError;
+    const chosen = versions?.[index];
+    if (!versions || !chosen) return jsonError("Versión no encontrada", 404);
+
+    const previousActive = versions.filter((row) => row.active !== false).map((row) => row.id);
+    if (previousActive.length === 1 && previousActive[0] === chosen.id) {
+      return NextResponse.json({ ok: true });
+    }
+
+    const setActive = async (ids: string[]) => {
+      const { error: offError } = await serviceClient
+        .from("messages")
+        .update({ active: false })
+        .in("id", versions.map((row) => row.id));
+      if (offError) throw offError;
+      if (ids.length === 0) return;
+      const { error: onError } = await serviceClient
+        .from("messages")
+        .update({ active: true })
+        .in("id", ids);
+      if (onError) throw onError;
+    };
+
+    // Primero la DB: si la Conversation se recrea desde el historial local,
+    // ya se siembra con la versión elegida.
+    await setActive([chosen.id]);
+    try {
+      const conversationId = await ensureThreadConversation({
+        openai,
+        supabase: serviceClient,
+        threadId,
+        conversationId: thread.openai_conversation_id,
+        fingerprint: thread.conversation_key_fingerprint,
+        metadata: { user_id: user.id, gpt_id: thread.gpt_id },
+      });
+      if (conversationId === thread.openai_conversation_id) {
+        await deleteLastTurn(conversationId, { includeUser: false });
+        if (chosen.content) {
+          await openai.conversations.items.create(conversationId, {
+            items: [{ role: "assistant", content: chosen.content }],
+          });
+        }
+      }
+    } catch (openAiError) {
+      // Sin OpenAI al día, la versión mostrada mentiría sobre lo que el modelo
+      // va a leer: se vuelve a la anterior.
+      await setActive(previousActive);
+      throw openAiError;
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error("select version error", {
+      threadId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return jsonError("No se pudo cambiar de versión. Intenta de nuevo.", 500);
+  } finally {
+    await releaseThreadLease(supabase, threadId, lease);
   }
 }

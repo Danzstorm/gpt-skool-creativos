@@ -177,7 +177,7 @@ export function buildCodeInterpreterTools(incoming: IncomingFile[]): Tool[] {
 export async function acquireRouteThreadLease(
   supabase: SupabaseClient,
   threadId: string,
-  route: "chat" | "regenerate"
+  route: "chat" | "regenerate" | "version"
 ): Promise<{ ok: true; lease: ThreadLease } | { ok: false; response: NextResponse }> {
   let lease: ThreadLease | null;
   try {

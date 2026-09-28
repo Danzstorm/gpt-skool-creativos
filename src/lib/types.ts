@@ -162,4 +162,8 @@ export interface Message {
   // terminar. `content` conserva lo que ya se alcanzó a generar — nunca se
   // reemplaza por el error, para no perder texto que el usuario ya leyó.
   error?: string;
+  // Solo en la última respuesta con más de un intento (Regenerar): el texto de
+  // cada versión en orden, y cuál es la activa (= `content`).
+  versions?: string[];
+  versionIndex?: number;
 }

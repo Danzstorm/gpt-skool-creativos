@@ -35,6 +35,7 @@ interface Props {
   className?: string;
   onCopy: (index: number, content: string) => void;
   onRegenerate: () => void;
+  onSelectVersion: (index: number) => void;
   onEdit: (index: number) => void;
 }
 
@@ -52,6 +53,7 @@ function MessageBubble({
   className,
   onCopy,
   onRegenerate,
+  onSelectVersion,
   onEdit,
 }: Props) {
   const isUser = msg.role === "user";
@@ -91,6 +93,8 @@ function MessageBubble({
   );
 
   if (!isUser) {
+    const versionCount = msg.versions?.length ?? 1;
+    const versionIndex = msg.versionIndex ?? 0;
     if (streaming && !msg.content) {
       return (
         <div className={cn("message assistant shrink-0", className)}>
@@ -138,11 +142,38 @@ function MessageBubble({
         {msg.content && msg.error && (
           <p className={noteClass} style={{ color: "#f88" }}>{msg.error}</p>
         )}
-        {!streaming && isLast && canRegenerate && (
-          <div className={noteClass}>
-            <button type="button" className={copyClass} onClick={onRegenerate}>
-              Regenerar
-            </button>
+        {!streaming && isLast && (canRegenerate || versionCount > 1) && (
+          <div className={cn(noteClass, "flex items-center gap-1")}>
+            {versionCount > 1 && (
+              <div className="flex items-center tabular-nums" aria-label="Versiones de la respuesta">
+                <button
+                  type="button"
+                  className={cn(copyClass, "disabled:opacity-40")}
+                  aria-label="Versión anterior"
+                  disabled={!canRegenerate || versionIndex === 0}
+                  onClick={() => onSelectVersion(versionIndex - 1)}
+                >
+                  ‹
+                </button>
+                <span>
+                  {versionIndex + 1}/{versionCount}
+                </span>
+                <button
+                  type="button"
+                  className={cn(copyClass, "disabled:opacity-40")}
+                  aria-label="Versión siguiente"
+                  disabled={!canRegenerate || versionIndex === versionCount - 1}
+                  onClick={() => onSelectVersion(versionIndex + 1)}
+                >
+                  ›
+                </button>
+              </div>
+            )}
+            {canRegenerate && (
+              <button type="button" className={copyClass} onClick={onRegenerate}>
+                Regenerar
+              </button>
+            )}
           </div>
         )}
       </div>

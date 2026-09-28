@@ -60,6 +60,8 @@ async function buildSeedItems(
     .from("messages")
     .select("role, content, files")
     .eq("thread_id", threadId)
+    // Versiones descartadas por Regenerar: el modelo solo ve la elegida.
+    .eq("active", true)
     .order("created_at", { ascending: false })
     .limit(SEEDED_MESSAGES);
   if (error || !data) return [];

@@ -52,6 +52,7 @@ export function useChatStream({
   const [phase, setPhase] = useState<Phase>("thinking");
   const [thinkingStartedAt, setThinkingStartedAt] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
+  const [switchingVersion, setSwitchingVersion] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
   const waitingVideoRef = useRef(false);
@@ -99,9 +100,14 @@ export function useChatStream({
         (text) => {
           setMessages((prev) => {
             const updated = [...prev];
+            const last = updated[updated.length - 1];
+            const content = last.content + text;
             updated[updated.length - 1] = {
-              ...updated[updated.length - 1],
-              content: updated[updated.length - 1].content + text,
+              ...last,
+              content,
+              ...(last.versions && last.versionIndex !== undefined
+                ? { versions: last.versions.map((v, i) => (i === last.versionIndex ? content : v)) }
+                : {}),
             };
             return updated;
           });
@@ -126,11 +132,11 @@ export function useChatStream({
   );
 
   const runAssistant = useCallback(
-    async (url: string, body: Record<string, unknown>) => {
+    async (url: string, body: Record<string, unknown>, seed?: Partial<Message>) => {
       setIsLoading(true);
       setPhase("thinking");
       setThinkingStartedAt(Date.now());
-      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+      setMessages((prev) => [...prev, { ...seed, role: "assistant", content: "" }]);
       const controller = new AbortController();
       abortRef.current = controller;
       const threadId =
@@ -169,6 +175,7 @@ export function useChatStream({
       if (
         (!text.trim() && attachedFiles.length === 0) ||
         isLoading ||
+        switchingVersion ||
         pendingUploads > 0 ||
         attachedFiles.some((file) => file.pending) ||
         waitingVideoRef.current ||
@@ -241,6 +248,7 @@ export function useChatStream({
       ensureThread,
       isEditing,
       isLoading,
+      switchingVersion,
       onUserMessageAppended,
       pendingUploads,
       runAssistant,
@@ -249,16 +257,88 @@ export function useChatStream({
     ]
   );
 
+  // Trae del servidor las versiones reales de la última respuesta. El servidor
+  // manda (p.ej. un aviso ⚠️ guardado que el cliente no vio); `expectedLength`
+  // evita pisar un mensaje nuevo si el usuario ya siguió escribiendo.
+  const syncLastVersions = useCallback(async (threadId: string, expectedLength: number) => {
+    try {
+      const res = await fetch(`/api/threads/${threadId}/messages`);
+      if (!res.ok) return;
+      const server = ((await res.json()) as Message[]).at(-1);
+      if (server?.role !== "assistant") return;
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        if (prev.length !== expectedLength || last?.role !== "assistant") return prev;
+        return [
+          ...prev.slice(0, -1),
+          { ...last, versions: server.versions, versionIndex: server.versionIndex },
+        ];
+      });
+    } catch {
+      // Sin sincronizar, las flechas usan lo que ya hay en pantalla.
+    }
+  }, []);
+
   const regenerate = useCallback(async () => {
-    if (isLoading || !activeGptId || !activeThreadId) return;
+    if (isLoading || switchingVersion || !activeGptId || !activeThreadId) return;
+    const current = messagesRef.current;
+    const last = current[current.length - 1];
+    const previous = last?.role === "assistant" ? (last.versions ?? [last.content]) : [];
     setMessages((prev) =>
       prev[prev.length - 1]?.role === "assistant" ? prev.slice(0, -1) : prev
     );
-    await runAssistant("/api/chat/regenerate", {
-      gptId: activeGptId,
-      threadId: activeThreadId,
-    });
-  }, [isLoading, activeGptId, activeThreadId, runAssistant]);
+    const threadId = activeThreadId;
+    const expectedLength = current.length - (last?.role === "assistant" ? 1 : 0) + 1;
+    await runAssistant(
+      "/api/chat/regenerate",
+      { gptId: activeGptId, threadId },
+      previous.length > 0
+        ? { versions: [...previous, ""], versionIndex: previous.length }
+        : undefined
+    );
+    await syncLastVersions(threadId, expectedLength);
+  }, [isLoading, switchingVersion, activeGptId, activeThreadId, runAssistant, syncLastVersions]);
+
+  const selectVersion = useCallback(
+    async (index: number) => {
+      const current = messagesRef.current;
+      const last = current[current.length - 1];
+      if (
+        isLoading ||
+        switchingVersion ||
+        !activeThreadId ||
+        last?.role !== "assistant" ||
+        !last.versions ||
+        index < 0 ||
+        index >= last.versions.length ||
+        index === last.versionIndex
+      )
+        return;
+
+      const replaceLast = (message: Message) =>
+        setMessages((prev) =>
+          prev[prev.length - 1]?.role === "assistant" ? [...prev.slice(0, -1), message] : prev
+        );
+      replaceLast({ ...last, content: last.versions[index], versionIndex: index, error: undefined });
+      setSwitchingVersion(true);
+      try {
+        const res = await fetch(`/api/threads/${activeThreadId}/versions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ index }),
+        });
+        if (!res.ok) {
+          const body = (await res.json().catch(() => null)) as { error?: string } | null;
+          replaceLast({ ...last, error: body?.error ?? "No se pudo cambiar de versión." });
+        }
+      } catch (err) {
+        replaceLast({ ...last, error: friendlyStreamError(err) });
+      } finally {
+        setSwitchingVersion(false);
+      }
+    },
+    [isLoading, switchingVersion, activeThreadId]
+  );
 
   const startEdit = useCallback(
     (index: number) => {
@@ -283,6 +363,8 @@ export function useChatStream({
     clearMessages,
     sendMessage,
     regenerate,
+    selectVersion,
+    switchingVersion,
     startEdit,
     cancelEdit,
     stopStreaming,

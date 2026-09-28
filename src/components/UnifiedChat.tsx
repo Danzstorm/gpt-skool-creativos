@@ -218,6 +218,8 @@ export default function UnifiedChat({
     clearMessages,
     sendMessage,
     regenerate,
+    selectVersion,
+    switchingVersion,
     startEdit,
     cancelEdit,
     stopStreaming,
@@ -587,11 +589,12 @@ export default function UnifiedChat({
                             />
                           ) : undefined
                         }
-                        canRegenerate={isLast && !isLoading}
+                        canRegenerate={isLast && !isLoading && !switchingVersion}
                         canEdit={i === lastUserIndex && !isLoading}
                         isCopied={copiedIndex === i}
                         onCopy={copyMessage}
                         onRegenerate={regenerate}
+                        onSelectVersion={selectVersion}
                         onEdit={startEdit}
                       />
                     );
