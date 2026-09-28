@@ -118,7 +118,7 @@ function MessageBubble({
                 className={cn(copyClass, isCopied && copyConfirmedClass)}
                 onClick={() => onCopy(index, promptText)}
               >
-                <svg viewBox="0 0 24 24" aria-hidden>
+                <svg viewBox="0 0 24 24" aria-hidden className="fill-none stroke-current">
                   <rect x="8" y="8" width="12" height="12" rx="2" />
                   <path d="M4 16V6a2 2 0 0 1 2-2h10" />
                 </svg>
