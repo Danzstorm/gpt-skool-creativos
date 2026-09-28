@@ -65,9 +65,7 @@ function attachmentLookupLog(cause: unknown): { code?: unknown; message: string 
 // mensaje del usuario y todo lo posterior (reasoning, herramientas, respuesta).
 // Mirar solo 1-2 ítems dejaba el mensaje del usuario vivo cuando había ítems
 // intermedios, y al reenviarlo quedaba duplicado (más tokens, pregunta doble).
-async function deleteLastTurn(
-  conversationId: string
-): Promise<{ removedUser: boolean; removedAssistant: boolean }> {
+async function deleteLastTurn(conversationId: string): Promise<void> {
   const recent = await openai.conversations.items.list(conversationId, {
     order: "desc",
     limit: 100,
@@ -84,10 +82,33 @@ async function deleteLastTurn(
     if (!item.id) continue;
     await openai.conversations.items.delete(item.id, { conversation_id: conversationId });
   }
-  return {
-    removedUser: userIndex !== -1,
-    removedAssistant: stale.some((item) => item.type === "message" && item.role === "assistant"),
-  };
+}
+
+// Espejo local de deleteLastTurn, por posición y no según lo que había en
+// OpenAI: el aviso ⚠️ de un turno fallido solo existe en `messages`. Contar
+// filas a partir de OpenAI borraba el aviso en vez del mensaje (Editar) o lo
+// dejaba vivo junto a la respuesta nueva (Regenerar).
+async function deleteLocalLastTurn(
+  service: SupabaseClient,
+  threadId: string,
+  { includeUser }: { includeUser: boolean }
+): Promise<void> {
+  const { data: lastUser, error: lookupError } = await service
+    .from("messages")
+    .select("created_at")
+    .eq("thread_id", threadId)
+    .eq("role", "user")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (lookupError) throw lookupError;
+  if (!lastUser) return;
+
+  const base = service.from("messages").delete().eq("thread_id", threadId);
+  const { error } = includeUser
+    ? await base.gte("created_at", lastUser.created_at)
+    : await base.gt("created_at", lastUser.created_at);
+  if (error) throw error;
 }
 
 async function withVideoDescriptions(
@@ -217,22 +238,8 @@ export async function executeChatTurn({
     const tools = buildCodeInterpreterTools(incoming);
 
     if (replaceLast) {
-      const removed = await deleteLastTurn(conversationId);
-      const toDeleteLocal = removed.removedAssistant && removed.removedUser ? 2 : 1;
-
-      const { data: lastLocal } = await serviceClient
-        .from("messages")
-        .select("id")
-        .eq("thread_id", threadId)
-        .order("created_at", { ascending: false })
-        .limit(toDeleteLocal);
-      if (lastLocal?.length) {
-        const { error: deleteError } = await serviceClient
-          .from("messages")
-          .delete()
-          .in("id", lastLocal.map((item) => item.id));
-        if (deleteError) throw deleteError;
-      }
+      await deleteLastTurn(conversationId);
+      await deleteLocalLastTurn(serviceClient, threadId, { includeUser: true });
     }
 
     const numbers = await threadAttachmentNumbers(serviceClient, threadId, user.id, incoming);
@@ -474,23 +481,8 @@ export async function executeRegenerateTurn({
 
     // El mensaje del usuario se reenvía abajo con buildUserInput: hay que sacarlo
     // también de la Conversation, no solo la respuesta.
-    const removed = await deleteLastTurn(conversationId);
-    if (removed.removedAssistant) {
-      const { data: lastLocal } = await serviceClient
-        .from("messages")
-        .select("id")
-        .eq("thread_id", threadId)
-        .eq("role", "assistant")
-        .order("created_at", { ascending: false })
-        .limit(1);
-      if (lastLocal?.length) {
-        const { error: deleteError } = await serviceClient
-          .from("messages")
-          .delete()
-          .eq("id", lastLocal[0].id);
-        if (deleteError) throw deleteError;
-      }
-    }
+    await deleteLastTurn(conversationId);
+    await deleteLocalLastTurn(serviceClient, threadId, { includeUser: false });
 
     const tools = buildCodeInterpreterTools(incoming);
     await syncProjectContext({
