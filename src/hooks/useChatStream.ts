@@ -124,6 +124,23 @@ export function useChatStream({
             if (!threadId) return;
             applyThreadTitle(threadId, title);
           },
+          // El servidor detectó salida degenerada y va a reintentar: lo que
+          // ya se mostró de la primera pasada se descarta antes de que
+          // lleguen los deltas nuevos, para no dejar restos mezclados.
+          onReset: () => {
+            setMessages((prev) => {
+              const updated = [...prev];
+              const last = updated[updated.length - 1];
+              updated[updated.length - 1] = {
+                ...last,
+                content: "",
+                ...(last.versions && last.versionIndex !== undefined
+                  ? { versions: last.versions.map((v, i) => (i === last.versionIndex ? "" : v)) }
+                  : {}),
+              };
+              return updated;
+            });
+          },
         }
       );
       return streamUnlocked;

@@ -24,6 +24,12 @@ export interface ConsumeSSEOptions {
   onDone?: () => void;
   /** Título generado en background tras [DONE] (sidebar). */
   onThreadTitle?: (title: string) => void;
+  /**
+   * El servidor detectó salida degenerada (pocos tokens, ilegible) y va a
+   * reintentar: lo ya emitido como onToken hay que descartarlo antes de que
+   * lleguen los deltas del reintento.
+   */
+  onReset?: () => void;
 }
 
 export async function consumeSSE(
@@ -51,7 +57,13 @@ export async function consumeSSE(
       return;
     }
 
-    let parsed: { text?: string; error?: string; phase?: string; thread_title?: string };
+    let parsed: {
+      text?: string;
+      error?: string;
+      phase?: string;
+      thread_title?: string;
+      reset?: boolean;
+    };
     try {
       parsed = JSON.parse(data);
     } catch {
@@ -59,6 +71,7 @@ export async function consumeSSE(
       return;
     }
     if (parsed.error) throw new Error(parsed.error);
+    if (parsed.reset) options?.onReset?.();
     // Antes que el texto: un frame trae una cosa o la otra, nunca las dos.
     if (parsed.phase) onPhase?.(parsed.phase);
     if (parsed.text) onToken(parsed.text);

@@ -1,7 +1,25 @@
 import OpenAI from "openai";
 import type { ResponseInputItem, Tool } from "openai/resources/responses/responses";
+import { deleteLastTurn } from "@/lib/openai-conversation-items";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// Caso real de prod (2026-09-28): una Response terminó "completed" (nada de
+// incomplete/failed/error, los gaps ya cubiertos abajo) con 18 tokens de
+// salida y un puñado de caracteres ilegibles — el modelo simplemente escupió
+// basura, sin ningún evento que lo delate. Frecuencia baja pero no nula.
+//
+// Corte deliberado: exige AMBAS señales para no reintentar una respuesta
+// corta legítima ("Sí", "¡Listo!") solo por ser corta — esas sí tienen letras.
+const GARBAGE_MAX_OUTPUT_TOKENS = 20;
+const GARBAGE_RETRY_LIMIT = 1;
+function looksDegenerate(text: string, outputTokens: number): boolean {
+  return (
+    outputTokens > 0 &&
+    outputTokens < GARBAGE_MAX_OUTPUT_TOKENS &&
+    !/[a-zA-Z0-9]/.test(text)
+  );
+}
 
 /**
  * Streamea una Response de OpenAI (Responses API) sobre una Conversation como SSE.
@@ -207,6 +225,7 @@ export function runStreamResponse(params: RunStreamParams): Response {
         send("data: [DONE]\n\n");
       };
       try {
+        for (let attempt = 0; ; attempt++) {
         const events = await openai.responses.create(
           {
             model,
@@ -238,6 +257,7 @@ export function runStreamResponse(params: RunStreamParams): Response {
           lastPhase = phase;
           send(`data: ${JSON.stringify({ phase })}\n\n`);
         };
+        let retrying = false;
 
         for await (const event of events) {
           if (event.type === "response.queued") {
@@ -279,10 +299,36 @@ export function runStreamResponse(params: RunStreamParams): Response {
 
           if (event.type === "response.completed") {
             const usage = event.response.usage;
+            const tokensOut = usage?.output_tokens ?? 0;
+            if (attempt < GARBAGE_RETRY_LIMIT && looksDegenerate(fullText, tokensOut)) {
+              retrying = true;
+              console.warn("runStreamResponse degenerate output, retrying", {
+                conversationId,
+                model,
+                tokensOut,
+              });
+              // El cliente ya vio estos deltas en vivo: se le pide borrarlos
+              // antes de que lleguen los del reintento.
+              send(`data: ${JSON.stringify({ reset: true })}\n\n`);
+              fullText = "";
+              try {
+                // Ambos (pregunta + respuesta basura) se sacan de la
+                // Conversation: `input` se reenvía abajo tal cual, y sin esto
+                // quedaría duplicado (mismo bug que Regenerar sin este borrado).
+                await deleteLastTurn(openai, conversationId);
+              } catch (cleanupError) {
+                console.error("runStreamResponse retry cleanup error", {
+                  conversationId,
+                  model,
+                  ...safeErrorDetails(cleanupError),
+                });
+              }
+              break;
+            }
             const meta: RunMeta = {
               model: event.response.model ?? null,
               tokensIn: usage?.input_tokens ?? 0,
-              tokensOut: usage?.output_tokens ?? 0,
+              tokensOut,
               text: fullText,
             };
             await finishTurn(meta);
@@ -348,6 +394,8 @@ export function runStreamResponse(params: RunStreamParams): Response {
               `⚠️ Error de OpenAI (${event.code ?? "desconocido"}). Vuelve a intentarlo.`
             );
           }
+        }
+        if (!retrying) break;
         }
       } catch (err) {
         // Mismo criterio que arriba: si el catch llegó porque el cliente

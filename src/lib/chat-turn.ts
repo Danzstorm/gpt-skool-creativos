@@ -10,6 +10,7 @@ import {
   parseRegenerateBody,
 } from "@/lib/chat-turn-parse";
 import { recordMessageAttachments } from "@/lib/message-attachments";
+import { deleteLastTurn } from "@/lib/openai-conversation-items";
 import { projectInstructionsOf, syncProjectContext } from "@/lib/project-instructions";
 import { cleanGeneratedTitle, generateThreadTitle } from "@/lib/thread-title";
 import {
@@ -65,30 +66,6 @@ function attachmentLookupLog(cause: unknown): { code?: unknown; message: string 
 // mensaje del usuario y todo lo posterior (reasoning, herramientas, respuesta).
 // Mirar solo 1-2 ítems dejaba el mensaje del usuario vivo cuando había ítems
 // intermedios, y al reenviarlo quedaba duplicado (más tokens, pregunta doble).
-// `includeUser: false` deja el mensaje del usuario y borra solo la respuesta
-// (cambio de versión: se reinserta otra respuesta sin reenviar la pregunta).
-async function deleteLastTurn(
-  conversationId: string,
-  { includeUser = true }: { includeUser?: boolean } = {}
-): Promise<void> {
-  const recent = await openai.conversations.items.list(conversationId, {
-    order: "desc",
-    limit: 100,
-  });
-  const userIndex = recent.data.findIndex(
-    (item) => item.type === "message" && item.role === "user"
-  );
-  // Sin mensaje de usuario visible: solo se toca una respuesta final suelta.
-  const stale =
-    userIndex === -1
-      ? recent.data.slice(0, 1).filter((item) => item.type === "message" && item.role === "assistant")
-      : recent.data.slice(0, includeUser ? userIndex + 1 : userIndex);
-  for (const item of stale) {
-    if (!item.id) continue;
-    await openai.conversations.items.delete(item.id, { conversation_id: conversationId });
-  }
-}
-
 async function lastUserCreatedAt(service: SupabaseClient, threadId: string): Promise<string | null> {
   const { data, error } = await service
     .from("messages")
@@ -258,7 +235,7 @@ export async function executeChatTurn({
     const tools = buildCodeInterpreterTools(incoming);
 
     if (replaceLast) {
-      await deleteLastTurn(conversationId);
+      await deleteLastTurn(openai, conversationId);
       await deleteLocalLastTurn(serviceClient, threadId);
     }
 
@@ -501,7 +478,7 @@ export async function executeRegenerateTurn({
 
     // El mensaje del usuario se reenvía abajo con buildUserInput: hay que sacarlo
     // también de la Conversation, no solo la respuesta.
-    await deleteLastTurn(conversationId);
+    await deleteLastTurn(openai, conversationId);
     await deactivateLastAnswers(serviceClient, threadId);
 
     const tools = buildCodeInterpreterTools(incoming);
@@ -645,7 +622,7 @@ export async function executeSelectVersion({
         metadata: { user_id: user.id, gpt_id: thread.gpt_id },
       });
       if (conversationId === thread.openai_conversation_id) {
-        await deleteLastTurn(conversationId, { includeUser: false });
+        await deleteLastTurn(openai, conversationId, { includeUser: false });
         if (chosen.content) {
           await openai.conversations.items.create(conversationId, {
             items: [{ role: "assistant", content: chosen.content }],
