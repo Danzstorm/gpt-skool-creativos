@@ -61,6 +61,35 @@ function attachmentLookupLog(cause: unknown): { code?: unknown; message: string 
   };
 }
 
+// Borra de la Conversation de OpenAI el último turno completo: el último
+// mensaje del usuario y todo lo posterior (reasoning, herramientas, respuesta).
+// Mirar solo 1-2 ítems dejaba el mensaje del usuario vivo cuando había ítems
+// intermedios, y al reenviarlo quedaba duplicado (más tokens, pregunta doble).
+async function deleteLastTurn(
+  conversationId: string
+): Promise<{ removedUser: boolean; removedAssistant: boolean }> {
+  const recent = await openai.conversations.items.list(conversationId, {
+    order: "desc",
+    limit: 100,
+  });
+  const userIndex = recent.data.findIndex(
+    (item) => item.type === "message" && item.role === "user"
+  );
+  // Sin mensaje de usuario visible: solo se toca una respuesta final suelta.
+  const stale =
+    userIndex === -1
+      ? recent.data.slice(0, 1).filter((item) => item.type === "message" && item.role === "assistant")
+      : recent.data.slice(0, userIndex + 1);
+  for (const item of stale) {
+    if (!item.id) continue;
+    await openai.conversations.items.delete(item.id, { conversation_id: conversationId });
+  }
+  return {
+    removedUser: userIndex !== -1,
+    removedAssistant: stale.some((item) => item.type === "message" && item.role === "assistant"),
+  };
+}
+
 async function withVideoDescriptions(
   serviceClient: SupabaseClient,
   userId: string,
@@ -188,21 +217,8 @@ export async function executeChatTurn({
     const tools = buildCodeInterpreterTools(incoming);
 
     if (replaceLast) {
-      const recentItems = await openai.conversations.items.list(conversationId, {
-        order: "desc",
-        limit: 2,
-      });
-      const [first, second] = recentItems.data;
-      let toDeleteLocal = 1;
-      if (first?.type === "message" && first.role === "assistant") {
-        await openai.conversations.items.delete(first.id, { conversation_id: conversationId });
-        if (second?.type === "message" && second.role === "user") {
-          await openai.conversations.items.delete(second.id, { conversation_id: conversationId });
-          toDeleteLocal = 2;
-        }
-      } else if (first?.type === "message" && first.role === "user") {
-        await openai.conversations.items.delete(first.id, { conversation_id: conversationId });
-      }
+      const removed = await deleteLastTurn(conversationId);
+      const toDeleteLocal = removed.removedAssistant && removed.removedUser ? 2 : 1;
 
       const { data: lastLocal } = await serviceClient
         .from("messages")
@@ -456,13 +472,10 @@ export async function executeRegenerateTurn({
       metadata: { user_id: user.id, gpt_id: gptId },
     });
 
-    const recentItems = await openai.conversations.items.list(conversationId, {
-      order: "desc",
-      limit: 1,
-    });
-    const last = recentItems.data[0];
-    if (last?.type === "message" && last.role === "assistant") {
-      await openai.conversations.items.delete(last.id, { conversation_id: conversationId });
+    // El mensaje del usuario se reenvía abajo con buildUserInput: hay que sacarlo
+    // también de la Conversation, no solo la respuesta.
+    const removed = await deleteLastTurn(conversationId);
+    if (removed.removedAssistant) {
       const { data: lastLocal } = await serviceClient
         .from("messages")
         .select("id")
