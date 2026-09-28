@@ -159,6 +159,16 @@ export function runStreamResponse(params: RunStreamParams): Response {
       // sin ninguna fila de asistente: se perdía en silencio, sin rastro para el
       // usuario ni para el admin. persistOnce garantiza exactamente una escritura.
       let persisted = false;
+      // Si el cliente se desconecta (red, pestaña cerrada, "Detener"), el
+      // stream queda cancelado y enqueue lanza. Sin este guard la excepción
+      // salía antes de persistOnce y el turno se perdía sin fila de asistente.
+      const send = (chunk: string) => {
+        try {
+          controller.enqueue(encoder.encode(chunk));
+        } catch {
+          // Nadie escucha: se sigue para guardar lo generado.
+        }
+      };
       const persistOnce = async (text: string) => {
         if (persisted || !onAssistantText) return;
         try {
@@ -173,11 +183,11 @@ export function runStreamResponse(params: RunStreamParams): Response {
         }
       };
       const emitFrame = (payload: Record<string, unknown>) => {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
+        send(`data: ${JSON.stringify(payload)}\n\n`);
       };
       const finishTurn = async (meta: RunMeta) => {
         await persistOnce(fullText);
-        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+        send("data: [DONE]\n\n");
         if (onAfterDone) {
           await onAfterDone(meta, emitFrame);
         } else if (onComplete) {
@@ -188,13 +198,13 @@ export function runStreamResponse(params: RunStreamParams): Response {
         if (fullText) {
           const suffix = `\n\n_(${warning})_`;
           fullText += suffix;
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: suffix })}\n\n`));
+          send(`data: ${JSON.stringify({ text: suffix })}\n\n`);
         } else {
           fullText = warning;
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: warning })}\n\n`));
+          send(`data: ${JSON.stringify({ text: warning })}\n\n`);
         }
         await persistOnce(fullText);
-        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+        send("data: [DONE]\n\n");
       };
       try {
         const events = await openai.responses.create(
@@ -226,7 +236,7 @@ export function runStreamResponse(params: RunStreamParams): Response {
           // eventos seguidos de la misma fase y no hace falta repetirla.
           if (phase === lastPhase) return;
           lastPhase = phase;
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ phase })}\n\n`));
+          send(`data: ${JSON.stringify({ phase })}\n\n`);
         };
 
         for await (const event of events) {
@@ -255,9 +265,7 @@ export function runStreamResponse(params: RunStreamParams): Response {
 
           if (event.type === "response.output_text.delta") {
             fullText += event.delta;
-            controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify({ text: event.delta })}\n\n`)
-            );
+            send(`data: ${JSON.stringify({ text: event.delta })}\n\n`);
           }
 
           // Un rechazo del modelo (p.ej. imagen con una persona real que la
@@ -266,9 +274,7 @@ export function runStreamResponse(params: RunStreamParams): Response {
           // y el turno se veía como si el modelo no hubiera dicho nada.
           if (event.type === "response.refusal.delta") {
             fullText += event.delta;
-            controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify({ text: event.delta })}\n\n`)
-            );
+            send(`data: ${JSON.stringify({ text: event.delta })}\n\n`);
           }
 
           if (event.type === "response.completed") {
@@ -306,10 +312,10 @@ export function runStreamResponse(params: RunStreamParams): Response {
             if (fullText) {
               const suffix = `\n\n_(⚠️ ${note})_`;
               fullText += suffix;
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: suffix })}\n\n`));
+              send(`data: ${JSON.stringify({ text: suffix })}\n\n`);
             } else {
               fullText = `⚠️ ${note}`;
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: fullText })}\n\n`));
+              send(`data: ${JSON.stringify({ text: fullText })}\n\n`);
             }
             // meta se arma después de completar fullText (arriba): onComplete
             // necesita el texto final con el aviso ya pegado, no el de antes.
@@ -358,7 +364,11 @@ export function runStreamResponse(params: RunStreamParams): Response {
         });
       } finally {
         if (onSettled) await onSettled();
-        controller.close();
+        try {
+          controller.close();
+        } catch {
+          // Ya cancelado por el cliente.
+        }
       }
     },
   });
